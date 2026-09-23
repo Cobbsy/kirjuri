@@ -11,6 +11,7 @@ if (version_compare(PHP_VERSION, '8.1.0') < 0) {
 // so an existing database or table is reported and skipped rather than aborting the install halfway.
 mysqli_report(MYSQLI_REPORT_OFF);
 require_once __DIR__ . '/lib/migrations.php';
+require_once __DIR__ . '/lib/install.php';
 ?>
 <html>
 <head>
@@ -100,28 +101,16 @@ Please choose a name for your database. The default is "kirjuri".
     die;
 } else {
     // If form is submitted
-    $admin_password = password_hash($_POST['ap'], PASSWORD_DEFAULT);
     $_POST['drop_database'] = isset($_POST['drop_database']) ? $_POST['drop_database'] : '';
     $_POST['migrate_old_database'] = isset($_POST['migrate_old_database']) ? $_POST['migrate_old_database'] : '';
 
     $mysql_config['mysql_server'] = $_POST['s'];
     $mysql_config['mysql_username'] = trim(preg_replace('/[^A-Za-z0-9\-]/', '', $_POST['u']));
     $mysql_config['mysql_password'] = $_POST['p'];
-    $mysql_config['mysql_database'] = strtolower(trim(preg_replace('/[^A-Za-z0-9\-]/', '', $_POST['d'])));
-
-    // Check for invalid database names
-    if ($mysql_config['mysql_database'] === '') {
-        echo '<p style="color:red;">Please give a database name.</p>';
-        die;
-    }
-    if (in_array($mysql_config['mysql_database'], array(
-                'mysql',
-                'information_schema',
-                'performance_schema',
-                'users',
-                'files',
-            ), true)) {
-        echo '<p style="color:red;">Reserved database name, please choose something else.</p>';
+    try {
+        $mysql_config['mysql_database'] = kirjuri_validate_database_name($_POST['d']);
+    } catch (InvalidArgumentException $e) {
+        echo '<p style="color:red;">' . htmlspecialchars($e->getMessage()) . '</p>';
         die;
     }
 
@@ -159,8 +148,7 @@ Please choose a name for your database. The default is "kirjuri".
     }
 
     // Save credentials to file only once the database is reachable, so a failed install can be retried.
-    $mysql_config_file = '<?php return '.var_export($mysql_config, true).'; ?>'."\n";
-    file_put_contents('conf/mysql_credentials.php', $mysql_config_file);
+    kirjuri_write_mysql_credentials($mysql_config);
 
     $kirjuri_database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $kirjuri_database->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
@@ -190,11 +178,7 @@ Please choose a name for your database. The default is "kirjuri".
     }
 
     // The built-in accounts. On a rerun against an existing database they already exist.
-    $query = $kirjuri_database->prepare('INSERT IGNORE INTO users (id, username, password, name, access, flags, attr_1) VALUES
-        (1, "anonymous", "Not set.", "Anonymous user", "3", "S", "System account, do not remove."),
-        (2, "admin", :admin_password, "Administrator", "0", "S", "Extra attribute columns for future compatibility")');
-    $query->execute(array(':admin_password' => $admin_password));
-    echo '<p style="color:green;">Default users added (' . $query->rowCount() . ' new).</p>';
+    echo '<p style="color:green;">Default users added (' . kirjuri_create_default_users($kirjuri_database, $_POST['ap']) . ' new).</p>';
 
     echo '<p>Install script done, reload <a href="index.php">index.php</a>. The admininistrator account is "admin", log in with the password you designated.</p></div>
     </div>

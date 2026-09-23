@@ -12,6 +12,52 @@ final class CliTest extends IntegrationTestCase
         $this->assertSame(1, $this->server->cli(array('no-such-command'))[0]);
     }
 
+    public function testInstallWithoutABrowser(): void
+    {
+        $dir = sys_get_temp_dir() . '/kirjuri_cli_install_' . generate_token(8);
+        $database = 'kirjuritestcli' . generate_token(8);
+        mkdir($dir);
+        foreach (array('bin', 'lib', 'conf') as $folder) {
+            exec('cp -r ' . escapeshellarg(KIRJURI_ROOT . '/' . $folder) . ' ' . escapeshellarg($dir . '/'));
+        }
+        foreach (array('mysql_credentials.php', 'audit_credentials.php', 'settings.local') as $file) {
+            @unlink($dir . '/conf/' . $file);
+        }
+        mkdir($dir . '/logs');
+        mkdir($dir . '/cache');
+        $run = function (array $env) use ($dir) {
+            $process = proc_open(array(PHP_BINARY, 'bin/kirjuri', 'install'), array(1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, $dir, array_merge(getenv(), $env));
+            $out = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
+            return array(proc_close($process), $out);
+        };
+        $env = array(
+            'KIRJURI_DB_HOST' => getenv('KIRJURI_TEST_DB_HOST'),
+            'KIRJURI_DB_USER' => getenv('KIRJURI_TEST_DB_USER') ?: 'root',
+            'KIRJURI_DB_PASSWORD' => getenv('KIRJURI_TEST_DB_PASSWORD') ?: '',
+            'KIRJURI_DB_NAME' => $database,
+        );
+        try {
+            [$status, $out] = $run($env + array('KIRJURI_ADMIN_PASSWORD' => 'short'));
+            $this->assertSame(1, $status, 'Admin passwords shorter than 8 characters are refused.');
+            $this->assertFileDoesNotExist($dir . '/conf/mysql_credentials.php');
+
+            [$status, $out] = $run($env + array('KIRJURI_ADMIN_PASSWORD' => 'long-enough-password'));
+            $this->assertSame(0, $status, $out);
+            $this->assertFileExists($dir . '/conf/mysql_credentials.php');
+            $pdo = new \PDO('mysql:host=' . $env['KIRJURI_DB_HOST'] . ';dbname=' . $database, $env['KIRJURI_DB_USER'], $env['KIRJURI_DB_PASSWORD']);
+            $admin = $pdo->query("SELECT password FROM users WHERE id = 2 AND username = 'admin'")->fetchColumn();
+            $this->assertTrue(password_verify('long-enough-password', $admin));
+            $this->assertSame(count(kirjuri_migrations()), (int) $pdo->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn());
+
+            [$status, $out] = $run($env + array('KIRJURI_ADMIN_PASSWORD' => 'another-password'));
+            $this->assertSame(1, $status, 'A second install is refused.');
+            $this->assertStringContainsString('already installed', $out);
+        } finally {
+            (new \PDO('mysql:host=' . $env['KIRJURI_DB_HOST'], $env['KIRJURI_DB_USER'], $env['KIRJURI_DB_PASSWORD']))->exec('DROP DATABASE IF EXISTS `' . $database . '`');
+            delete_directory($dir);
+        }
+    }
+
     public function testDoctorPassesOnAWorkingInstallation(): void
     {
         [$status, $out] = $this->server->cli(array('doctor'));

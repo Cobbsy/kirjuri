@@ -1,0 +1,12 @@
+.git
+tests/vendor
+tests/.phpunit.cache
+conf/mysql_credentials.php
+conf/audit_credentials.php
+conf/*.local
+logs/*
+cache/*
+!logs/.gitignore
+!logs/.htaccess
+!cache/.gitignore
+!cache/.htaccess

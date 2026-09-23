@@ -71,7 +71,7 @@ final class UnauthenticatedAccessTest extends IntegrationTestCase
 
     public function testDataFoldersAreProtectedFromApache(): void
     {
-        foreach (array('conf', 'logs', 'cache', 'lib', 'bin', 'actions') as $folder) {
+        foreach (array('conf', 'logs', 'cache', 'lib', 'bin', 'actions', 'docker', 'tests') as $folder) {
             $this->assertFileExists(KIRJURI_ROOT . "/$folder/.htaccess");
             $this->assertStringContainsString('Require all denied', file_get_contents(KIRJURI_ROOT . "/$folder/.htaccess"));
         }

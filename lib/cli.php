@@ -13,6 +13,7 @@ function cli_err($line) {
 
 function cli_commands() {
     return array(
+        'install' => array('cli_install', 'Install without a browser; settings from KIRJURI_DB_HOST, KIRJURI_DB_NAME, KIRJURI_DB_USER, KIRJURI_DB_PASSWORD and KIRJURI_ADMIN_PASSWORD'),
         'doctor' => array('cli_doctor', 'Check the PHP environment, folders, configuration and database'),
         'migrate' => array('cli_migrate', 'Apply pending database migrations (--status to only list them)'),
         'user:list' => array('cli_user_list', 'List user accounts'),
@@ -103,6 +104,55 @@ function cli_read_password() {
         throw new RuntimeException('The password must be at least 8 characters long.');
     }
     return $password;
+}
+
+
+function cli_install($args) {
+    // Everything comes from the environment, so passwords stay out of the shell history and process list.
+    if (kirjuri_mysql_config() !== null) {
+        cli_err('Kirjuri is already installed (conf/mysql_credentials.php exists). Use "migrate" to update the database.');
+        return 1;
+    }
+    $env = function ($name, $default = null) {
+        $value = getenv($name);
+        if ($value === false || $value === '') {
+            if ($default === null) {
+                throw new RuntimeException('Set ' . $name . ' in the environment.');
+            }
+            return $default;
+        }
+        return $value;
+    };
+    $config = array(
+        'mysql_server' => $env('KIRJURI_DB_HOST', 'localhost'),
+        'mysql_username' => $env('KIRJURI_DB_USER'),
+        'mysql_password' => $env('KIRJURI_DB_PASSWORD'),
+        'mysql_database' => kirjuri_validate_database_name($env('KIRJURI_DB_NAME', 'kirjuri')),
+    );
+    $admin_password = $env('KIRJURI_ADMIN_PASSWORD');
+    if (strlen($admin_password) < 8) {
+        throw new RuntimeException('KIRJURI_ADMIN_PASSWORD must be at least 8 characters long.');
+    }
+
+    $server = new PDO('mysql:host=' . $config['mysql_server'], $config['mysql_username'], $config['mysql_password'],
+        array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+    $exists = $server->prepare('SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = :name');
+    $exists->execute(array(':name' => $config['mysql_database']));
+    if ((int) $exists->fetchColumn() === 0) {
+        $server->exec('CREATE DATABASE `' . $config['mysql_database'] . '`');
+        cli_out('Created database ' . $config['mysql_database'] . '.');
+    }
+
+    global $mysql_config;
+    $mysql_config = $config;
+    $db = connect_database('kirjuri-database');
+    kirjuri_migrate($db, null, 'cli_out');
+    kirjuri_write_mysql_credentials($config);
+    $ids = array_keys(kirjuri_migrations());
+    @file_put_contents('cache/schema_version', end($ids));
+    cli_out('Created ' . kirjuri_create_default_users($db, $admin_password) . ' built-in account(s). Log in as "admin".');
+    event_log_write('0', 'Admin', 'Installed from the command line.');
+    return 0;
 }
 
 

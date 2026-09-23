@@ -21,12 +21,22 @@ OVERVIEW & LICENSE
 
 Kirjuri is developed by Antti Kurittu. It was started at the Helsinki Police Department as an internal tool. Original development released under the MIT license. Some components are distributed with their own licenses, please see folders & help for details.
 
+RUNNING WITH DOCKER
+------------
+
+`docker compose up` starts Kirjuri with MariaDB at http://localhost:8080 (set `KIRJURI_PORT` for another port). It installs itself on the first start; log in as `admin` with the `KIRJURI_ADMIN_PASSWORD` from `docker-compose.yml`. The source folder is mounted into the container, so edits show up on reload, and pending migrations are applied on every start.
+
+The compose file is meant for development and testing: change the passwords, turn off `show_errors` and put a TLS proxy in front before using it for real data. `docker/smoke-test.sh` checks a running container, and CI runs it on every pull request.
+
+Without Docker, `php bin/kirjuri install` installs from a shell, reading `KIRJURI_DB_HOST`, `KIRJURI_DB_NAME`, `KIRJURI_DB_USER`, `KIRJURI_DB_PASSWORD` and `KIRJURI_ADMIN_PASSWORD` from the environment.
+
 COMMAND LINE TOOL AND TROUBLESHOOTING
 ------------
 
 `bin/kirjuri` handles maintenance from a shell on the server. Run it as the web server user so files it creates stay writable, e.g. `sudo -u www-data php bin/kirjuri doctor`.
 
 ```
+php bin/kirjuri install                     # install without a browser (settings from KIRJURI_* variables)
 php bin/kirjuri doctor                      # check PHP, extensions, folder permissions, settings and the database
 php bin/kirjuri migrate [--status]          # apply or list database migrations
 php bin/kirjuri user:list

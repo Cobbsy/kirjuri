@@ -74,3 +74,19 @@ jobs:
           KIRJURI_TEST_DB_USER: root
           KIRJURI_TEST_DB_PASSWORD: root
         run: vendor/bin/phpunit
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start
+        run: docker compose up -d --build
+
+      - name: Smoke test
+        run: docker/smoke-test.sh http://localhost:8080 admin-password
+
+      - name: Logs
+        if: always()
+        run: docker compose logs
