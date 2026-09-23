@@ -77,3 +77,36 @@ function kirjuri_case_of($db, $uid) {
     $parent = $query->fetchColumn();
     return $parent === false ? null : $parent;
 }
+
+
+/**
+ * Usernames in a case's access group. case_owner holds them separated by semicolons; empty means
+ * every user may open the case. "admin" is stored for cases restricted to administrators.
+ */
+function kirjuri_access_group($case_owner) {
+    return array_values(array_filter(array_map('trim', explode(';', (string) $case_owner)), function ($name) {
+        return $name !== '';
+    }));
+}
+
+
+/**
+ * The one rule for opening a case: admins always can, and anyone can when the case has no access
+ * group; otherwise the username must be in the group. Pure function, see tests/Unit/CaseAccessTest.
+ */
+function kirjuri_user_can_access_case($user, $case_owner) {
+    if (isset($user['access']) && (string) $user['access'] === '0') {
+        return true;
+    }
+    $group = kirjuri_access_group($case_owner);
+    return empty($group) || (isset($user['username']) && in_array((string) $user['username'], $group, true));
+}
+
+
+/** The access group of the case containing $uid (a case or one of its devices), or null if it does not exist. */
+function kirjuri_case_owner_of(PDO $db, $uid) {
+    $query = $db->prepare('SELECT c.case_owner FROM exam_requests d JOIN exam_requests c ON c.id = d.parent_id WHERE d.id = :id');
+    $query->execute(array(':id' => $uid));
+    $owner = $query->fetchColumn();
+    return $owner === false ? null : (string) $owner;
+}

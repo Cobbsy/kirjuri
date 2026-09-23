@@ -3,19 +3,9 @@
 require_once './include_functions.php';
 
 function api_case_access($id) {
-    // Mirror verify_case_ownership() for API users: admins and access group members only.
+    // The same rule as the pages, for the case that $id (a case or device UID) belongs to.
     global $kirjuri_database;
-    if ($_SESSION['user']['access'] === "0") {
-        return true;
-    }
-    $query = $kirjuri_database->prepare('SELECT case_owner FROM exam_requests WHERE id = (SELECT parent_id FROM exam_requests WHERE id = :id)');
-    $query->execute(array(':id' => $id));
-    $case_owner = $query->fetch(PDO::FETCH_ASSOC);
-    if ($case_owner === false) {
-        return true; // Nothing to protect, the query will return nothing.
-    }
-    $case_owner = explode(";", (string) $case_owner['case_owner']);
-    return (empty($case_owner[0]) || in_array($_SESSION['user']['username'], $case_owner, true));
+    return kirjuri_user_can_access_case($_SESSION['user'], kirjuri_case_owner_of($kirjuri_database, $id));
 }
 
 

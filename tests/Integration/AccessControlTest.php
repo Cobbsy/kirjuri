@@ -56,6 +56,22 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertSame(200, $admin->get('edit_request.php?case=' . $caseId)->status);
     }
 
+    public function testFrontPageHidesRestrictedCasesFromUsersWithSimilarNames(): void
+    {
+        $bob = $this->uniqueName('bob');
+        $this->createUser($bob, 'password1', 1);
+        $admin = $this->admin();
+        $suspect = $this->uniqueName('S'); // Short: the front page truncates suspects to 20 characters.
+        $caseId = $this->createCase($admin, $this->uniqueName('Similar names '), array('case_suspect' => $suspect));
+        // A group containing a longer name that starts with bob's username.
+        $admin->post('submit.php?type=case_access&id=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'access' => array($bob . 'by' => $bob . 'by')));
+
+        $page = $this->login($bob, 'password1')->get('index.php')->body;
+        $this->assertStringNotContainsString($suspect, $page, 'The old check matched usernames as substrings.');
+        $this->assertStringContainsString($suspect, $admin->get('index.php')->body, 'Admins see every case.');
+    }
+
     public function testRegularUserCannotOpenAdminPages(): void
     {
         $username = $this->uniqueName('regular');

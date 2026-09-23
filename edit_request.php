@@ -31,9 +31,9 @@ if (empty($_SESSION['case_token'][$case_number])) {
     $_SESSION['case_token'][$case_number] = generate_token(16); // Initialize case token
 }
 
-if (!empty($caserow['0']['case_owner'])) {
-    $case_owner = explode(";", $caserow['0']['case_owner']);
-    if ( ($_SESSION['user']['access'] > "0") && !in_array($_SESSION['user']['username'], $case_owner)) {
+$case_owner = kirjuri_access_group($caserow[0]['case_owner']);
+if (!empty($case_owner)) {
+    if (!kirjuri_user_can_access_case($_SESSION['user'], $caserow[0]['case_owner'])) {
         event_log_write($caserow[0]['id'], "Access", "Denied, user not in access group.");
         $_SESSION['message']['type'] = 'error';
         $_SESSION['message']['content'] = sprintf($_SESSION['lang']['not_in_access_group']);

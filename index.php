@@ -118,6 +118,15 @@ else {
         ));
 }
 $row_cases = $query->fetchAll(PDO::FETCH_ASSOC); // Get devices to show new devices (action status 1)
+$case_owners = array();
+foreach ($row_cases as $key => $case) {
+    // The template hides details of cases the user may not open. Search results can include
+    // devices, which take the access group of their case.
+    if (!array_key_exists($case['parent_id'], $case_owners)) {
+        $case_owners[$case['parent_id']] = ($case['id'] === $case['parent_id']) ? $case['case_owner'] : kirjuri_case_owner_of($kirjuri_database, $case['id']);
+    }
+    $row_cases[$key]['can_access'] = kirjuri_user_can_access_case($_SESSION['user'], $case_owners[$case['parent_id']]);
+}
 
 $query = $kirjuri_database->prepare('SELECT parent_id, device_action FROM exam_requests WHERE id != parent_id AND is_removed = "0" AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY parent_id, device_action ASC');
 $query->execute(array(

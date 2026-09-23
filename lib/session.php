@@ -137,15 +137,9 @@ function ksess_verify($required_access_level) {
 
 
 function verify_case_ownership($id) {
+    // Stop the request unless the user may open the case that $id (a case or device UID) belongs to.
     global $kirjuri_database;
-    if ($_SESSION['user']['access'] === "0") {
-        return true;
-    }
-    $query = $kirjuri_database->prepare('SELECT case_owner FROM exam_requests WHERE id = :id');
-    $query->execute(array(':id' => $id));
-    $case_owner = $query->fetch(PDO::FETCH_ASSOC);
-    $case_owner = explode(";", $case_owner['case_owner']);
-    if ( (in_array($_SESSION['user']['username'], $case_owner)) || (empty($case_owner[0])) ) {
+    if (kirjuri_user_can_access_case($_SESSION['user'], kirjuri_case_owner_of($kirjuri_database, $id))) {
         return true;
     }
     else {

@@ -188,11 +188,11 @@
       {% endif %}
 
       {% if show_columns.crime != "hide" %}
-      <td>{% if not entry.case_owner or session.user.username in entry.case_owner %}<a href="index.php?search={{ entry.case_crime|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_crime|length > 20 ? entry.case_crime|slice(0, 20) ~ '...' : entry.case_crime }}</a>{% else %}<span style="color:#CCC;">-</span>{% endif %}</td>
+      <td>{% if entry.can_access %}<a href="index.php?search={{ entry.case_crime|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_crime|length > 20 ? entry.case_crime|slice(0, 20) ~ '...' : entry.case_crime }}</a>{% else %}<span style="color:#CCC;">-</span>{% endif %}</td>
       {% endif %}
 
       {% if show_columns.suspect != "hide" %}
-      <td>{% if not entry.case_owner or session.user.username in entry.case_owner %}<a href="index.php?search={{ entry.case_suspect|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_suspect|length > 20 ? entry.case_suspect|slice(0, 20) ~ '...' : entry.case_suspect }}</a>{% else %}<span style="color:#CCC;">-</span>{% endif %}</td>
+      <td>{% if entry.can_access %}<a href="index.php?search={{ entry.case_suspect|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_suspect|length > 20 ? entry.case_suspect|slice(0, 20) ~ '...' : entry.case_suspect }}</a>{% else %}<span style="color:#CCC;">-</span>{% endif %}</td>
       {% endif %}
 
       {% if show_columns.investigator != "hide" %}
@@ -248,7 +248,7 @@
        <td style="width:1px;">
          {% if show_columns.access_group != "hide" %}
          {% if entry.case_owner %}
-         {% if session.user.username in entry.case_owner %}
+         {% if entry.can_access %}
          <i style="color:green;" class="fa fa-unlock-alt"></i>
          {% else %}
          <i title="{{ lang.not_in_access_group }}" style="color:red;" class="fa fa-lock"></i>
