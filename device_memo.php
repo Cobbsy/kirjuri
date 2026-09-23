@@ -25,9 +25,7 @@ $query->execute(array(
     ));
 $hostdevice = $query->fetchAll(PDO::FETCH_ASSOC);
 
-foreach ($mediarow as $entry) {
-    $casefetch = $entry;
-}
+$casefetch = $mediarow[0];
 
 verify_case_ownership($casefetch['parent_id']);
 

@@ -2,12 +2,32 @@ name: Tests
 
 on:
   push:
+    branches: [master]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
+  static-analysis:
+    name: PHPStan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install tools
+        working-directory: tests
+        run: composer install --no-interaction --no-progress
+
+      - name: Run PHPStan
+        working-directory: tests
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
   test:
     name: PHP ${{ matrix.php }} / ${{ matrix.database }}
     runs-on: ubuntu-latest

@@ -11,14 +11,14 @@ if (PHP_SAPI !== 'cli') {
 }
 
 chdir(dirname(__DIR__));
-require 'lib/errors.php';
+require __DIR__ . '/../lib/errors.php';
 kirjuri_register_error_handlers();
-require 'lib/helpers.php';
-require 'lib/config.php';
-require 'lib/logging.php';
-require 'lib/database.php';
-require 'lib/migrations.php';
-require 'lib/cli.php';
+require __DIR__ . '/../lib/helpers.php';
+require __DIR__ . '/../lib/config.php';
+require __DIR__ . '/../lib/logging.php';
+require __DIR__ . '/../lib/database.php';
+require __DIR__ . '/../lib/migrations.php';
+require __DIR__ . '/../lib/cli.php';
 
 $settings_file = kirjuri_settings_file();
 if ($settings_file !== null) {

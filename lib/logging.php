@@ -101,7 +101,7 @@ function audit_log_write($post_data) {
     $data = json_encode($data, JSON_PRETTY_PRINT);
     $audit_file_sha256 = hash('sha256', $data);
     $data = encrypt($data, include 'conf/audit_credentials.php');
-    $audit_file_epoch = time();
+    $audit_file_epoch = (string) time();
 
     if (!file_exists('logs/audit/' . substr($audit_file_epoch, 0, 6))) {
         mkdir('logs/audit/' . substr($audit_file_epoch, 0, 6));

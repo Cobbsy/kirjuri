@@ -249,8 +249,11 @@ case 'device':
                 foreach ($imei_list as $line) {
                     if (substr($line, 0, 8) === $imei_TAC) {
                         $imei_data = explode("|", $line);
-                        $_POST['device_manuf'] = $imei_data['10'];
-                        $_POST['device_model'] = $imei_data['11'];
+                        if (!isset($imei_data[11])) {
+                            continue; // Not a line in the expected IMEI database format.
+                        }
+                        $_POST['device_manuf'] = $imei_data[10];
+                        $_POST['device_model'] = $imei_data[11];
                         $_POST['examiners_notes'] = implode(", ", $imei_data);
                     }
                 }

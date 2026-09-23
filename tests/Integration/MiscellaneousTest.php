@@ -49,6 +49,12 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame('tools.php?populate=' . $toolId . '&highlight=0', $reserve('2030-01-02', '2030-01-04')->location());
         $this->assertSame('tools.php?populate=' . $toolId, $reserve('2030-01-03', '2030-01-05')->location(), 'Back to back reservations are fine.');
         $this->assertCount(2, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
+
+        // Missing dates used to pass the check, because " " (date and time joined by a space) is not empty.
+        $incomplete = $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'Administrator', 'comment' => '',
+            'reserve_start_date' => '', 'reserve_start_time' => '', 'reserve_end_date' => '2030-02-01', 'reserve_end_time' => '08:00'));
+        $this->assertSame('tools.php?populate=' . $toolId, $incomplete->location());
+        $this->assertCount(2, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
         $this->assertSame(200, $admin->get('tools.php?populate=' . $toolId)->status);
     }
 

@@ -30,7 +30,7 @@ if ($sort_d === 'a') {
     $order_direction = ' DESC';
 }
 
-if (isset($sort_j)) {
+if ($sort_j !== '') {
     // Get sorting column
 
     if ($sort_j === '1') {
@@ -61,7 +61,7 @@ if (isset($sort_j)) {
         $order_by = 'case_added_date'.$order_direction;
     }
 }
-if (isset($sort_s)) {
+if ($sort_s !== '') {
     // Get sorting by status
 
     if ($sort_s === '1') {

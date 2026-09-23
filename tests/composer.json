@@ -2,7 +2,8 @@
     "name": "kirjuri/tests",
     "description": "Test suite for Kirjuri. Kept apart from the application's composer.json so the committed vendor/ folder stays free of development dependencies.",
     "require-dev": {
-        "phpunit/phpunit": "^10.5"
+        "phpunit/phpunit": "^10.5",
+        "phpstan/phpstan": "^2.1"
     },
     "config": {
         "platform": {

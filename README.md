@@ -60,6 +60,8 @@ The unit tests need nothing else. The integration tests install a throwaway copy
 KIRJURI_TEST_DB_HOST=127.0.0.1 KIRJURI_TEST_DB_USER=root KIRJURI_TEST_DB_PASSWORD=secret vendor/bin/phpunit
 ```
 
+Static analysis runs with `vendor/bin/phpstan` from the same folder.
+
 The temporary installation and database are removed afterwards. Set `KIRJURI_TEST_KEEP=1` to keep the installation folder for debugging. GitHub Actions runs the whole suite on every push and pull request.
 
 CHANGELOG

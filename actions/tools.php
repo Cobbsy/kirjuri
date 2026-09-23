@@ -31,7 +31,10 @@ case 'reserve_tool':
     // If tool ID is set in POST, then this is a reservation, check for empty vars.
     if (isset($_POST['tool_id'])) {
         $returnid = filter_numbers($_POST['tool_id']);
-        if ((empty($res_start)) || (empty($res_end)) || (empty($returnid))) {
+        // Check the submitted fields: the concatenated strings above always contain at least a space.
+        if (empty($_POST['reserve_start_date']) || empty($_POST['reserve_start_time']) || empty($_POST['reserve_end_date'])
+            || empty($_POST['reserve_end_time']) || empty($returnid)
+            || strtotime($res_start) === false || strtotime($res_end) === false) {
             message('error', $_SESSION['lang']['missing_form_field']);
             header('Location: tools.php?populate=' . $returnid);
             die;

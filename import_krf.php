@@ -129,7 +129,7 @@ $query->execute(array(
     ));
 $next = $query->fetch(PDO::FETCH_ASSOC);
 if ($next === false) {
-    $next['case_id'] = "1";
+    $next = array('case_id' => '1'); // The first case of the year.
 }
 
 $query_builder = 'INSERT INTO exam_requests (id, parent_id, case_id, is_removed, case_added_date, case_start_date, last_updated, case_devicecount, ';
@@ -156,6 +156,7 @@ $query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = last
 $query->execute();
 $new_parent = $query->fetch(PDO::FETCH_ASSOC);
 
+$new_ids = array();
 if (!empty($case_array['children'])) {
     foreach ($case_array['children'] as $input) {
         $old_id = $input['id'];
@@ -204,6 +205,7 @@ if (!empty($case_array['children'])) {
 }
 
 if (!empty($case_array['files'])) {
+    $decoded_files = array();
     $i = 0;
     foreach ($case_array['files'] as $file) {
         foreach ($file as $key => $value) {

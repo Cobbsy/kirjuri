@@ -1,0 +1,24 @@
+# Static analysis for Kirjuri. Run from this folder: vendor/bin/phpstan
+parameters:
+    level: 5
+    paths:
+        - ../
+        - ../bin/kirjuri
+    excludePaths:
+        analyse:
+            - ../vendor
+            - ../tests
+            - ../cache
+            - ../views/js # Third-party JavaScript libraries.
+            - ../rest_api.php # Entirely commented out; see its header.
+    bootstrapFiles:
+        - ../vendor/autoload.php
+    ignoreErrors:
+        # Created at runtime by install.php and on the first audited change.
+        - identifier: include.fileNotFound
+        # Pages share these through include_functions.php, and the action files get them from
+        # submit.php. PHPStan does not follow variables across require, so it can not see them.
+        # Any other undefined variable is still reported.
+        -
+            identifier: variable.undefined
+            message: '#^Variable \$(kirjuri_database|twig|prefs|mysql_config|settings_file|action|dateRange) might not be defined\.$#'

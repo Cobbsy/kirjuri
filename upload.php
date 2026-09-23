@@ -28,7 +28,7 @@ for ($i = 0; $i < $total; ++$i) {
     };
     $file['name'] = basename($_FILES['fileToUpload']['name'][$i]);
     $file['type'] = mime_content_type($_FILES['fileToUpload']['tmp_name'][$i]);
-    $file['content'] = file_get_contents($_FILES['fileToUpload']['tmp_name'][$i], 16000000);
+    $file['content'] = file_get_contents($_FILES['fileToUpload']['tmp_name'][$i]); // Size checked above.
     $file['hash'] = hash('sha256', $file['content']);
     $query = $kirjuri_database->prepare('SELECT name FROM attachments WHERE hash = :hash AND request_id = :request_id');
     $query->execute(array(':hash' => $file['hash'], ':request_id' => $id));
