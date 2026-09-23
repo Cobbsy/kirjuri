@@ -6,11 +6,7 @@ ksess_verify(2); // View only or higher
 
 verify_case_ownership($case_number);
 
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE parent_id = :id AND is_removed != "1" ORDER BY id');
-$query->execute(array(
-        ':id' => $case_number,
-    ));
-$request_items = $query->fetchAll(PDO::FETCH_ASSOC);
+$request_items = kirjuri_case_rows_for_export($kirjuri_database, $case_number);
 if (empty($request_items)) {
     header('Location: index.php');
     die;

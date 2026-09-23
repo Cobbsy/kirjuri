@@ -12,11 +12,7 @@ if ($request['parent'] === null) {
 }
 $request['children'] = kirjuri_case_devices($kirjuri_database, $case_number);
 
-$query = $kirjuri_database->prepare('SELECT * FROM attachments WHERE request_id = :id');
-$query->execute(array(
-        ':id' => $case_number
-    ));
-$files = $query->fetchAll(PDO::FETCH_ASSOC);
+$files = kirjuri_case_attachments($kirjuri_database, $case_number, true);
 
 foreach ($request['parent'] as $key => $value) {
     if ($key === "case_owner") {

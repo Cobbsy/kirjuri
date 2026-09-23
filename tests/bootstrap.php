@@ -12,6 +12,7 @@ require KIRJURI_ROOT . '/lib/errors.php';
 require KIRJURI_ROOT . '/lib/migrations.php';
 require KIRJURI_ROOT . '/lib/cases.php';
 require KIRJURI_ROOT . '/lib/devices.php';
+require KIRJURI_ROOT . '/lib/attachments.php';
 require KIRJURI_ROOT . '/lib/statistics.php';
 require KIRJURI_ROOT . '/lib/install.php';
 require KIRJURI_ROOT . '/lib/tools.php';

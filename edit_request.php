@@ -15,17 +15,12 @@ $dev_owner = isset($_GET['dev_owner']) ? urldecode($_GET['dev_owner']) : '';
 $filelist = array();
 $case_number = filter_numbers((substr($get_case, 0, 5)));
 $confCrimes = strip_tags(file_get_contents('conf/crimes_autofill.conf'));
-$kirjuri_database = connect_database('kirjuri-database');
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id=:id AND parent_id=:id LIMIT 1');
-$query->execute(array(
-        ':id' => $case_number,
-    ));
-$caserow = $query->fetchAll(PDO::FETCH_ASSOC);
-
-if (count($caserow) === 0) {
+$case = kirjuri_find_case($kirjuri_database, $case_number);
+if ($case === null) {
     header('Location: index.php');
     die;
 }
+$caserow = array($case);
 
 if (empty($_SESSION['case_token'][$case_number])) {
     $_SESSION['case_token'][$case_number] = generate_token(16); // Initialize case token
@@ -49,9 +44,7 @@ else {
 // The query result used to be thrown away, so the duplicate request warning never showed.
 $samerequest_file_number = kirjuri_cases_with_file_number($kirjuri_database, $caserow[0]);
 
-$query = $kirjuri_database->prepare('SELECT id, name, size, uploader, type FROM attachments WHERE request_id = :id');
-$query->execute(array(':id' => $caserow[0]['id']));
-$attachment_files = $query->fetchAll(PDO::FETCH_ASSOC);
+$attachment_files = kirjuri_case_attachments($kirjuri_database, $caserow[0]['id']);
 
 if ($sort_j === 'dev_owner') {
     $j = 'device_owner';
@@ -70,17 +63,8 @@ if ($sort_j === 'dev_owner') {
 } else {
     $j = 'device_type';
 }
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id != :id AND parent_id=:id AND device_type != "task" AND is_removed != "1" ORDER BY '.$j);
-$query->execute(array(
-        ':id' => $case_number,
-    ));
-$mediarow = $query->fetchAll(PDO::FETCH_ASSOC);
-
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id != :id AND parent_id=:id AND device_type = "task" AND is_removed != "1" ORDER BY '.$j);
-$query->execute(array(
-        ':id' => $case_number,
-    ));
-$tasks = $query->fetchAll(PDO::FETCH_ASSOC);
+$mediarow = kirjuri_case_devices($kirjuri_database, $case_number, false, $j, 'devices');
+$tasks = kirjuri_case_devices($kirjuri_database, $case_number, false, $j, 'tasks');
 
 if (file_exists('attachments/'.$case_number.'/')) {
     $i = 0;

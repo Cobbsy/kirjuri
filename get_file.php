@@ -8,10 +8,8 @@ if (!isset($_GET['file'])) {
 }
 $file_id = filter_numbers($_GET['file']);
 
-$query = $kirjuri_database->prepare('SELECT name, content, size, type, request_id, hash FROM attachments WHERE id = :id');
-$query->execute(array(':id' => $file_id));
-$file = $query->fetch(PDO::FETCH_ASSOC);
-if ($file === false) {
+$file = kirjuri_find_attachment($kirjuri_database, $file_id, true);
+if ($file === null) {
     echo "File not found.";
     die;
 }

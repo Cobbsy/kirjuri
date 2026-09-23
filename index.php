@@ -9,8 +9,6 @@ if ($_SESSION['user']['access'] === "3") {
 $sort_j = isset($_GET['j']) ? $_GET['j'] : '';
 $sort_d = isset($_GET['d']) ? $_GET['d'] : '';
 $sort_s = isset($_GET['s']) ? $_GET['s'] : '';
-$has_attachments[] = '';
-$order_direction = $statuslimit = '';
 $search_term = '';
 
 if (empty($_GET['year'])) {
@@ -20,104 +18,31 @@ if (empty($_GET['year'])) {
 }
 
 $dateRange = array('start' => $year.'-01-01 00:00:00', 'stop' => ($year + 1).'-01-01 00:00:00');
-$order_by = 'case_status ASC, case_id DESC';
+$ascending = ($sort_d === 'a');
+$order_by = kirjuri_case_list_order($sort_j, $ascending); // The template marks the sorted column.
 
-if ($sort_d === 'a') {
-    // Get sorting order
-
-    $order_direction = ' ASC';
-} else {
-    $order_direction = ' DESC';
-}
-
-if ($sort_j !== '') {
-    // Get sorting column
-
-    if ($sort_j === '1') {
-        $order_by = 'case_id'.$order_direction;
-    }
-    if ($sort_j === '2') {
-        $order_by = 'case_name'.$order_direction;
-    }
-    if ($sort_j === '3') {
-        $order_by = 'case_file_number'.$order_direction;
-    }
-    if ($sort_j === '4') {
-        $order_by = 'case_crime'.$order_direction;
-    }
-    if ($sort_j === '5') {
-        $order_by = 'case_suspect'.$order_direction;
-    }
-    if ($sort_j === '6') {
-        $order_by = 'case_investigator'.$order_direction;
-    }
-    if ($sort_j === '7') {
-        $order_by = 'forensic_investigator'.$order_direction;
-    }
-    if ($sort_j === '8') {
-        $order_by = 'phone_investigator'.$order_direction;
-    }
-    if ($sort_j === '9') {
-        $order_by = 'case_added_date'.$order_direction;
-    }
-}
-if ($sort_s !== '') {
-    // Get sorting by status
-
-    if ($sort_s === '1') {
-        $statuslimit = 'AND case_status = "1" ';
-    }
-    if ($sort_s === '2') {
-        $statuslimit = 'AND case_status = "2" ';
-    }
-    if ($sort_s === '3') {
-        $statuslimit = 'AND case_status = "3" ';
-    }
-}
 if (isset($_GET['search']) && (!empty($_GET['search']))) {
     // If a search string is present, handle that. Handled via GET for bookmarking a search.
     // if the search is for UID, jump to that case.
     $search_term = substr($_GET['search'], 0, 128);
     if (substr($search_term, 0, 3) === "UID") {
-        $get_uid = filter_numbers(substr($search_term, 3, 11));
-        if (empty($get_uid)) { // If no UID present, return to index.
+        $get_uid_result = kirjuri_find_uid($kirjuri_database, filter_numbers(substr($search_term, 3, 11)));
+        if ($get_uid_result === null) { // If no or an unknown UID, return to index.
             header('Location: index.php');
             die;
         }
-        $query = $kirjuri_database->prepare('SELECT id, parent_id FROM exam_requests WHERE id = :get_uid');
-        $query->execute(array(':get_uid' => $get_uid));
-        $get_uid_result = $query->fetch(PDO::FETCH_ASSOC);
-        if ($get_uid_result === false) { // If ID does not exist, return to index.
-            header('Location: index.php');
-            die;
-        }
-        if ($get_uid_result['id'] === $get_uid_result['parent_id']) // Jump to case.
-            {
+        if ($get_uid_result['id'] === $get_uid_result['parent_id']) { // Jump to case.
             header('Location: edit_request.php?case='.$get_uid_result['parent_id']);
             die;
         }
-        else {
-            header('Location: device_memo.php?uid='.$get_uid_result['id']); // Jump to device.
-            die;
-        }
+        header('Location: device_memo.php?uid='.$get_uid_result['id']); // Jump to device.
+        die;
     }
-    else {
-        $query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = id '.$statuslimit.'AND is_removed = "0" AND MATCH (case_name,case_suspect,case_file_number,case_investigator,forensic_investigator,phone_investigator,case_investigation_lead,case_investigator_unit,case_crime,case_requested_action,case_request_description,report_notes,examiners_notes,device_manuf,device_model,device_identifier,device_owner) AGAINST (:search_term IN BOOLEAN MODE) AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY '.$order_by);
-        $query->execute(array(
-                ':search_term' => $search_term,
-                ':dateStart' => $dateRange['start'],
-                ':dateStop' => $dateRange['stop']));
-    }
+    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $year, $sort_j, $ascending, $sort_s);
 }
 else {
-    // Get the cases
-    $query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = parent_id '.$statuslimit.'AND is_removed = "0" AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY '.$order_by);
-    $query->execute(array(
-            ':dateStart' => $dateRange['start'],
-            ':dateStop' => $dateRange['stop'],
-        ));
+    $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending, $sort_s);
 }
-$row_cases = $query->fetchAll(PDO::FETCH_ASSOC); // Get devices to show new devices (action status 1)
 $case_owners = array();
 foreach ($row_cases as $key => $case) {
     // The template hides details of cases the user may not open. Search results can include
@@ -128,23 +53,8 @@ foreach ($row_cases as $key => $case) {
     $row_cases[$key]['can_access'] = kirjuri_user_can_access_case($_SESSION['user'], $case_owners[$case['parent_id']]);
 }
 
-$query = $kirjuri_database->prepare('SELECT parent_id, device_action FROM exam_requests WHERE id != parent_id AND is_removed = "0" AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY parent_id, device_action ASC');
-$query->execute(array(
-        ':dateStart' => $dateRange['start'],
-        ':dateStop' => $dateRange['stop'],
-    ));
-$row_devices = $query->fetchAll(PDO::FETCH_ASSOC);
-
-$query = $kirjuri_database->prepare('SELECT DISTINCT(request_id) AS request_id FROM attachments');
-$query->execute();
-$files = $query->fetchAll(PDO::FETCH_ASSOC);
-$attachments = array();
-foreach ($files as $file) {
-    array_push($attachments, $file['request_id']);
-}
-unset($files);
-
-// Scan attachment directories and return directories that have any files as an array.
+$row_devices = kirjuri_device_actions_for_year($kirjuri_database, $year);
+$attachments = kirjuri_cases_with_attachments($kirjuri_database);
 
 $_SESSION['message_set'] = false;
 

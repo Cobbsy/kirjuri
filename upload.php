@@ -30,35 +30,14 @@ for ($i = 0; $i < $total; ++$i) {
     $file['type'] = mime_content_type($_FILES['fileToUpload']['tmp_name'][$i]);
     $file['content'] = file_get_contents($_FILES['fileToUpload']['tmp_name'][$i]); // Size checked above.
     $file['hash'] = hash('sha256', $file['content']);
-    $query = $kirjuri_database->prepare('SELECT name FROM attachments WHERE hash = :hash AND request_id = :request_id');
-    $query->execute(array(':hash' => $file['hash'], ':request_id' => $id));
-    $file_exists = $query->fetch(PDO::FETCH_ASSOC);
-    if ($file_exists === false) {
-        $file['size'] = $_FILES['fileToUpload']['size'][$i];
-        $compressed_data = gzencode($file['content']);
+    if (!kirjuri_attachment_exists($kirjuri_database, $id, $file['hash'])) {
+        $file['size'] = strlen($file['content']);
+        $stored = kirjuri_add_attachment($kirjuri_database, $id, $file['name'], $file['type'], $file['content'], $_SESSION['user']['username']);
         unset($file['content']);
-        $size_in_database = strlen($compressed_data);
-        $query = $kirjuri_database->prepare('INSERT INTO attachments
-      (id, name, request_id, type, size, content, uploader, hash, date_uploaded) VALUES
-      (NULL, :name, :request_id, :type, :size, :content, :uploader, :hash, NOW())');
-        $query->execute(array(
-                ':request_id' => $id,
-                ':name' => $file['name'],
-                ':type' => $file['type'],
-                ':size' => $file['size'],
-                ':content' => $compressed_data,
-                ':uploader' => $_SESSION['user']['username'],
-                ':hash' => $file['hash']
-            ));
-        $compression_ratio = ($file['size'] > 0) ? (100 - (($size_in_database / $file['size']) * 100)) : 0;
-        $_POST['content'] = "File data, " . $file['size'] . " bytes, compressed to " . $size_in_database . " bytes. (Reduction of " . round($compression_ratio, 2) . "%). sha256: " . $file['hash'];
+        $compression_ratio = ($file['size'] > 0) ? (100 - (($stored['stored_size'] / $file['size']) * 100)) : 0;
+        $_POST['content'] = "File data, " . $file['size'] . " bytes, compressed to " . $stored['stored_size'] . " bytes. (Reduction of " . round($compression_ratio, 2) . "%). sha256: " . $file['hash'];
         $audit_stamp = audit_log_write($_POST);
-        $query = $kirjuri_database->prepare('UPDATE attachments SET attr_1 = :audit_stamp WHERE hash = :hash AND request_id = :request_id');
-        $query->execute(array(
-                ':audit_stamp' => $audit_stamp,
-                ':hash' => $file['hash'],
-                ':request_id' => $id
-            ));
+        kirjuri_set_attachment_audit_stamp($kirjuri_database, $stored['id'], $audit_stamp);
         event_log_write($id, 'Add', 'Attachment uploaded: '. $file['name'] . ", file sha256: " . $file['hash'], $audit_stamp);
     } else {
         $_SESSION['failed_uploads'][] = $file['name'] . " (file already exists)";

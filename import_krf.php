@@ -118,94 +118,23 @@ foreach ($input as $key => $value) {
     $columns[verify_keys($key)] = $value;
 }
 $new_case = kirjuri_create_case($kirjuri_database, $columns);
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = :id');
-$query->execute(array(':id' => $new_case['id']));
-$new_parent = $query->fetch(PDO::FETCH_ASSOC);
+$new_parent = kirjuri_find_case($kirjuri_database, $new_case['id']);
 
+// Devices, then the attached media pointed at their hosts' new UIDs. All keys were validated above.
 $new_ids = array();
 if (!empty($case_array['children'])) {
     foreach ($case_array['children'] as $input) {
-        $old_id = $input['id'];
-        unset($input['id']);
-        $input['parent_id'] = $new_parent['id'];
-        unset($input['case_id']);
-        unset($input['is_removed']);
-        unset($input['case_status']);
-        unset($input['case_added_date']);
-        unset($input['case_start_date']);
-        unset($input['case_devicecount']);
-        unset($input['case_owner']);
-        unset($input['last_updated']);
-        $query_builder = 'INSERT INTO exam_requests (id, case_id, is_removed, case_status, case_added_date, case_start_date, last_updated, case_devicecount, case_owner, ';
-        foreach ($input as $key => $value) {
-            $query_builder .= verify_keys($key) . ', ';
-        }
-        $query_builder = substr($query_builder, 0, -2);
-        $query_builder .= ') VALUES ( NULL, NULL, "0", NULL, NOW(), NULL, NOW(), "0", NULL, ';
-        foreach ($input as $key => $value) {
-            if ($key !== "id") {
-                $query_builder .= ':' . $key . ', ';
-            }
-        }
-        $pdo_query = $query_builder = substr($query_builder, 0, -2) . ");";
-        $query = $kirjuri_database->prepare($pdo_query);
-        $pdo_data = array();
-        foreach ($input as $key => $value) {
-            $pdo_data[":" . $key] = $value;
-        }
-        $query->execute($pdo_data);
-        $query = $kirjuri_database->prepare('SELECT last_insert_id() AS id');
-        $query->execute();
-        $last_insert = $query->fetch(PDO::FETCH_ASSOC);
-        $new_ids[$old_id] = $last_insert['id'];
+        $new_ids[$input['id']] = kirjuri_import_device($kirjuri_database, $new_parent['id'], $input);
     }
-    foreach ($new_ids as $old_id => $new_id) {
-        $query = $kirjuri_database->prepare('UPDATE exam_requests SET device_host_id = :new_id WHERE device_host_id = :old_id AND parent_id = :new_parent_id;');
-        $query->execute(array(
-                ':new_id' => $new_id,
-                ':old_id' => $old_id,
-                ':new_parent_id' => $new_parent['id']
-            ));
-    }
+    kirjuri_remap_device_hosts($kirjuri_database, $new_parent['id'], $new_ids);
 }
 
 if (!empty($case_array['files'])) {
-    $decoded_files = array();
-    $i = 0;
     foreach ($case_array['files'] as $file) {
-        foreach ($file as $key => $value) {
-            if ($key === "content") {
-                $decoded_files[$i][$key] = base64_decode($value);
-            } else {
-                $decoded_files[$i][$key] = $value;
-            }
-        }
-        $i++;
+        $file['content'] = base64_decode(isset($file['content']) ? $file['content'] : '');
+        kirjuri_import_attachment($kirjuri_database, $new_parent['id'], $file);
     }
     unset($case_array['files']);
-    foreach ($decoded_files as $file) {
-        unset($file['id']);
-        unset($file['attr_1']);
-        $file['request_id'] = $new_parent['id'];
-        $query_builder = 'INSERT INTO attachments (id, ';
-        foreach ($file as $key => $value) {
-            $query_builder .= verify_keys($key) . ', ';
-        }
-        $query_builder = substr($query_builder, 0, -2);
-        $query_builder .= ') VALUES (NULL, ';
-        foreach ($file as $key => $value) {
-            if ($key !== "id") {
-                $query_builder .= ':' . $key . ', ';
-            }
-        }
-        $pdo_query = $query_builder = substr($query_builder, 0, -2) . ");";
-        $query = $kirjuri_database->prepare($pdo_query);
-        $pdo_data = array();
-        foreach ($file as $key => $value) {
-            $pdo_data[":" . $key] = $value;
-        }
-        $query->execute($pdo_data);
-    }
 }
 
 kirjuri_update_device_count($kirjuri_database, $new_parent['id']);

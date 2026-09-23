@@ -138,3 +138,37 @@ function kirjuri_open_cases_for_user(PDO $db, array $user) {
         return kirjuri_user_can_access_case($user, $case['case_owner']);
     }));
 }
+
+
+/**
+ * Insert a device row from a KRF export into a case and return its new UID. Case, status and date
+ * columns are reset; the column names must already be validated against the exam_requests columns.
+ */
+function kirjuri_import_device(PDO $db, $case_id, array $row) {
+    foreach (array('id', 'parent_id', 'case_id', 'is_removed', 'case_status', 'case_added_date', 'case_start_date', 'case_devicecount', 'case_owner', 'last_updated') as $managed) {
+        unset($row[$managed]);
+    }
+    foreach (array_keys($row) as $column) {
+        if (!preg_match('/^[a-z0-9_]+$/', $column)) {
+            throw new InvalidArgumentException('Invalid column name: ' . $column);
+        }
+    }
+    $columns = array_keys($row);
+    $values = array(':parent_id' => $case_id);
+    foreach ($row as $column => $value) {
+        $values[':' . $column] = $value;
+    }
+    $db->prepare('INSERT INTO exam_requests (parent_id, is_removed, case_added_date, last_updated, case_devicecount'
+        . (empty($columns) ? '' : ', ' . implode(', ', $columns)) . ') VALUES (:parent_id, "0", NOW(), NOW(), "0"'
+        . (empty($columns) ? '' : ', :' . implode(', :', $columns)) . ')')->execute($values);
+    return $db->lastInsertId();
+}
+
+
+/** After an import, point attached media at the new UIDs of their host devices. $new_ids maps old UIDs to new. */
+function kirjuri_remap_device_hosts(PDO $db, $case_id, array $new_ids) {
+    $query = $db->prepare('UPDATE exam_requests SET device_host_id = :new_id WHERE device_host_id = :old_id AND parent_id = :case');
+    foreach ($new_ids as $old_id => $new_id) {
+        $query->execute(array(':new_id' => $new_id, ':old_id' => $old_id, ':case' => $case_id));
+    }
+}

@@ -25,11 +25,7 @@ case 'case_access':
     else {
         $accessgroup = implode(";", $_POST['access']);
     }
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET case_owner = :accessgroup WHERE id = :id');
-    $query->execute(array(
-            ':id' => $id,
-            ':accessgroup' => $accessgroup
-        ));
+    kirjuri_set_case_access_group($kirjuri_database, $id, $accessgroup);
     event_log_write($id, 'Access', 'Access group updated: ' . str_replace(";", ", ", $accessgroup) . ". " , $audit_stamp);
     header('Location: edit_request.php?case=' . $id . '&tab=access');
     die;
@@ -96,26 +92,23 @@ case 'case_update':
     else {
         $case_status = '1';
     }
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET case_name = :case_name, case_file_number = :case_file_number, case_crime = :case_crime, classification = :classification, case_suspect = :case_suspect, case_investigation_lead = :case_investigation_lead, case_investigator = :case_investigator, forensic_investigator = :forensic_investigator, phone_investigator = :phone_investigator, case_investigator_tel = :case_investigator_tel, case_investigator_unit = :case_investigator_unit, case_request_description = :case_request_description, case_confiscation_date = :case_confiscation_date, case_start_date = NOW(), last_updated = NOW(), is_removed = "0", case_contains_mob_dev = :case_contains_mob_dev, case_status = :case_status, case_urgency = :case_urgency where id=:id AND parent_id = :id');
-    $query->execute(array(
-            ':username' => $_SESSION['user']['username'],
-            ':case_name' => $_POST['case_name'],
-            ':case_file_number' => $_POST['case_file_number'],
-            ':case_crime' => $_POST['case_crime'],
-            ':classification' => $_POST['classification'],
-            ':case_suspect' => $_POST['case_suspect'],
-            ':case_investigation_lead' => $_POST['case_investigation_lead'],
-            ':case_investigator' => $_POST['case_investigator'],
-            ':forensic_investigator' => $_POST['forensic_investigator'],
-            ':phone_investigator' => $_POST['phone_investigator'],
-            ':case_investigator_tel' => $_POST['case_investigator_tel'],
-            ':case_investigator_unit' => $_POST['case_investigator_unit'],
-            ':case_request_description' => $_POST['case_request_description'],
-            ':case_confiscation_date' => $_POST['case_confiscation_date'],
-            ':case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
-            ':case_status' => $case_status,
-            ':id' => $_GET['uid'],
-            ':case_urgency' => $_POST['case_urgency']
+    kirjuri_update_case($kirjuri_database, $_GET['uid'], array(
+            'case_name' => $_POST['case_name'],
+            'case_file_number' => $_POST['case_file_number'],
+            'case_crime' => $_POST['case_crime'],
+            'classification' => $_POST['classification'],
+            'case_suspect' => $_POST['case_suspect'],
+            'case_investigation_lead' => $_POST['case_investigation_lead'],
+            'case_investigator' => $_POST['case_investigator'],
+            'forensic_investigator' => $_POST['forensic_investigator'],
+            'phone_investigator' => $_POST['phone_investigator'],
+            'case_investigator_tel' => $_POST['case_investigator_tel'],
+            'case_investigator_unit' => $_POST['case_investigator_unit'],
+            'case_request_description' => $_POST['case_request_description'],
+            'case_confiscation_date' => $_POST['case_confiscation_date'],
+            'case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
+            'case_status' => $case_status,
+            'case_urgency' => $_POST['case_urgency'],
         ));
     event_log_write($_GET['uid'], 'Update', 'Updated request ' . $_POST['case_name'] . ". ", $audit_stamp);
     $_POST['returnid'] = $_GET['uid'];
@@ -131,12 +124,7 @@ case 'report_notes':
     csrf_case_validate($_POST['ct'], $_POST['returnid']);
     verify_case_ownership($_POST['returnid']);
     $audit_stamp = audit_log_write($_POST);
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET report_notes = :report_notes, last_updated = NOW() where id=:id AND parent_id = :id AND is_removed != "1"');
-    $query->execute(array(
-            ':username' => $_SESSION['user']['username'],
-            ':id' => $_POST['returnid'],
-            ':report_notes' => filter_html($_POST['report_notes'])
-        ));
+    kirjuri_update_case_notes($kirjuri_database, $_POST['returnid'], 'report_notes', filter_html($_POST['report_notes']));
     $_SESSION['post_cache'] = '';
     message('info', $_SESSION['lang']['report_notes_saved']);
     $_SESSION['message_set'] = true;
@@ -151,12 +139,7 @@ case 'examiners_notes':
     csrf_case_validate($_POST['ct'], $_POST['returnid']);
     verify_case_ownership($_POST['returnid']);
     $audit_stamp = audit_log_write($_POST);
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET examiners_notes = :examiners_notes, last_updated = NOW() where id=:id AND parent_id = :id AND is_removed != "1"');
-    $query->execute(array(
-            ':username' => $_SESSION['user']['username'],
-            ':id' => $_POST['returnid'],
-            ':examiners_notes' => $_POST['examiners_notes']
-        ));
+    kirjuri_update_case_notes($kirjuri_database, $_POST['returnid'], 'examiners_notes', $_POST['examiners_notes']); // Sanitised by submit.php.
     $_SESSION['post_cache'] = '';
     message('info', $_SESSION['lang']['exam_notes_saved']);
     event_log_write($_POST['returnid'], 'Update', 'Updated examiners notes. ' , $audit_stamp);
@@ -171,11 +154,7 @@ case 'set_removed_case':
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
     $audit_stamp = audit_log_write($_GET);
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET is_removed = "1", last_updated = NOW() WHERE id=:id AND parent_id = :id');
-    $query->execute(array(
-            ':username' => $_SESSION['user']['username'],
-            ':id' => $id
-        ));
+    kirjuri_remove_case($kirjuri_database, $id);
     event_log_write($id, 'Remove', 'Removed case UID' . $id . ". " , $audit_stamp);
     $_SESSION['post_cache'] = '';
     message('info', $_SESSION['lang']['case_removed']);
@@ -190,16 +169,7 @@ case 'update_request_status':
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
     $audit_stamp = audit_log_write($_POST);
-    if ($_POST['case_status'] === '1') {
-        $query = $kirjuri_database->prepare('UPDATE exam_requests SET case_status = :case_status, forensic_investigator = "", phone_investigator = "", case_ready_date = NOW(), last_updated = NOW() WHERE parent_id = :id');
-    }
-    else {
-        $query = $kirjuri_database->prepare('UPDATE exam_requests SET case_status = :case_status, case_ready_date = NOW(), last_updated = NOW() WHERE parent_id = :id');
-    }
-    $query->execute(array(
-            ':id' => $id,
-            ':case_status' => $_POST['case_status']
-        ));
+    kirjuri_set_case_status($kirjuri_database, $id, $_POST['case_status']);
     event_log_write($id, 'Update', 'Changed request ' . $id . ' status: ' . $_POST['case_status'] . '. ' , $audit_stamp);
     $_SESSION['post_cache'] = '';
     show_saved_succesfully();
@@ -209,17 +179,14 @@ case 'update_request_status':
 case 'remove_attachment':
     ksess_verify(1);
     ksess_validate(posted_token());
-    $query = $kirjuri_database->prepare('SELECT name, hash, id, request_id, attr_1 FROM attachments WHERE id = :id');
-    $query->execute(array(':id' => $_GET['file']));
-    $file = $query->fetch(PDO::FETCH_ASSOC);
-    if ($file === false) {
+    $file = kirjuri_find_attachment($kirjuri_database, filter_numbers($_GET['file']));
+    if ($file === null) {
         header('Location: index.php');
         die;
     }
     csrf_case_validate(posted_case_token(), $file['request_id']);
     verify_case_ownership($file['request_id']);
-    $query = $kirjuri_database->prepare('DELETE FROM attachments WHERE id = :id');
-    $query->execute(array(':id' => $_GET['file']));
+    kirjuri_delete_attachment($kirjuri_database, $file['id']);
     event_log_write($file['request_id'], 'Remove', 'Attachment removed: '. $file['name'] . ", file sha256: " . $file['hash'], $file['attr_1']);
     header('Location: edit_request.php?case=' . $file['request_id']);
     die;

@@ -207,6 +207,32 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertStringNotContainsString('edit_request.php?case=' . $second . '"', $page, 'A case is not its own duplicate.');
     }
 
+    public function testFrontPageSearch(): void
+    {
+        $admin = $this->admin();
+        $suspect = 'Zq' . generate_token(6);
+        $caseId = $this->createCase($admin, $this->uniqueName('Searched '), array('case_suspect' => $suspect));
+        $page = $admin->get('index.php?search=' . $suspect)->body;
+        $this->assertStringContainsString('edit_request.php?case=' . $caseId, $page);
+        $this->assertStringNotContainsString('edit_request.php?case=' . $caseId, $admin->get('index.php?search=' . $suspect . '&s=3')->body, 'The status filter applies to searches.');
+    }
+
+    public function testDuplicateLookupLeavesOutRestrictedCases(): void
+    {
+        $admin = $this->admin();
+        $fileNumber = '8888/R/' . generate_token(4);
+        $open = $this->createCase($admin, $this->uniqueName('Open '), array('case_file_number' => $fileNumber));
+        $restricted = $this->createCase($admin, $this->uniqueName('Hidden '), array('case_file_number' => $fileNumber));
+        $admin->post('submit.php?type=case_access&id=' . $restricted, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $restricted), 'access' => array('admin_only' => 'admin_only')));
+
+        $username = $this->uniqueName('lookup');
+        $this->createUser($username, 'password1', 3);
+        $body = $this->login($username, 'password1')->get('request.php?case_file_number=' . urlencode($fileNumber))->body;
+        $this->assertStringContainsString('case=' . $open . "'", $body);
+        $this->assertStringNotContainsString('case=' . $restricted . "'", $body, 'The notice showed restricted cases\' names and suspects.');
+        $this->assertStringContainsString('case=' . $restricted . "'", $admin->get('request.php?case_file_number=' . urlencode($fileNumber))->body);
+    }
+
     public function testMissingCasePagesGoToTheFrontPage(): void
     {
         $admin = $this->admin();
