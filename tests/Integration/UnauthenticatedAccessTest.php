@@ -40,6 +40,22 @@ final class UnauthenticatedAccessTest extends IntegrationTestCase
         }
     }
 
+    public function testActionFilesCanNotBeRequestedDirectly(): void
+    {
+        foreach (glob(KIRJURI_ROOT . '/actions/*.php') as $file) {
+            $response = $this->client()->post('actions/' . basename($file) . '?type=create_user', array('username' => 'x'));
+            $this->assertSame(404, $response->status, basename($file));
+            $this->assertSame('', $response->body, basename($file));
+        }
+    }
+
+    public function testUnknownActionGoesToTheFrontPage(): void
+    {
+        $this->expectLoggedError('submit.php called with erroneous value');
+        $this->assertSame('index.php', $this->client()->get('submit.php?type=no_such_action')->location());
+        $this->assertSame('index.php', $this->client()->get('submit.php')->location());
+    }
+
     public function testApiRejectsMissingOrWrongKeys(): void
     {
         $this->assertSame(403, $this->client()->get('api.php?operation=info')->status);
@@ -55,7 +71,7 @@ final class UnauthenticatedAccessTest extends IntegrationTestCase
 
     public function testDataFoldersAreProtectedFromApache(): void
     {
-        foreach (array('conf', 'logs', 'cache') as $folder) {
+        foreach (array('conf', 'logs', 'cache', 'lib', 'bin', 'actions') as $folder) {
             $this->assertFileExists(KIRJURI_ROOT . "/$folder/.htaccess");
             $this->assertStringContainsString('Require all denied', file_get_contents(KIRJURI_ROOT . "/$folder/.htaccess"));
         }
