@@ -196,6 +196,25 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertArrayNotHasKey('case_owner', $krf['parent']);
     }
 
+    public function testCaseWithTheSameFileNumberIsPointedOut(): void
+    {
+        $admin = $this->admin();
+        $fileNumber = '7777/R/' . generate_token(4);
+        $first = $this->createCase($admin, $this->uniqueName('Original '), array('case_file_number' => $fileNumber));
+        $second = $this->createCase($admin, $this->uniqueName('Duplicate '), array('case_file_number' => $fileNumber));
+        $page = $admin->get('edit_request.php?case=' . $second)->body;
+        $this->assertStringContainsString('edit_request.php?case=' . $first . '"', $page, 'The warning links to the other request.');
+        $this->assertStringNotContainsString('edit_request.php?case=' . $second . '"', $page, 'A case is not its own duplicate.');
+    }
+
+    public function testMissingCasePagesGoToTheFrontPage(): void
+    {
+        $admin = $this->admin();
+        foreach (array('case_report.php?case=99999999', 'timeline.php?case=99999', 'download_krf.php?case=99999') as $page) {
+            $this->assertSame('index.php', $admin->get($page)->location(), $page);
+        }
+    }
+
     public function testStatisticsPage(): void
     {
         $admin = $this->admin();

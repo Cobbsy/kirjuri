@@ -27,6 +27,8 @@ require_once __DIR__.'/lib/logging.php';
 require_once __DIR__.'/lib/database.php';
 require_once __DIR__.'/lib/migrations.php';
 require_once __DIR__.'/lib/cases.php';
+require_once __DIR__.'/lib/statistics.php';
+require_once __DIR__.'/lib/messages.php';
 require_once __DIR__.'/lib/auth.php';
 require_once __DIR__.'/lib/session.php';
 require_once __DIR__.'/lib/output.php';
@@ -107,9 +109,7 @@ $tools = $query->fetchAll(PDO::FETCH_ASSOC);
 $_SESSION['all_tools'] = $tools;
 
 if (!empty($_SESSION['user']['username'])) { // Get unread message count
-    $query = $kirjuri_database->prepare('SELECT (SELECT COUNT(id) FROM messages WHERE msgto = :username AND received = "0") AS new');
-    $query->execute(array(':username' => $_SESSION['user']['username']));
-    $_SESSION['unread'] = $query->fetch(PDO::FETCH_ASSOC);
+    $_SESSION['unread'] = array('new' => (string) kirjuri_unread_count($kirjuri_database, $_SESSION['user']['username']));
 }
 
 if ( (microtime(true) - $mysql_timer_start) > "2.0") {

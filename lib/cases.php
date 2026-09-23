@@ -110,3 +110,45 @@ function kirjuri_case_owner_of(PDO $db, $uid) {
     $owner = $query->fetchColumn();
     return $owner === false ? null : (string) $owner;
 }
+
+
+/** A case by UID, or null. Removed cases are included unless $include_removed is false. */
+function kirjuri_find_case(PDO $db, $id, $include_removed = true) {
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = :id AND parent_id = :id' . ($include_removed ? '' : ' AND is_removed != "1"'));
+    $query->execute(array(':id' => $id));
+    $case = $query->fetch(PDO::FETCH_ASSOC);
+    return $case === false ? null : $case;
+}
+
+
+/** A device by UID, or null. Removed devices are left out unless $include_removed is true. */
+function kirjuri_find_device(PDO $db, $uid, $include_removed = false) {
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = :id AND id != parent_id' . ($include_removed ? '' : ' AND is_removed != "1"'));
+    $query->execute(array(':id' => $uid));
+    $device = $query->fetch(PDO::FETCH_ASSOC);
+    return $device === false ? null : $device;
+}
+
+
+/**
+ * The devices of a case. $order_by is one of the whitelisted sort orders below, as it can not be
+ * passed as a query parameter.
+ */
+function kirjuri_case_devices(PDO $db, $case_id, $include_removed = false, $order_by = 'id') {
+    $orders = array('id', 'device_type', 'device_owner', 'device_manuf', 'device_model', 'device_action', 'device_location', 'device_document, device_item_number');
+    if (!in_array($order_by, $orders, true)) {
+        throw new InvalidArgumentException('Unknown sort order: ' . $order_by);
+    }
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE parent_id = :id AND id != :id' . ($include_removed ? '' : ' AND is_removed != "1"') . ' ORDER BY ' . $order_by);
+    $query->execute(array(':id' => $case_id));
+    return $query->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+/** Other open cases with the same case file number, to warn about duplicate requests. */
+function kirjuri_cases_with_file_number(PDO $db, $case) {
+    $query = $db->prepare('SELECT id, case_id, case_suspect, case_name, case_devicecount, case_added_date FROM exam_requests
+        WHERE case_file_number = :file_number AND id = parent_id AND is_removed = 0 AND id != :id ORDER BY id');
+    $query->execute(array(':file_number' => $case['case_file_number'], ':id' => $case['id']));
+    return $query->fetchAll(PDO::FETCH_ASSOC);
+}

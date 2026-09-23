@@ -5,21 +5,12 @@ $case_number = filter_numbers((substr($_GET['case'], 0, 5)));
 ksess_verify(2); // View only or higher
 verify_case_ownership($case_number);
 
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE parent_id = :id AND id = :id AND is_removed != "1"');
-$query->execute(array(
-        ':id' => $case_number
-    ));
-$request['parent'] = $query->fetch(PDO::FETCH_ASSOC);
-if ($request['parent'] === false) {
+$request['parent'] = kirjuri_find_case($kirjuri_database, $case_number, false);
+if ($request['parent'] === null) {
     header('Location: index.php');
     die;
 }
-
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE parent_id = :id AND id != :id AND is_removed != "1"');
-$query->execute(array(
-        ':id' => $case_number
-    ));
-$request['children'] = $query->fetchAll(PDO::FETCH_ASSOC);
+$request['children'] = kirjuri_case_devices($kirjuri_database, $case_number);
 
 $query = $kirjuri_database->prepare('SELECT * FROM attachments WHERE request_id = :id');
 $query->execute(array(

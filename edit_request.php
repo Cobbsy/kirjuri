@@ -46,11 +46,8 @@ else {
     $case_owner = array();
 }
 
-$query = $kirjuri_database->prepare('SELECT id, case_id, case_suspect, case_name, case_devicecount FROM exam_requests WHERE case_file_number=:case_file_number AND id = parent_id AND is_removed = 0 AND case_id != :case_id');
-$query->execute(array(
-        ':case_file_number' => $caserow[0]['case_file_number'],
-        ':case_id' => $caserow[0]['case_id'],
-    ));
+// The query result used to be thrown away, so the duplicate request warning never showed.
+$samerequest_file_number = kirjuri_cases_with_file_number($kirjuri_database, $caserow[0]);
 
 $query = $kirjuri_database->prepare('SELECT id, name, size, uploader, type FROM attachments WHERE request_id = :id');
 $query->execute(array(':id' => $caserow[0]['id']));
@@ -120,6 +117,7 @@ echo kirjuri_render('edit_request.twig', array(
         'sort_order' => $j,
         'returntab' => $returntab,
         'caserow' => $caserow,
+        'samerequest_file_number' => $samerequest_file_number,
         'mediarow' => $mediarow,
         'tasks' => $tasks,
         'device_locations' => $_SESSION['lang']['device_locations'],

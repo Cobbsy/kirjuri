@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/lib/errors.php';
+require_once __DIR__ . '/lib/messages.php';
 kirjuri_register_error_handlers();
 session_name('KirjuriSessionID');
 session_start(); // Keep valid session alive.
@@ -46,9 +47,7 @@ function db_r($database) // PDO Database connection
 
 
 $kirjuri_database = db_r('kirjuri-database'); // Check inbox
-$query = $kirjuri_database->prepare('SELECT (SELECT COUNT(id) FROM messages WHERE msgto = :username AND received = "0") as new');
-$query->execute(array(':username' => $_SESSION['user']['username']));
-$_SESSION['unread'] = $query->fetch(PDO::FETCH_ASSOC);
+$_SESSION['unread'] = array('new' => (string) kirjuri_unread_count($kirjuri_database, $_SESSION['user']['username']));
 if ($_SESSION['unread']['new'] > 0) {
     echo '<span style="color:white;" class="label label-danger">' . $_SESSION['unread']['new'] . '</span>';
 }
