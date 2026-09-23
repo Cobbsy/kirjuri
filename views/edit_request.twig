@@ -1,22 +1,20 @@
 {% extends 'base.twig' %}
 {% macro bytesToSize(bytes) %}
-{% spaceless %}
-    {% set kilobyte = 1024 %}
-    {% set megabyte = kilobyte * 1024 %}
-    {% set gigabyte = megabyte * 1024 %}
-    {% set terabyte = gigabyte * 1024 %}
-    {% if bytes < kilobyte %}
+    {%- set kilobyte = 1024 -%}
+    {%- set megabyte = kilobyte * 1024 -%}
+    {%- set gigabyte = megabyte * 1024 -%}
+    {%- set terabyte = gigabyte * 1024 -%}
+    {%- if bytes < kilobyte -%}
         {{ bytes ~ ' B' }}
-    {% elseif bytes < megabyte %}
+    {%- elseif bytes < megabyte -%}
         {{ (bytes / kilobyte)|number_format(2, '.') ~ ' KB' }}
-    {% elseif bytes < gigabyte %}
+    {%- elseif bytes < gigabyte -%}
         {{ (bytes / megabyte)|number_format(2, '.') ~ ' MB' }}
-    {% elseif bytes < terabyte %}
+    {%- elseif bytes < terabyte -%}
         {{ (bytes / gigabyte)|number_format(2, '.') ~ ' GB' }}
-    {% else %}
+    {%- else -%}
         {{ (bytes / terabyte)|number_format(2, '.') ~ ' TB' }}
-    {% endif %}
-{% endspaceless %}
+    {%- endif -%}
 {% endmacro %}
 {% import _self as filesize_calc %}
 {% block title %}
@@ -669,10 +667,10 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
         </small>
       </h4>
       {% set check = "0" %}
-      {% for test in mediarow if test.device_host_id == entry.id and test.is_removed == "0" %}
+      {% for test in mediarow|filter(test => test.device_host_id == entry.id and test.is_removed == "0") %}
       {% set check = "1" %}
       {% else %}
-      {% for media in media_objs if (entry.device_type == media) and (check != "1") %}
+      {% for media in media_objs|filter(media => entry.device_type == media and check != "1") %}
       <form class="form form-inline" role="form" method="post" action="submit.php?type=device_attach&uid={{ entry.id }}&returnid={{ entry.parent_id }}">
         <input type="hidden" name="token" value="{{session.user.token}}">
         <input type="hidden" name="ct" value="{{ct}}">

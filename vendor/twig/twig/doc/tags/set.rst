@@ -4,45 +4,55 @@
 Inside code blocks you can also assign values to variables. Assignments use
 the ``set`` tag and can have multiple targets.
 
-Here is how you can assign the ``bar`` value to the ``foo`` variable:
+Here is how you can assign the ``Fabien`` value to the ``name`` variable:
 
-.. code-block:: jinja
+.. code-block:: twig
 
-    {% set foo = 'bar' %}
+    {% set name = 'Fabien' %}
 
-After the ``set`` call, the ``foo`` variable is available in the template like
+After the ``set`` call, the ``name`` variable is available in the template like
 any other ones:
 
-.. code-block:: jinja
+.. code-block:: twig
 
-    {# displays bar #}
-    {{ foo }}
+    {# displays Fabien #}
+    {{ name }}
 
-The assigned value can be any valid :ref:`Twig expressions
+The assigned value can be any valid :ref:`Twig expression
 <twig-expressions>`:
 
-.. code-block:: jinja
+.. code-block:: twig
 
-    {% set foo = [1, 2] %}
-    {% set foo = {'foo': 'bar'} %}
-    {% set foo = 'foo' ~ 'bar' %}
+    {% set numbers = [1, 2] %}
+    {% set user = {'name': 'Fabien'} %}
+    {% set name = 'Fabien' ~ ' ' ~ 'Potencier' %}
+
+.. tip::
+
+    To assign a value within an expression, use the :ref:`= operator
+    <templates-assignment-operator>`:
+
+    .. code-block:: twig
+
+        {# use assignment within a larger expression #}
+        {{ (result = fetch_data()) ? result : 'default' }}
 
 Several variables can be assigned in one block:
 
-.. code-block:: jinja
+.. code-block:: twig
 
-    {% set foo, bar = 'foo', 'bar' %}
+    {% set first, last = 'Fabien', 'Potencier' %}
 
     {# is equivalent to #}
 
-    {% set foo = 'foo' %}
-    {% set bar = 'bar' %}
+    {% set first = 'Fabien' %}
+    {% set last = 'Potencier' %}
 
-The ``set`` tag can also be used to 'capture' chunks of text:
+The ``set`` tag can also be used to "capture" chunks of text:
 
-.. code-block:: jinja
+.. code-block:: html+twig
 
-    {% set foo %}
+    {% set content %}
         <div id="pagination">
             ...
         </div>
@@ -58,21 +68,21 @@ The ``set`` tag can also be used to 'capture' chunks of text:
     Note that loops are scoped in Twig; therefore a variable declared inside a
     ``for`` loop is not accessible outside the loop itself:
 
-    .. code-block:: jinja
+    .. code-block:: twig
 
-        {% for item in list %}
-            {% set foo = item %}
+        {% for item in items %}
+            {% set value = item %}
         {% endfor %}
 
-        {# foo is NOT available #}
+        {# value is NOT available #}
 
     If you want to access the variable, just declare it before the loop:
 
-    .. code-block:: jinja
+    .. code-block:: twig
 
-        {% set foo = "" %}
-        {% for item in list %}
-            {% set foo = item %}
+        {% set value = "" %}
+        {% for item in items %}
+            {% set value = item %}
         {% endfor %}
 
-        {# foo is available #}
+        {# value is available #}

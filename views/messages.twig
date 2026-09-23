@@ -23,7 +23,7 @@
         {% else %}
         <select name="msgto">
           <option value="" {% if not prefill_msgto %}selected{% endif %} disabled>{{ lang.choose_recipient }}</option>
-          {% for user in session.all_users if user.username != session.user.username %}
+          {% for user in session.all_users|filter(user => user.username != session.user.username) %}
           <option value="{{ user.username }}"{% if prefill_msgto == user.name %} selected{% endif %}>{{ user.name }}</option>
           {% endfor %}
           <option disabled>---</option>

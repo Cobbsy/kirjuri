@@ -1,9 +1,15 @@
 {
     "require": {
-        "picqer/php-barcode-generator": "^0.2.0",
-        "ezyang/htmlpurifier": "^4.8",
-        "twig/twig": "^2.0",
-	"tinymce/tinymce": ">= 4",
-        "twbs/bootstrap": "^3.3"
+        "php": ">=8.1",
+        "picqer/php-barcode-generator": "^2.4",
+        "ezyang/htmlpurifier": "^4.17",
+        "twig/twig": "^3.11",
+        "tinymce/tinymce": "^7.9.3",
+        "twbs/bootstrap": "^3.4.1"
+    },
+    "config": {
+        "platform": {
+            "php": "8.1.0"
+        }
     }
 }

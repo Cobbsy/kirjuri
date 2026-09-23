@@ -280,7 +280,7 @@ if (e.keyCode == 13) {
 <div class="col-sm-5">
 <select style="text-align:left;" class="btn btn-default" name="used_tool" id="used_tool">
 <option selected value="">{{ lang.add_a_tool|capitalize }}...</option>
-{% for tool in session.all_tools if "I" not in tool.flags %}
+{% for tool in session.all_tools|filter(tool => "I" not in tool.flags) %}
 <option value="* {{ tool.product_name }} {% if tool.sw_version %}{{ tool.sw_version }}{% endif %}{% if tool.hw_version %},
 {{ lang.hardware_version }} {{ tool.hw_version }}{% endif %}{% if tool.serialno %} [{{ lang.serial_no}}: {{tool.serialno}}]{% endif %}">{{ tool.product_name }}
 {% if tool.sw_version %}{{ tool.sw_version }}{% endif %}{% if tool.hw_version %}, {{ lang.hw_version }}: {{ tool.hw_version }}{% endif %}
