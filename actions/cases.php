@@ -43,39 +43,27 @@ case 'examination_request':
         header('Location: add_case.php');
         die;
     }
-    $query = $kirjuri_database->prepare('select case_id FROM exam_requests WHERE case_added_date BETWEEN :dateStart AND :dateStop ORDER BY case_id DESC LIMIT 1 ');
-    $query->execute(array(
-            ':dateStart' => $dateRange['start'],
-            ':dateStop' => $dateRange['stop']
+    $new_case = kirjuri_create_case($kirjuri_database, array(
+            'case_name' => $_POST['case_name'],
+            'case_file_number' => $_POST['case_file_number'],
+            'case_investigator' => $_POST['case_investigator'],
+            'case_investigator_unit' => $_POST['case_investigator_unit'],
+            'case_investigator_tel' => $_POST['case_investigator_tel'],
+            'case_investigation_lead' => $_POST['case_investigation_lead'],
+            'case_confiscation_date' => $_POST['case_confiscation_date'],
+            'case_crime' => $_POST['case_crime'],
+            'classification' => $_POST['classification'],
+            'case_suspect' => $_POST['case_suspect'],
+            'case_request_description' => $_POST['case_request_description'],
+            'case_urgency' => $_POST['case_urgency'],
+            'case_urg_justification' => $_POST['case_urg_justification'],
+            'case_requested_action' => $_POST['case_requested_action'],
+            'case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
+            'examiners_notes' => "<b>" . $_SESSION['lang']['passwords'] . "</b>: " . $_POST['examiners_notes'],
         ));
-    $case_id = $query->fetch(PDO::FETCH_ASSOC);
-    $case_id = ($case_id === false) ? 1 : $case_id['case_id'] + 1;
-    $query = $kirjuri_database->prepare(' INSERT INTO exam_requests ( id, parent_id, case_id, case_name, case_file_number, case_investigator, case_investigator_unit, case_investigator_tel, case_investigation_lead, case_confiscation_date, last_updated, case_added_date, case_crime, examiners_notes, classification, case_suspect, case_request_description, is_removed, case_status, case_urgency, case_urg_justification, case_requested_action, case_contains_mob_dev, case_devicecount ) VALUES ( NULL, "0", :case_id, :case_name, :case_file_number, :case_investigator, :case_investigator_unit, :case_investigator_tel, :case_investigation_lead, :case_confiscation_date, NOW(), NOW(), :case_crime, :examiners_notes, :classification, :case_suspect, :case_request_description, "0", "1", :case_urgency, :case_urg_justification, :case_requested_action, :case_contains_mob_dev, "0" );
-        UPDATE exam_requests SET parent_id=last_insert_id() WHERE ID=last_insert_id();
-        ');
-    $query->execute(array(
-            ':case_id' => $case_id,
-            ':case_name' => $_POST['case_name'],
-            ':case_file_number' => $_POST['case_file_number'],
-            ':case_investigator' => $_POST['case_investigator'],
-            ':case_investigator_unit' => $_POST['case_investigator_unit'],
-            ':case_investigator_tel' => $_POST['case_investigator_tel'],
-            ':case_investigation_lead' => $_POST['case_investigation_lead'],
-            ':case_confiscation_date' => $_POST['case_confiscation_date'],
-            ':case_crime' => $_POST['case_crime'],
-            ':classification' => $_POST['classification'],
-            ':case_suspect' => $_POST['case_suspect'],
-            ':case_request_description' => $_POST['case_request_description'],
-            ':case_urgency' => $_POST['case_urgency'],
-            ':case_urg_justification' => $_POST['case_urg_justification'],
-            ':case_requested_action' => $_POST['case_requested_action'],
-            ':case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
-            ':examiners_notes' => "<b>" . $_SESSION['lang']['passwords'] . "</b>: " . $_POST['examiners_notes']
-        ));
+    $case_id = $new_case['case_id'];
     $audit_stamp = audit_log_write($_POST);
-    $query = $kirjuri_database->prepare('SELECT LAST_INSERT_ID() as id'); // Update device count
-    $query->execute();
-    $new_uid = $query->fetch(PDO::FETCH_ASSOC);
+    $new_uid = array('id' => $new_case['id']);
     if (!file_exists('logs/cases/')) {
         mkdir('logs/cases');
     }

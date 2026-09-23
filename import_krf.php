@@ -109,51 +109,17 @@ foreach (array('children', 'files') as $section) {
     }
 }
 
-$date_range = array(
-    'start' => date('Y') . '-01-01 00:00:00',
-    'stop' => (date('Y') + 1) . '-01-01 00:00:00'
-);
 $input = $case_array['parent'];
-unset($input['id']);
-unset($input['parent_id']);
-unset($input['case_id']);
-unset($input['is_removed']);
-unset($input['case_added_date']);
-unset($input['case_start_date']);
-unset($input['case_devicecount']);
-unset($input['last_updated']);
-$query = $kirjuri_database->prepare('select (case_id + 1) AS case_id FROM exam_requests WHERE case_added_date BETWEEN :dateStart AND :dateStop ORDER BY case_id DESC LIMIT 1 ');
-$query->execute(array(
-        ':dateStart' => $date_range['start'],
-        ':dateStop' => $date_range['stop']
-    ));
-$next = $query->fetch(PDO::FETCH_ASSOC);
-if ($next === false) {
-    $next = array('case_id' => '1'); // The first case of the year.
+foreach (array('id', 'parent_id', 'case_id', 'is_removed', 'case_added_date', 'case_start_date', 'case_devicecount', 'last_updated') as $key) {
+    unset($input[$key]); // Set for the new case below.
 }
-
-$query_builder = 'INSERT INTO exam_requests (id, parent_id, case_id, is_removed, case_added_date, case_start_date, last_updated, case_devicecount, ';
+$columns = array('case_start_date' => null);
 foreach ($input as $key => $value) {
-    $query_builder .= verify_keys($key) . ', ';
+    $columns[verify_keys($key)] = $value;
 }
-$query_builder = substr($query_builder, 0, -2);
-$query_builder .= ') VALUES ( NULL, "0", ' . $next['case_id'] . ', "0", NOW(), NULL, NOW(), "0", ';
-foreach ($input as $key => $value) {
-    if ($key !== "id") {
-        $query_builder .= ':' . $key . ', ';
-    }
-}
-
-$pdo_query = $query_builder = substr($query_builder, 0, -2) . "); UPDATE exam_requests SET parent_id=last_insert_id() WHERE id=last_insert_id();";
-$kirjuri_database = connect_database('kirjuri-database');
-$query = $kirjuri_database->prepare($pdo_query);
-$pdo_data = array();
-foreach ($input as $key => $value) {
-    $pdo_data[":" . $key] = $value;
-}
-$query->execute($pdo_data);
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = last_insert_id()');
-$query->execute();
+$new_case = kirjuri_create_case($kirjuri_database, $columns);
+$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = :id');
+$query->execute(array(':id' => $new_case['id']));
 $new_parent = $query->fetch(PDO::FETCH_ASSOC);
 
 $new_ids = array();
@@ -182,7 +148,6 @@ if (!empty($case_array['children'])) {
             }
         }
         $pdo_query = $query_builder = substr($query_builder, 0, -2) . ");";
-        $kirjuri_database = connect_database('kirjuri-database');
         $query = $kirjuri_database->prepare($pdo_query);
         $pdo_data = array();
         foreach ($input as $key => $value) {
@@ -234,7 +199,6 @@ if (!empty($case_array['files'])) {
             }
         }
         $pdo_query = $query_builder = substr($query_builder, 0, -2) . ");";
-        $kirjuri_database = connect_database('kirjuri-database');
         $query = $kirjuri_database->prepare($pdo_query);
         $pdo_data = array();
         foreach ($file as $key => $value) {
@@ -243,6 +207,8 @@ if (!empty($case_array['files'])) {
         $query->execute($pdo_data);
     }
 }
+
+kirjuri_update_device_count($kirjuri_database, $new_parent['id']);
 
 if (!file_exists('logs/cases/')) {
     mkdir('logs/cases');

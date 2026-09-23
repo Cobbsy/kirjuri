@@ -12,7 +12,9 @@ function connect_database($database) {
     }
     if ($database === 'kirjuri-database') {
         $pdo_connect_string = 'mysql:host='.$server.';dbname='.$mysql_config['mysql_database'];
-        $kirjuri_database = new PDO($pdo_connect_string, $mysql_config['mysql_username'], $mysql_config['mysql_password']);
+        // One statement per query: multi-statement mode would let an SQL injection add statements of its own.
+        $kirjuri_database = new PDO($pdo_connect_string, $mysql_config['mysql_username'], $mysql_config['mysql_password'],
+            array(PDO::MYSQL_ATTR_MULTI_STATEMENTS => false));
         $kirjuri_database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $kirjuri_database->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
         // PHP 8.1 started returning integer columns as ints. Kirjuri compares them as strings

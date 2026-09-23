@@ -186,7 +186,7 @@ final class KirjuriServer
                 0 => array('file', '/dev/null', 'r'),
                 1 => array('file', $this->serverLog, 'a'),
                 2 => array('file', $this->serverLog, 'a'),
-            ), $pipes, $this->dir);
+            ), $pipes, $this->dir, array_merge(getenv(), array('PHP_CLI_SERVER_WORKERS' => '4')));
 
         for ($i = 0; $i < 100; $i++) {
             $connection = @fsockopen('127.0.0.1', $port);

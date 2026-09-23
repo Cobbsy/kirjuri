@@ -16,23 +16,19 @@ case 'set_removed':
     csrf_case_validate(posted_case_token(), $_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
     $audit_stamp = audit_log_write($_GET);
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET is_removed = "1", last_updated = NOW() where id=:id AND parent_id = :returnid;
-        UPDATE exam_requests SET is_removed = "1" where device_host_id=:id');
+    $query = $kirjuri_database->prepare('UPDATE exam_requests SET is_removed = "1", last_updated = NOW() where id=:id AND parent_id = :returnid');
     $query->execute(array(
             ':id' => $_GET['uid'],
             ':returnid' => $_GET['returnid']
         ));
-    $query = $kirjuri_database->prepare('SELECT count(id) from exam_requests where id != parent_id AND parent_id=:id AND is_removed="0"');
+    // Media attached to the removed device go with it.
+    $query = $kirjuri_database->prepare('UPDATE exam_requests SET is_removed = "1" where device_host_id=:id AND parent_id = :returnid');
     $query->execute(array(
-            ':id' => $_GET['returnid']
+            ':id' => $_GET['uid'],
+            ':returnid' => $_GET['returnid']
         ));
-    $devicecount = $query->fetch(PDO::FETCH_ASSOC);
-    $devicecount = $devicecount['count(id)'];
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET case_devicecount = :devicecount, last_updated = NOW() where id=:id');
-    $query->execute(array(
-            ':devicecount' => $devicecount,
-            ':id' => $_GET['returnid']
-        ));
+    kirjuri_update_device_count($kirjuri_database, $_GET['returnid']);
+    $kirjuri_database->prepare('UPDATE exam_requests SET last_updated = NOW() WHERE id = :id')->execute(array(':id' => $_GET['returnid']));
     $_POST['returnid'] = $_GET['returnid'];
     $_SESSION['post_cache'] = '';
     event_log_write($_GET['returnid'], 'Remove', 'Removed device UID' . $_GET['uid'] . ". " , $audit_stamp);
@@ -48,12 +44,13 @@ case 'device_attach':
     csrf_case_validate($_POST['ct'], $_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
     if (isset($_POST['isanta'])) {
-        $query = $kirjuri_database->prepare('UPDATE exam_requests SET device_host_id = :isanta, last_updated = NOW() where id=:id AND parent_id != id;
-        UPDATE exam_requests SET device_is_host = "1" where id = :isanta;');
+        $query = $kirjuri_database->prepare('UPDATE exam_requests SET device_host_id = :isanta, last_updated = NOW() where id=:id AND parent_id != id');
         $query->execute(array(
                 ':id' => $_GET['uid'],
                 ':isanta' => $_POST['isanta']
             ));
+        $query = $kirjuri_database->prepare('UPDATE exam_requests SET device_is_host = "1" where id = :isanta');
+        $query->execute(array(':isanta' => $_POST['isanta']));
     }
     $_POST['returnid'] = $_GET['returnid'];
     $_SESSION['post_cache'] = '';
@@ -165,8 +162,16 @@ case 'devicememo':
     if (trim(strtolower(strip_tags($_POST['report_notes']))) === trim(strtolower(strip_tags($_POST['template_report_notes'])))) {
         $_POST['report_notes'] = "";
     }
+    $original_case = $id;
     if (isset($_POST['new_parent_id']) && ($id !== $_POST['new_parent_id'])) {
+        // Moving the device to another case: the target must be a case the user has access to.
         $id = filter_numbers($_POST['new_parent_id']);
+        if (kirjuri_case_of($kirjuri_database, $id) !== $id) {
+            message('error', $_SESSION['lang']['missing_form_field']);
+            header('Location: device_memo.php?uid=' . filter_numbers($_POST['id']));
+            die;
+        }
+        verify_case_ownership($id);
     }
 
     if (!empty($_POST['used_tool'])) {
@@ -175,9 +180,7 @@ case 'devicememo':
     $query = $kirjuri_database->prepare('UPDATE exam_requests SET report_notes = :report_notes, examiners_notes = :examiners_notes, device_type = :device_type, device_manuf = :device_manuf, device_model = :device_model, device_size_in_gb = :device_size_in_gb,
       device_owner = :device_owner, device_os = :device_os, device_time_deviation = :device_time_deviation, last_updated = NOW(),
       case_request_description = :case_request_description, device_item_number = :device_item_number, device_document = :device_document, device_identifier = :device_identifier,
-      device_contains_evidence = :device_contains_evidence, device_include_in_report = :device_include_in_report WHERE id = :id AND parent_id != id;
-        UPDATE exam_requests SET last_updated = NOW() where id = :parent_id;
-        UPDATE exam_requests SET parent_id = :parent_id WHERE id = :id OR device_host_id = :id;');
+      device_contains_evidence = :device_contains_evidence, device_include_in_report = :device_include_in_report WHERE id = :id AND parent_id != id');
     $query->execute(array(
             ':report_notes' => filter_html($_POST['report_notes']),
             ':examiners_notes' => filter_html($_POST['examiners_notes']),
@@ -192,12 +195,20 @@ case 'devicememo':
             ':device_item_number' => $_POST['device_item_number'],
             ':device_document' => $_POST['device_document'],
             ':device_identifier' => $_POST['device_identifier'],
-            ':parent_id' => $id,
             ':id' => $_POST['id'],
             ':device_include_in_report' => $_POST['device_include_in_report'],
             ':device_contains_evidence' => $_POST['device_contains_evidence']
         ));
+    $query = $kirjuri_database->prepare('UPDATE exam_requests SET last_updated = NOW() where id = :parent_id');
+    $query->execute(array(':parent_id' => $id));
+    // Moves the device, and media attached to it, when the case was changed.
+    $query = $kirjuri_database->prepare('UPDATE exam_requests SET parent_id = :parent_id WHERE (id = :id OR device_host_id = :id) AND id != parent_id');
+    $query->execute(array(':parent_id' => $id, ':id' => $_POST['id']));
     $_POST['returnid'] = $_GET['returnid'];
+    kirjuri_update_device_count($kirjuri_database, $id);
+    if ($original_case !== $id) {
+        kirjuri_update_device_count($kirjuri_database, $original_case);
+    }
     event_log_write($id, 'Update', 'Updated device memo UID' . $_POST['id'] . '. ' , $audit_stamp);
     $_SESSION['post_cache'] = '';
     show_saved_succesfully();
@@ -260,10 +271,7 @@ case 'device':
         }
     }
 
-    $query = $kirjuri_database->prepare('UPDATE exam_requests SET case_devicecount = case_devicecount + 1, last_updated = NOW() WHERE id = :parent_id'); // Update device count
-    $query->execute(array(
-            ':parent_id' => $_POST['parent_id']
-        ));
+    $kirjuri_database->prepare('UPDATE exam_requests SET last_updated = NOW() WHERE id = :id')->execute(array(':id' => $id));
 
     $query = $kirjuri_database->prepare('INSERT INTO exam_requests (parent_id, device_host_id, device_type, device_manuf, device_model, device_identifier, device_location, device_item_number, device_document, device_time_deviation, device_os, device_size_in_gb, device_is_host, device_owner, device_include_in_report, device_contains_evidence, case_added_date, case_request_description, device_action, is_removed, last_updated, examiners_notes ) VALUES (:parent_id, :device_host_id, :device_type, :device_manuf, :device_model, :device_identifier, :device_location, :device_item_number, :device_document, :device_time_deviation, :device_os, :device_size_in_gb, :device_is_host, :device_owner, "1", "0", NOW(), :case_request_description, :device_action, :is_removed, NOW(), :examiners_notes);
         ');
@@ -287,9 +295,8 @@ case 'device':
             ':is_removed' => $_POST['is_removed'],
             ':examiners_notes' => filter_html($_POST['examiners_notes'])
         ));
-    $query = $kirjuri_database->prepare('SELECT LAST_INSERT_ID() as id'); // Update device count
-    $query->execute();
-    $new_uid = $query->fetch(PDO::FETCH_ASSOC);
+    $new_uid = array('id' => $kirjuri_database->lastInsertId());
+    kirjuri_update_device_count($kirjuri_database, $id);
     $audit_stamp = audit_log_write($_POST);
     event_log_write($id, 'Add', 'Added device UID' . $new_uid['id'] . ": ". $_POST['device_type'] . ' ' . $_POST['device_manuf'] . ' ' . $_POST['device_model'] . ' ' . $_POST['device_identifier'] . ' to case ' . $id . '. ' , $audit_stamp);
     $_SESSION['post_cache'] = '';

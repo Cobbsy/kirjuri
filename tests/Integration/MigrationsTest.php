@@ -44,6 +44,7 @@ final class MigrationsTest extends IntegrationTestCase
             attr_7 mediumtext, attr_8 mediumtext) ENGINE=InnoDB DEFAULT CHARSET=utf8');
         $db->exec('CREATE TABLE exam_requests (id int(11) NOT NULL PRIMARY KEY AUTO_INCREMENT, parent_id int(16), case_id int(16),
             case_name text, case_suspect text, case_file_number text, case_added_date datetime, device_host_id int(16),
+            is_removed int(1), case_devicecount int(16),
             case_investigator text, forensic_investigator text, phone_investigator text, case_investigation_lead text,
             case_investigator_unit text, case_crime text, case_requested_action text, case_request_description text,
             report_notes mediumtext, device_manuf text, device_model text, device_identifier text, device_owner text,
@@ -52,8 +53,9 @@ final class MigrationsTest extends IntegrationTestCase
             case_request_description, report_notes, device_manuf, device_model, device_identifier, device_owner)
             ) ENGINE=MyISAM DEFAULT CHARSET=utf8');
         $db->exec("INSERT INTO users (id, username, password, access) VALUES (2, 'admin', 'hash', 0)");
-        $db->exec("INSERT INTO exam_requests (id, parent_id, case_id, case_name, case_suspect, case_added_date)
-            VALUES (1, 1, 1, 'Legacy case', 'Legacy suspect', '2017-05-01 10:00:00')");
+        $db->exec("INSERT INTO exam_requests (id, parent_id, case_id, case_name, case_suspect, case_added_date, is_removed, case_devicecount)
+            VALUES (1, 1, 1, 'Legacy case', 'Legacy suspect', '2017-05-01 10:00:00', 0, 7)");
+        $db->exec("INSERT INTO exam_requests (id, parent_id, device_model, is_removed) VALUES (2, 1, 'Kept', 0), (3, 1, 'Removed', 1)");
     }
 
     public function testFreshDatabaseGetsEveryMigrationOnce(): void
@@ -82,8 +84,9 @@ final class MigrationsTest extends IntegrationTestCase
         $this->assertTrue(kirjuri_column_exists($db, 'exam_requests', 'case_owner'));
         $this->assertTrue(kirjuri_table_exists($db, 'attachments'));
         $this->assertTrue(kirjuri_index_exists($db, 'exam_requests', 'idx_case_added_date'));
-        $row = $db->query('SELECT case_name, case_suspect, case_owner FROM exam_requests WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
-        $this->assertSame(array('case_name' => 'Legacy case', 'case_suspect' => 'Legacy suspect', 'case_owner' => null), $row);
+        $row = $db->query('SELECT case_name, case_suspect, case_owner, case_devicecount FROM exam_requests WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(array('case_name' => 'Legacy case', 'case_suspect' => 'Legacy suspect', 'case_owner' => null, 'case_devicecount' => '1'), $row,
+            'Data is kept, and the stale device count of 7 is corrected to the one device not removed.');
         $this->assertSame('1', $db->query("SELECT COUNT(*) FROM exam_requests WHERE MATCH (case_name, case_suspect, case_file_number,
             case_investigator, forensic_investigator, phone_investigator, case_investigation_lead, case_investigator_unit, case_crime,
             case_requested_action, case_request_description, report_notes, device_manuf, device_model, device_identifier, device_owner)

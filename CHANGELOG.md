@@ -39,6 +39,15 @@ Unreleased
 * - Importing a KRF file when no cases existed yet that year raised a PHP deprecation shown to the user.
 * - upload.php passed its 16MB limit to file_get_contents() as the include path flag. The max_attachment_size check before it is what enforces the limit.
 * - Removed demo PHP scripts bundled with the vis and FullCalendar libraries, which could be requested without logging in.
+* - Two cases created at the same moment could get the same case number. Case creation (web form, API and KRF import) now shares one locked function.
+* - The front page recounted and rewrote every case's device count on every view. Counts are now kept up to date where devices change; a migration corrects existing counts once.
+* - Moving a device to another case from its memo did not check access to the target case, or that the target was a case at all, and left both device counts wrong.
+* - Imported cases showed 0 devices until the front page was opened.
+* - The device form lost its input after a validation error.
+* - A user's "modified at" note used the month where the minutes belong.
+* Actions that change data are sent as POST, with no CSRF or case token in the URL, and logout needs the token. The logged in user's password hash is no longer kept in the session.
+* The API's add operation returns the new case's UID and case number.
+* Database connections no longer allow several SQL statements in one query.
 * Updated the following dependencies:
 * - twig/twig (v2.4.6 => v3.29.0)
 * - ezyang/htmlpurifier (v4.10.0 => v4.19.1)

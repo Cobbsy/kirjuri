@@ -26,6 +26,10 @@ function kirjuri_migrations() {
             'description' => 'Index the columns used to look up cases, devices, attachments and messages',
             'up' => 'kirjuri_migration_003_indexes',
         ),
+        '004_recount_devices' => array(
+            'description' => 'Recalculate device counts, which the front page no longer corrects on every view',
+            'up' => 'kirjuri_migration_004_recount_devices',
+        ),
     );
 }
 
@@ -170,6 +174,16 @@ function kirjuri_migration_003_indexes(PDO $db) {
             $db->exec('CREATE INDEX ' . $name . ' ON ' . $table . ' (' . $columns . ')');
         }
     }
+}
+
+
+function kirjuri_migration_004_recount_devices(PDO $db) {
+    $db->exec('UPDATE exam_requests SET case_devicecount = 0 WHERE id = parent_id');
+    $db->exec('UPDATE exam_requests c
+        JOIN (SELECT parent_id, COUNT(*) AS devices FROM exam_requests WHERE id != parent_id AND is_removed = 0 GROUP BY parent_id) d
+        ON d.parent_id = c.id
+        SET c.case_devicecount = d.devices
+        WHERE c.id = c.parent_id');
 }
 
 

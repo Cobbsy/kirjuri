@@ -163,6 +163,10 @@ if ($key_found === false) {
             $query->execute(array(
                     ':id' => $request_id,
                 ));
+            $case_of_item = kirjuri_case_of($kirjuri_database, $request_id);
+            if ($case_of_item !== null) {
+                kirjuri_update_device_count($kirjuri_database, $case_of_item); // is_removed may have changed.
+            }
             event_log_write('0', 'API', 'Updated UID' . $request_id . ': ' . implode(', ', array_map('filter_letters_and_numbers', array_keys($_POST))) . '.');
         } catch (Exception $e) {
             event_log_write('0', 'Error', 'API update failed: ' . $e->getMessage());
@@ -179,83 +183,24 @@ if ($key_found === false) {
             $_POST[$field] = (isset($_POST[$field]) && $_POST[$field] !== '') ? $_POST[$field] : null;
         }
         try {
-            $query = $kirjuri_database->prepare('select case_id FROM exam_requests WHERE case_added_date BETWEEN :dateStart AND :dateStop ORDER BY case_id DESC LIMIT 1 ');
-            $query->execute(array(
-                    ':dateStart' => $dateRange['start'],
-                    ':dateStop' => $dateRange['stop'],
-                ));
-            $case_id = $query->fetch(PDO::FETCH_ASSOC);
-            $case_id = ($case_id === false) ? 1 : $case_id['case_id'] + 1;
-            $query = $kirjuri_database->prepare('INSERT INTO exam_requests
-      (parent_id,
-      case_id,
-      case_name,
-      case_file_number,
-      case_investigator,
-      case_investigator_unit,
-      case_investigator_tel,
-      case_investigation_lead,
-      case_confiscation_date,
-      forensic_investigator,
-      phone_investigator,
-      last_updated,
-      case_added_date,
-      case_crime,
-      classification,
-      case_suspect,
-      case_request_description,
-      is_removed,
-      case_status,
-      case_urgency,
-      case_urg_justification,
-      case_requested_action,
-      case_contains_mob_dev,
-      case_devicecount )
-      VALUES
-      ("0",
-      :case_id,
-      :case_name,
-      :case_file_number,
-      :case_investigator,
-      :case_investigator_unit,
-      :case_investigator_tel,
-      :case_investigation_lead,
-      :case_confiscation_date,
-      :forensic_investigator,
-      :phone_investigator,
-      NOW(),
-      NOW(),
-      :case_crime,
-      :classification,
-      :case_suspect,
-      :case_request_description,
-      "0",
-      "1",
-      :case_urgency,
-      :case_urg_justification,
-      :case_requested_action,
-      :case_contains_mob_dev,
-      "0");
-      UPDATE exam_requests SET parent_id=last_insert_id() WHERE ID=last_insert_id();');
-            $query->execute(array(
-                    ':case_id' => $case_id,
-                    ':case_name' => $_POST['case_name'],
-                    ':case_file_number' => $_POST['case_file_number'],
-                    ':forensic_investigator' => $_POST['forensic_investigator'],
-                    ':phone_investigator' => $_POST['phone_investigator'],
-                    ':case_investigator' => $_POST['case_investigator'],
-                    ':case_investigator_unit' => $_POST['case_investigator_unit'],
-                    ':case_investigator_tel' => $_POST['case_investigator_tel'],
-                    ':case_investigation_lead' => $_POST['case_investigation_lead'],
-                    ':case_confiscation_date' => $_POST['case_confiscation_date'],
-                    ':case_crime' => $_POST['case_crime'],
-                    ':classification' => $_POST['classification'],
-                    ':case_suspect' => $_POST['case_suspect'],
-                    ':case_request_description' => $_POST['case_request_description'],
-                    ':case_urgency' => ($_POST['case_urgency'] === null) ? null : filter_numbers($_POST['case_urgency']),
-                    ':case_urg_justification' => $_POST['case_urg_justification'],
-                    ':case_requested_action' => $_POST['case_requested_action'],
-                    ':case_contains_mob_dev' => ($_POST['case_contains_mob_dev'] === null) ? null : filter_numbers($_POST['case_contains_mob_dev']),
+            $output = kirjuri_create_case($kirjuri_database, array(
+                    'case_name' => $_POST['case_name'],
+                    'case_file_number' => $_POST['case_file_number'],
+                    'forensic_investigator' => $_POST['forensic_investigator'],
+                    'phone_investigator' => $_POST['phone_investigator'],
+                    'case_investigator' => $_POST['case_investigator'],
+                    'case_investigator_unit' => $_POST['case_investigator_unit'],
+                    'case_investigator_tel' => $_POST['case_investigator_tel'],
+                    'case_investigation_lead' => $_POST['case_investigation_lead'],
+                    'case_confiscation_date' => $_POST['case_confiscation_date'],
+                    'case_crime' => $_POST['case_crime'],
+                    'classification' => $_POST['classification'],
+                    'case_suspect' => $_POST['case_suspect'],
+                    'case_request_description' => $_POST['case_request_description'],
+                    'case_urgency' => ($_POST['case_urgency'] === null) ? null : filter_numbers($_POST['case_urgency']),
+                    'case_urg_justification' => $_POST['case_urg_justification'],
+                    'case_requested_action' => $_POST['case_requested_action'],
+                    'case_contains_mob_dev' => ($_POST['case_contains_mob_dev'] === null) ? null : filter_numbers($_POST['case_contains_mob_dev']),
                 ));
             event_log_write('0', 'API', 'Row inserted.');
         } catch (Exception $e) {
