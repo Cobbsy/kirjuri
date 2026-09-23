@@ -1,6 +1,40 @@
 CHANGELOG
 ------------
 
+Unreleased
+
+* Kirjuri now runs on PHP 8.1 and newer (tested on PHP 8.4 with MariaDB 10.11). It no longer runs on PHP 7.
+* Security fixes:
+* - import_krf.php required no login and built SQL from unchecked keys in the uploaded file. It now requires a login and a CSRF token, and every key is validated before anything is written.
+* - print_sticker.php, request.php and progress_bar_static.php showed case data without a login.
+* - Adding a case, changing device status/location and message actions now check the logged in user.
+* - LDAP: an empty password is refused (it caused an unauthenticated bind), and the username is escaped in the search filter.
+* - Password hashes are no longer stored in every session's user list, and API keys are compared in constant time.
+* - The API respects case access groups and can no longer move items between cases or change access groups.
+* - Attachment uploads check the CSRF and case tokens and the case access group.
+* - Failed logins are throttled per username (10 failures in 15 minutes). The old block file was deleted in the same request and did nothing.
+* - Session cookies are HttpOnly and SameSite=Lax, and the session ID is regenerated at login.
+* - Admin session handling, the backup, settings and audit viewer no longer accept path or shell metacharacters.
+* - conf/, logs/ and cache/ include .htaccess files denying direct web access on Apache.
+* Bug fixes:
+* - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.
+* - Installer: on PHP 8.1+ an existing database aborted the install halfway and left a credentials file behind, which blocked rerunning it.
+* - PHP 8.1 returns integer columns as ints, which broke every access level check (admins were not treated as admins and add-only users saw the case list).
+* - api.php crashed after every add/update (undefined logline()) and used a two digit year for its date range.
+* - Deleting a user never protected the built-in accounts, and reported success when nothing was deleted.
+* - Uploading an empty attachment crashed with a division by zero, and upload errors were not reported.
+* - The login form's auth type check was never evaluated because of a misplaced parenthesis.
+* - The message subject prefill always showed "1".
+* - The case timeline page loaded jQuery from a path that does not exist.
+* - log.php could not redirect unauthenticated users, and the language editor was open to all access levels.
+* Updated the following dependencies:
+* - twig/twig (v2.4.6 => v3.29.0)
+* - ezyang/htmlpurifier (v4.10.0 => v4.19.1)
+* - picqer/php-barcode-generator (v0.2.2 => v2.4.2)
+* - tinymce/tinymce (4.7.9 => 7.9.3). TinyMCE 7 is licensed under GPLv2+.
+* - twbs/bootstrap (v3.3.7 => v3.4.1)
+* - jQuery (3.1.1 => 3.7.1) and jQuery UI (1.12.1 => 1.13.3)
+
 2018-03 Version 0.9.2
 
 * A few fixes as requested and notified by the users of Kirjuri.

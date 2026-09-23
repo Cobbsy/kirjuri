@@ -6,7 +6,7 @@ ksess_verify(2); // View only or higher.
 if (empty($_GET['year'])) {
     $year = date('Y'); // Use current year if none specified
 } else {
-    $year = filter_numbers((substr($_GET['year'], 0, 4))); // Get year from GET
+    $year = (int) filter_numbers((substr($_GET['year'], 0, 4))); // Get year from GET
 }
 
 $dateRange = array('start' => $year.'-01-01 00:00:00', 'stop' => ($year + 1).'-01-01 00:00:00');
@@ -86,6 +86,8 @@ $summed_size = $summa['SUM(device_size_in_gb)'];
 // Get sum of data of devices by unit to $device_data_by_unit
 
 $cases_by_unit = array();
+$device_data_by_unit = array();
+$device_count_by_unit = array();
 foreach ($prefs['inv_units'] as $unit) {
     $query = $kirjuri_database->prepare('select id FROM exam_requests WHERE is_removed != "1" AND id = parent_id AND case_investigator_unit = :unit AND case_added_date BETWEEN :datestart AND :datestop');
     $query->execute(array(

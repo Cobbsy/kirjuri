@@ -4,8 +4,8 @@
 */
 $mysql_timer_start = microtime(true);
 
-if (version_compare(PHP_VERSION, '7.0.0') <= 0) {
-    echo "Kirjuri requires PHP7 to run. You are using " . phpversion() . ". Please upgrade your PHP environment.";
+if (version_compare(PHP_VERSION, '8.1.0') < 0) {
+    echo "Kirjuri requires PHP 8.1 or newer to run. You are using " . phpversion() . ". Please upgrade your PHP environment.";
     die;
 }
 
@@ -17,9 +17,8 @@ if (!file_exists('conf/mysql_credentials.php')) {
 
 // Load dependencies
 require __DIR__.'/vendor/autoload.php';
-$generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
-$loader = new Twig_Loader_Filesystem('views/');
-$twig = new Twig_Environment($loader, array(
+$loader = new \Twig\Loader\FilesystemLoader('views/');
+$twig = new \Twig\Environment($loader, array(
         'cache' => 'cache',
         'auto_reload' => true,
     ));
@@ -29,17 +28,23 @@ $pur_config->set('Cache.SerializerPath', './cache');
 $purifier = new HTMLPurifier($pur_config);
 
 session_name('KirjuriSessionID');
+session_set_cookie_params(array(
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    ));
 session_start(); // Start a PHP session
 
 foreach ($_GET as $key => $value) { // Lightly sanitize GET variables
     $strip_chars = array("<", ">", "'", ";");
-    $value = str_replace($strip_chars, "", $value);
-    $_GET[$key] = isset($value) ? $value : '';
+    $value = is_array($value) ? '' : str_replace($strip_chars, "", $value);
+    $_GET[$key] = $value;
 }
 
 // Set variables for message display.
 $_SESSION['message_set'] = isset($_SESSION['message_set']) ? $_SESSION['message_set'] : '';
-$_SESSION['user'] = isset($_SESSION['user']) ? $_SESSION['user'] : ''; //
+// An empty array rather than a string, as PHP 8 throws on string offsets like $_SESSION['user']['token'].
+$_SESSION['user'] = (isset($_SESSION['user']) && is_array($_SESSION['user'])) ? $_SESSION['user'] : array();
 
 // If message has been set, do not clear it. Invidial files set message as shown before rendering page.
 if ($_SESSION['message_set'] === false) {
@@ -47,7 +52,7 @@ if ($_SESSION['message_set'] === false) {
     $_SESSION['message']['content'] = '';
 }
 
-function event_log_write($case_id = "0", $event_level = "Action", $description, $audit_log_file = "-") {
+function event_log_write($case_id, $event_level, $description, $audit_log_file = "-") {
     // Logging function.
     if (!isset($_SESSION['user']['token'])) {
         $sessiontoken = "-";
@@ -62,7 +67,8 @@ function event_log_write($case_id = "0", $event_level = "Action", $description, 
     }
 
     $case_id = filter_numbers($case_id);
-    $log = strftime("%d/%b/%Y:%H:%M:%S %z", time()).';'.$session_username.';'.$event_level.';"'.$description.'";'.$_SERVER['REQUEST_URI'].';'.$_SERVER['REMOTE_ADDR'].';'.$audit_log_file.';Session ID: '.$sessiontoken.';';
+    $description = str_replace(array("\r", "\n"), ' ', $description); // Keep one event per line.
+    $log = date('d/M/Y:H:i:s O').';'.$session_username.';'.$event_level.';"'.$description.'";'.$_SERVER['REQUEST_URI'].';'.$_SERVER['REMOTE_ADDR'].';'.$audit_log_file.';Session ID: '.$sessiontoken.';';
 
     if ($case_id === "0") {
         file_put_contents('logs/kirjuri.log', $log."-;\r\n", FILE_APPEND);
@@ -85,9 +91,11 @@ function event_log_write($case_id = "0", $event_level = "Action", $description, 
 
 function kirjuri_error_handler($errno, $errstr, $errfile, $errline) // Trigger an error
 {
-    global $twig;
     global $prefs;
-    if ($prefs['settings']['show_errors'] === '1') {
+    if (!(error_reporting() & $errno)) {
+        return false; // Error suppressed with @ or excluded by error_reporting.
+    }
+    if (isset($prefs['settings']['show_errors']) && $prefs['settings']['show_errors'] === '1') {
         // Show a message if errors are permitted on screen.
         $errnums = array(
             '1' => 'Error',
@@ -108,7 +116,7 @@ function kirjuri_error_handler($errno, $errstr, $errfile, $errline) // Trigger a
             '32767' => 'All errors'
         );
         $_SESSION['message']['type'] = 'error';
-        $_SESSION['message']['content'] = $errnums[$errno].': '.$errstr;
+        $_SESSION['message']['content'] = (isset($errnums[$errno]) ? $errnums[$errno] : 'Error').': '.$errstr;
         $_SESSION['message_set'] = true;
     }
     event_log_write('0', 'Error', $errno.' '.$errstr.', File: '.$errfile.', line '.$errline);
@@ -140,12 +148,12 @@ function local_authenticate($username, $password) {
     }
 
 
-    if (password_verify($password, $user_record['password'])) {
+    if (($user_record !== false) && password_verify($password, $user_record['password'])) {
         $_SESSION['user'] = $user_record;
         event_log_write('0', "Auth", "Succesful local authentication for user " . $username);
         return true;
     } else {
-        $_SESSION['user'] = null;
+        $_SESSION['user'] = array();
         event_log_write('0', "Auth", "Failure on local authentication for user " . $username);
         return false;
     }
@@ -157,6 +165,14 @@ function ldap_authenticate($username, $password) {
     //$username = filter_username($username);
     global $prefs;
     if ($prefs['settings']['enable_ldap_authentication'] !== "1") {
+        return false;
+    }
+    if (!function_exists('ldap_connect')) {
+        event_log_write('0', 'Error', 'LDAP authentication is enabled but the PHP LDAP extension is not installed.');
+        return false;
+    }
+    if ((string) $password === '') {
+        // An empty password makes ldap_bind() perform an unauthenticated bind, which many servers accept.
         return false;
     }
     $ldap_domain = $prefs['settings']['ldap_domain'];
@@ -174,18 +190,22 @@ function ldap_authenticate($username, $password) {
     if ($bind) { // On succesfull LDAP auth.
         $allowedNetgroups = explode(',', str_replace(' ', '', $prefs['settings']['ldap_allowed_netgroups']) );
         // see if user is a member of an allowed netgroup
-        $filter="(sAMAccountName=".$username.")";
+        $filter = "(sAMAccountName=" . ldap_escape($username, '', LDAP_ESCAPE_FILTER) . ")";
         $result = ldap_search($ldap, $search_string, $filter);
         $info = ldap_get_entries($ldap, $result);
         $isMember = false;
+        $ldap_realname = $username;
         if ($prefs['settings']['ldap_allowed_netgroups'] == '') {
             $isMember = true;
         }
         for ($i=0; $i<$info['count']; $i++) {
             if ($info['count'] > 1)
                 break;
-            $ldap_realname = $info[$i]["displayname"][0];
-            for ($j=0; $j<$info[$i]['memberof']['count']; $j++) {
+            if (isset($info[$i]["displayname"][0])) {
+                $ldap_realname = $info[$i]["displayname"][0];
+            }
+            $memberof_count = isset($info[$i]['memberof']['count']) ? $info[$i]['memberof']['count'] : 0;
+            for ($j=0; $j<$memberof_count; $j++) {
                 if ($isMember) {
                     break;
                 }
@@ -232,7 +252,7 @@ function ldap_authenticate($username, $password) {
                         ':password' => "API_ONLY_" . generate_token(32),
                         ':flags' => "MF",
                         ':access' => "1",
-                        ':attr_1' => 'User imported from LDAP ' . $_SESSION['user']['username'] . ' at ' . date('Y-m-d H:i'),
+                        ':attr_1' => 'User imported from LDAP at ' . date('Y-m-d H:i'),
                         ':attr_2' => "",
                         ':attr_3' => "LDAP_AUTH_ONLY"
                     ));
@@ -266,11 +286,11 @@ function ldap_authenticate($username, $password) {
 
 function ip_allowed() {
     $access_allowed_from_ip = false; // Deny access by default
-    $ip_access_list = json_decode($_SESSION['user']['attr_2'], TRUE); // Get blacklists
-    if (empty($ip_access_list)) {
-        $ip_access_list['allow'] = array();
-        $ip_access_list['deny'] = array();
+    $ip_access_list = json_decode((string) $_SESSION['user']['attr_2'], TRUE); // Get blacklists
+    if (!is_array($ip_access_list)) {
+        $ip_access_list = array();
     }
+    $ip_access_list += array('allow' => array(), 'deny' => array());
     if (file_exists('conf/access_list.php')) {
         $global_ip_access_list = include 'conf/access_list.php';
         foreach ($global_ip_access_list['allow'] as $ip) {
@@ -308,6 +328,55 @@ function filter_username($username) {
 }
 
 
+define('LOGIN_MAX_FAILURES', 10); // Failed logins allowed per username...
+define('LOGIN_FAILURE_WINDOW', 900); // ...within this many seconds before further attempts are refused.
+
+function login_throttle_file($username) {
+    if (!file_exists('cache/login_throttle')) {
+        mkdir('cache/login_throttle');
+    }
+    return 'cache/login_throttle/' . hash('sha256', strtolower($username)) . '.json';
+}
+
+
+function login_throttle_state($username) {
+    $file = login_throttle_file($username);
+    $state = file_exists($file) ? json_decode(file_get_contents($file), true) : null;
+    if (!is_array($state) || (time() - $state['last_failure']) > LOGIN_FAILURE_WINDOW) {
+        return array('failures' => 0, 'last_failure' => 0);
+    }
+    return $state;
+}
+
+
+function login_throttled($username) {
+    $state = login_throttle_state($username);
+    return $state['failures'] >= LOGIN_MAX_FAILURES;
+}
+
+
+function login_throttle_record_failure($username) {
+    $state = login_throttle_state($username);
+    $state['failures']++;
+    $state['last_failure'] = time();
+    file_put_contents(login_throttle_file($username), json_encode($state), LOCK_EX);
+}
+
+
+function login_throttle_clear($username) {
+    $file = login_throttle_file($username);
+    if (file_exists($file)) {
+        unlink($file);
+    }
+}
+
+
+function ini_value($value) {
+    // Make a value safe to write inside double quotes in an ini file.
+    return str_replace(array('"', "\r", "\n"), array("'", ' ', ' '), (string) $value);
+}
+
+
 function upgrade_insecure_password($username, $password) {
     $kirjuri_database = connect_database('kirjuri-database');
     $query = $kirjuri_database->prepare('UPDATE users SET password = :secure_password_hash WHERE username = :username AND password = :legacy_password');
@@ -321,8 +390,8 @@ function upgrade_insecure_password($username, $password) {
 
 
 function generate_token($length) {
-    // Generate a token for use as a session token.
-    return substr(str_shuffle(hash('sha256', random_bytes(1024))), 0, $length);
+    // Generate a random hex token, used for session, CSRF and file name tokens.
+    return substr(bin2hex(random_bytes((int) ceil($length / 2))), 0, $length);
 }
 
 
@@ -360,13 +429,17 @@ function ip_in_range( $ip, $range ) {
         return false;
     }
     // Copied and modified from https://gist.github.com/tott/7684443, thanks!
-    if ( strpos( $range, '/' ) == false ) {
+    if ( strpos( $range, '/' ) === false ) {
         $range .= '/32';
     }
     // $range is in IP/CIDR format eg 127.0.0.1/24
     list( $range, $netmask ) = explode( '/', $range, 2 );
+    $netmask = (int) $netmask;
     $range_decimal = ip2long( $range );
     $ip_decimal = ip2long( $ip );
+    if ( ($range_decimal === false) || ($ip_decimal === false) || ($netmask < 0) || ($netmask > 32) ) {
+        return false;
+    }
     $wildcard_decimal = pow( 2, ( 32 - $netmask ) ) - 1;
     $netmask_decimal = ~ $wildcard_decimal;
     return ( $ip_decimal & $netmask_decimal ) == ( $range_decimal & $netmask_decimal );
@@ -375,6 +448,7 @@ function ip_in_range( $ip, $range ) {
 
 function ksess_init() {
     // Initialize a session token.
+    session_regenerate_id(true); // Prevent session fixation.
     $_SESSION['user']['token'] = generate_token(16); // Set session token
     if (!file_exists('cache/user_' . $_SESSION['user']['username'])) {
         mkdir('cache/user_' . $_SESSION['user']['username']);
@@ -385,7 +459,7 @@ function ksess_init() {
 
 function ksess_validate($token) {
     // Validate a session token against token stored on user session.
-    if ($token === $_SESSION['user']['token']) {
+    if (is_string($token) && isset($_SESSION['user']['token']) && hash_equals($_SESSION['user']['token'], $token)) {
         return true;
     }
     else {
@@ -428,8 +502,9 @@ function csrf_case_validate($token, $case_id) {
         } else {
             header('Location: index.php');
         }
+        die();
     }
-    if (($token === $_SESSION['case_token'][$case_id]) || ($_SESSION['user']['access'] === "0")) {
+    if ((is_string($token) && isset($_SESSION['case_token'][$case_id]) && hash_equals($_SESSION['case_token'][$case_id], $token)) || ($_SESSION['user']['access'] === "0")) {
         return true;
     }
     else {
@@ -446,7 +521,7 @@ function csrf_case_validate($token, $case_id) {
 
 function ksess_verify($required_access_level) {
     // Check user access level before rendering page. User details are stored in a session variable.
-    if (!isset($_SESSION['user']['username'])) {
+    if (!isset($_SESSION['user']['username'], $_SESSION['user']['token'])) {
         ksess_destroy();
     }
     if (!file_exists('cache/user_' . $_SESSION['user']['username'] . "/session_" . $_SESSION['user']['token'] . ".txt" )) {
@@ -507,7 +582,7 @@ function filter_html($string) // Purify HTML content for raw presentation.
         $out = $purifier->purify($string);
         if (empty($out)) {
             message('error', 'Invalid HTML input.');
-            header('Location: '.$_SERVER['HTTP_REFERER']);
+            header('Location: '.(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'index.php'));
             die;
         }
         return $out;
@@ -517,12 +592,12 @@ function filter_html($string) // Purify HTML content for raw presentation.
 
 function filter_numbers($a)  // Filter out everything but numbers.
 {
-    return preg_replace('/[^0-9]/', '', $a);
+    return preg_replace('/[^0-9]/', '', (string) $a);
 }
 
 
 function filter_letters_and_numbers($a) {
-    return preg_replace('/[^a-zA-Z0-9_]/', '', $a);
+    return preg_replace('/[^a-zA-Z0-9_]/', '', (string) $a);
 }
 
 
@@ -532,7 +607,7 @@ function encrypt($in, $key) {
         event_log_write('0', 'Error', 'Missing dependency: OpenSSL. Can not encrypt audit log files. Please install OpenSSL.');
         return $in;
     }
-    $iv = trim(substr(str_shuffle('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 16));
+    $iv = generate_token(16); // 16 printable characters, as decrypt() reads the IV from the first 16 bytes.
     $key = base64_encode($key);
     $in = gzencode($in);
     $encrypted = openssl_encrypt($in, 'AES-256-CBC', $key, 0, $iv);
@@ -563,7 +638,7 @@ function show_saved_succesfully() {
 }
 
 
-function message($type = "info", $content) {
+function message($type, $content) {
     // Display a message. Message is rendered by Twig in base.twig, class set according to $type, either error or info.
     $_SESSION['message']['type'] = $type;
     $_SESSION['message']['content'] = $content;
@@ -589,6 +664,9 @@ function connect_database($database) {
             $kirjuri_database = new PDO($pdo_connect_string, $mysql_config['mysql_username'], $mysql_config['mysql_password']);
             $kirjuri_database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $kirjuri_database->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+            // PHP 8.1 started returning integer columns as ints. Kirjuri compares them as strings
+            // (e.g. access === "0"), so keep fetching everything as strings.
+            $kirjuri_database->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, true);
             $kirjuri_database->exec('SET NAMES utf8');
             return $kirjuri_database;
         } catch (PDOException $e) {
@@ -600,11 +678,26 @@ function connect_database($database) {
 }
 
 
+function get_users_with_credentials() {
+    // Read all users including password hashes. $_SESSION['all_users'] leaves the hashes out.
+    global $kirjuri_database;
+    $query = $kirjuri_database->prepare('SELECT * FROM users ORDER BY access, username');
+    $query->execute();
+    return $query->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function api_key_for($user) {
+    // The API key is derived from the username and password hash, so changing the password changes the key.
+    return hash('sha1', $user['username'].$user['password']);
+}
+
+
 function audit_log_write($post_data) {
     // Store an audit log entry of the request.
     if (!file_exists('conf/audit_credentials.php')) {
         // Autogenerate an audit log encryption key on first entry.
-        file_put_contents('conf/audit_credentials.php', '<?php return "'.generate_token(64).'" ?>');
+        file_put_contents('conf/audit_credentials.php', '<?php return "'.generate_token(64).'" ?>', LOCK_EX);
         event_log_write('0', 'Audit', 'No encryption key found at conf/audit_credentials.php, audit log encryption key autogenerated.');
     }
     if (isset($post_data['REVERT_FROM_AUDIT'])) {
@@ -612,8 +705,8 @@ function audit_log_write($post_data) {
     }
     $data['user']['username'] = $_SESSION['user']['username'];
     $data['user']['ip_address'] = $_SERVER['REMOTE_ADDR'];
-    $data['user']['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-    $data['user']['referer'] = $_SERVER['HTTP_REFERER'];
+    $data['user']['user_agent'] = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+    $data['user']['referer'] = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
     $data['user']['request_uri'] = $_SERVER['REQUEST_URI'];
     $data['user']['request_method'] = $_SERVER['REQUEST_METHOD'];
     $data['request_contents'] = $post_data;
@@ -672,7 +765,7 @@ if (isset($prefs['settings']['timezone'])) {
 }
 
 try {
-    // Create the attachments table.
+    // Create the attachments table for installations upgraded from versions without attachments.
     $kirjuri_database = connect_database('kirjuri-database');
     $query = $kirjuri_database->prepare('CREATE TABLE IF NOT EXISTS attachments (id INT(10) AUTO_INCREMENT PRIMARY KEY,
   request_id INT(10), name VARCHAR(256), description TEXT, type VARCHAR(256), size INT NOT NULL, content MEDIUMBLOB NOT NULL,
@@ -685,8 +778,9 @@ try {
 }
 
 try {
-    // Read users from database to settings.
-    $query = $kirjuri_database->prepare('SELECT * from users ORDER BY access, username;');
+    // Read users from database to settings. Password hashes are left out, as the session
+    // is stored on disk and passed to every template. Use get_user_record() when they are needed.
+    $query = $kirjuri_database->prepare('SELECT id, username, name, access, flags, attr_1, attr_2, attr_3, attr_4, attr_5, attr_6, attr_7, attr_8 from users ORDER BY access, username;');
     $query->execute();
     $users = $query->fetchAll(PDO::FETCH_ASSOC);
     $_SESSION['all_users'] = $users;
@@ -708,7 +802,7 @@ try {
     die;
 }
 
-if ($_SESSION['user']) { // Get unread message count
+if (!empty($_SESSION['user']['username'])) { // Get unread message count
     try {
         $query = $kirjuri_database->prepare('SELECT (SELECT COUNT(id) FROM messages WHERE msgto = :username AND received = "0") AS new');
         $query->execute(array(':username' => $_SESSION['user']['username']));

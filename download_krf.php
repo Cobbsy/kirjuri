@@ -10,6 +10,10 @@ $query->execute(array(
         ':id' => $case_number
     ));
 $request['parent'] = $query->fetch(PDO::FETCH_ASSOC);
+if ($request['parent'] === false) {
+    header('Location: index.php');
+    die;
+}
 
 $query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE parent_id = :id AND id != :id AND is_removed != "1"');
 $query->execute(array(
@@ -58,7 +62,8 @@ if ($files !== false) {
     }
 }
 
-$request['caselog'] = base64_encode(file_get_contents('logs/cases/uid' . $case_number . '/events.log'));
+$caselog_file = 'logs/cases/uid' . $case_number . '/events.log';
+$request['caselog'] = base64_encode(file_exists($caselog_file) ? file_get_contents($caselog_file) : '');
 $request['metadata']['created_by'] = $_SESSION['user']['username'] . ": " . $_SESSION['user']['name'];
 $request['metadata']['department'] = $prefs['settings']['organization'];
 $request['metadata']['timestamp'] = time();
@@ -76,7 +81,7 @@ $file = json_encode($request, JSON_PRETTY_PRINT);
 $file = gzencode($file);
 header('Content-Description: File Transfer');
 header('Content-Type: application/x-gzip');
-header('Content-Disposition: attachment; filename="' . $request['metadata']['filename'] . '"');
+header('Content-Disposition: attachment; filename="' . str_replace(array('"', "\r", "\n"), '', $request['metadata']['filename']) . '"');
 header('Expires: 0');
 header('Cache-Control: must-revalidate');
 header('Pragma: public');

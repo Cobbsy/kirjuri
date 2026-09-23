@@ -16,7 +16,7 @@ $search_term = '';
 if (empty($_GET['year'])) {
     $year = date('Y'); // Use current year if none specified
 } else {
-    $year = filter_numbers((substr($_GET['year'], 0, 4))); // Get year from GET
+    $year = (int) filter_numbers((substr($_GET['year'], 0, 4))); // Get year from GET
 }
 
 $dateRange = array('start' => $year.'-01-01 00:00:00', 'stop' => ($year + 1).'-01-01 00:00:00');
@@ -81,14 +81,14 @@ if (isset($_GET['search']) && (!empty($_GET['search']))) {
     if (substr($search_term, 0, 3) === "UID") {
         $get_uid = filter_numbers(substr($search_term, 3, 11));
         if (empty($get_uid)) { // If no UID present, return to index.
-            header('Location: '.$_SERVER['HTTP_REFERER']);
+            header('Location: index.php');
             die;
         }
         $query = $kirjuri_database->prepare('SELECT id, parent_id FROM exam_requests WHERE id = :get_uid');
         $query->execute(array(':get_uid' => $get_uid));
         $get_uid_result = $query->fetch(PDO::FETCH_ASSOC);
         if ($get_uid_result === false) { // If ID does not exist, return to index.
-            header('Location: '.$_SERVER['HTTP_REFERER']);
+            header('Location: index.php');
             die;
         }
         if ($get_uid_result['id'] === $get_uid_result['parent_id']) // Jump to case.
@@ -148,10 +148,7 @@ $query->execute(array(
 $row_devices = $query->fetchAll(PDO::FETCH_ASSOC);
 
 $query = $kirjuri_database->prepare('SELECT DISTINCT(request_id) AS request_id FROM attachments');
-$query->execute(array(
-        ':dateStart' => $dateRange['start'],
-        ':dateStop' => $dateRange['stop'],
-    ));
+$query->execute();
 $files = $query->fetchAll(PDO::FETCH_ASSOC);
 $attachments = array();
 foreach ($files as $file) {

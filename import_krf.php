@@ -1,5 +1,7 @@
 <?php
 require_once './include_functions.php';
+ksess_verify(3); // Same access as adding an examination request.
+ksess_validate(isset($_POST['token']) ? $_POST['token'] : '');
 
 function verify_keys($key) {
     // Version 0.9.0
@@ -72,20 +74,39 @@ function verify_keys($key) {
     if (in_array($key, $allowed_keys)) {
         return $key;
     } else {
-        echo "KEY INTEGRITY CHECK FAILURE: " . $key;
-        ;
+        echo "KEY INTEGRITY CHECK FAILURE: " . htmlspecialchars($key);
         die;
     }
 }
 
 
+if (empty($_FILES['fileToUpload']['tmp_name'][0]) || ($_FILES['fileToUpload']['error'][0] !== UPLOAD_ERR_OK)) {
+    trigger_error('No KRF file uploaded.');
+    header('Location: add_case.php');
+    die;
+}
 $file['content'] = file_get_contents($_FILES['fileToUpload']['tmp_name'][0]);
-$case_array = json_decode(gzdecode($file['content']), TRUE);
+$file['content'] = @gzdecode($file['content']);
+$case_array = ($file['content'] === false) ? null : json_decode($file['content'], TRUE);
 
-if ($case_array === null) {
+if (!is_array($case_array) || !isset($case_array['parent']) || !is_array($case_array['parent'])) {
     trigger_error('Invalid KRF file.');
     header('Location: index.php');
     die;
+}
+
+// Check every key before inserting anything, so a bad file does not leave a partially imported case.
+foreach (array_keys($case_array['parent']) as $key) {
+    verify_keys($key);
+}
+foreach (array('children', 'files') as $section) {
+    if (!empty($case_array[$section])) {
+        foreach ($case_array[$section] as $row) {
+            foreach (array_keys((array) $row) as $key) {
+                verify_keys($key);
+            }
+        }
+    }
 }
 
 $date_range = array(
@@ -150,7 +171,7 @@ if (!empty($case_array['children'])) {
         unset($input['last_updated']);
         $query_builder = 'INSERT INTO exam_requests (id, case_id, is_removed, case_status, case_added_date, case_start_date, last_updated, case_devicecount, case_owner, ';
         foreach ($input as $key => $value) {
-            $query_builder .= $key . ', ';
+            $query_builder .= verify_keys($key) . ', ';
         }
         $query_builder = substr($query_builder, 0, -2);
         $query_builder .= ') VALUES ( NULL, NULL, "0", NULL, NOW(), NULL, NOW(), "0", NULL, ';
@@ -221,12 +242,17 @@ if (!empty($case_array['files'])) {
     }
 }
 
-mkdir('logs/cases/uid' . $new_parent['id']);
+if (!file_exists('logs/cases/')) {
+    mkdir('logs/cases');
+}
+if (!file_exists('logs/cases/uid' . $new_parent['id'])) {
+    mkdir('logs/cases/uid' . $new_parent['id']);
+}
 
-file_put_contents('logs/cases/uid' . $new_parent['id'] . '/events.log', base64_decode($case_array['caselog']));
-file_put_contents('logs/cases/uid' . $new_parent['id'] . '/import.log', json_encode($case_array['metadata'], JSON_PRETTY_PRINT));
+file_put_contents('logs/cases/uid' . $new_parent['id'] . '/events.log', base64_decode(isset($case_array['caselog']) ? $case_array['caselog'] : ''));
+file_put_contents('logs/cases/uid' . $new_parent['id'] . '/import.log', json_encode(isset($case_array['metadata']) ? $case_array['metadata'] : array(), JSON_PRETTY_PRINT));
 
-event_log_write($new_parent['id'], "Add", "Imported case from file: " . $_FILES['fileToUpload']['name'][0]);
+event_log_write($new_parent['id'], "Add", "Imported case from file: " . basename($_FILES['fileToUpload']['name'][0]));
 show_saved_succesfully();
 header('Location: edit_request.php?case=' . $new_parent['id']);
 die;

@@ -19,12 +19,16 @@ foreach ($_SESSION['all_users'] as $user) { // Get user information based on GET
         $fields['flags'] = $user['flags'];
         $fields['attr_1'] = $user['attr_1'];
         $fields['attr_3'] = $user['attr_3'];
-        $ip_access_list = json_decode($user['attr_2'], TRUE);
-        $fields['apikey'] = hash('sha1', $user['username'].$user['password']);
-        if ($ip_access_list['allow'][0]) {
+        $ip_access_list = json_decode((string) $user['attr_2'], TRUE);
+        foreach (get_users_with_credentials() as $user_credentials) {
+            if ($user_credentials['id'] === $user['id']) {
+                $fields['apikey'] = api_key_for($user_credentials);
+            }
+        }
+        if (!empty($ip_access_list['allow'][0])) {
             $fields['whitelist'] = str_replace(",", ", ", implode(",", $ip_access_list['allow']));
         }
-        if ($ip_access_list['deny'][0]) {
+        if (!empty($ip_access_list['deny'][0])) {
             $fields['blacklist'] = str_replace(",", ", ", implode(",", $ip_access_list['deny']));
         }
         $fields['sessions'] = array();
@@ -47,6 +51,6 @@ echo $twig->render('users.twig', array(
         'session' => $_SESSION,
         'settings' => $prefs['settings'],
         'lang' => $_SESSION['lang'],
-        'referer' => $_SERVER['HTTP_REFERER'],
+        'referer' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
         'fields' => $fields,
     ));

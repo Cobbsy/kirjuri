@@ -3,8 +3,9 @@
 // AJAX generator page
 
 require_once './include_functions.php';
+ksess_verify(3); // Used by the add request page, which add only users can see.
 
-$case_file_number = substr($_GET['case_file_number'], 0, 18);
+$case_file_number = substr(isset($_GET['case_file_number']) ? $_GET['case_file_number'] : '', 0, 18);
 $search_term = isset($_GET['search']) ? $_GET['search'] : '';
 
 if (!empty($case_file_number)) {
@@ -36,7 +37,7 @@ if (!empty($case_file_number)) {
                 $case_progress = '???';
             }
             ;
-            echo "<p><a class='btn btn-".$case_status." btn-xs' href='edit_request.php?case=".$entry['id']."'>".$entry['case_id'].'/'.substr($entry['case_added_date'], 0, 4).' '.$case_name.' ('.$case_progress.')</a></p>';
+            echo "<p><a class='btn btn-".$case_status." btn-xs' href='edit_request.php?case=".(int) $entry['id']."'>".htmlspecialchars($entry['case_id'].'/'.substr($entry['case_added_date'], 0, 4).' '.$case_name.' ('.$case_progress.')', ENT_QUOTES, 'UTF-8').'</a></p>';
         }
         ;
         echo '';

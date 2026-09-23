@@ -45,8 +45,8 @@ $_GET['type'] = isset($_GET['type']) ? $_GET['type'] : '';
 switch ($_GET['type']) {
 
 case 'anon_login':
-    foreach ($_SESSION['all_users'] as $user) {
-        if (($user['id'] === '1') && ($user['password'] === "Not set.")) {
+    foreach (get_users_with_credentials() as $user) {
+        if (((string) $user['id'] === '1') && ($user['password'] === "Not set.")) {
             if (strpos($user['flags'], 'I') !== false) {
                 message('error', $_SESSION['lang']['account_inactive']);
                 header('Location: login.php');
@@ -62,19 +62,22 @@ case 'anon_login':
             }
         }
     }
+    header('Location: login.php'); // Anonymous account not available.
+    die;
 
 case 'login':
-    $_SESSION['user'] = null;
+    $_SESSION['user'] = array();
     $auth_success = false;
-    $_POST['username'] = filter_username($_POST['username']);
+    $_POST['username'] = filter_username(isset($_POST['username']) ? $_POST['username'] : '');
 
-    if (empty($_POST['password']) || empty($_POST['username'] || empty($_POST['auth_type']))) {
+    if (empty($_POST['password']) || empty($_POST['username']) || empty($_POST['auth_type'])) {
         header('Location: login.php');
         die;
     }
 
-    if (file_exists('conf/BLOCK_' . hash('sha1', $_POST['username']))) {
-        sleep(0);
+    if (login_throttled($_POST['username'])) {
+        message('error', $_SESSION['lang']['invalid_credentials']);
+        event_log_write('0', 'Auth', 'Login throttled after repeated failures: ' . $_POST['username']);
         header('Location: login.php');
         die;
     }
@@ -93,18 +96,19 @@ case 'login':
     // Authenticate function sets $_SESSION['user'] on success.
     if ( ($auth_success === true) && (isset($_SESSION['user'])) ) {
         if (strpos($_SESSION['user']['flags'], 'I') !== false) {
-            $_SESSION['user'] = null;
+            $_SESSION['user'] = array();
             message('error', $_SESSION['lang']['account_inactive']);
             event_log_write('0', 'Auth', 'Login attempt with inactivated account: ' . $_POST['username']);
             header('Location: login.php');
             die;
         } elseif (ip_allowed() === false) {
-            $_SESSION['user'] = null;
+            $_SESSION['user'] = array();
             message('error', $_SERVER['REMOTE_ADDR'] . ": " . $_SESSION['lang']['ip_address_restricted']);
             event_log_write('0', 'Auth', 'Login attempt from restricted IP address '.$_SERVER['REMOTE_ADDR'].': ' . $_POST['username']);
             header('Location: login.php');
             die;
         } else {
+            login_throttle_clear($_POST['username']);
             ksess_init();
             message('info', $_SESSION['lang']['logged_in_as'] . ' ' . $_SESSION['user']['username']);
             event_log_write('0', 'Auth', 'Login, created session ' . $_SESSION['user']['token']);
@@ -112,18 +116,15 @@ case 'login':
             die;
         }
     } elseif ($auth_success === false) {
-        $_SESSION['user'] = null;
-        file_put_contents('cache/BLOCK_' . md5(strtolower($_POST['username'])), "failed password attempt.");
-        sleep(0);
-        unlink('cache/BLOCK_' . md5(strtolower($_POST['username'])));
+        $_SESSION['user'] = array();
+        login_throttle_record_failure($_POST['username']);
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Invalid login attempt: ' . $_POST['username']);
         header('Location: login.php');
         die;
     } else {
-        var_dump($auth_success);
-        var_dump($_SESSION['user']);
-        echo "Something is pretty seriously wrong in submit.php.";
+        $_SESSION['user'] = array();
+        header('Location: login.php');
         die;
     }
 
@@ -137,20 +138,24 @@ case 'logout':
 case 'drop_session':
     ksess_validate($_GET['token']);
     ksess_verify(0);
-    unlink('cache/user_' . urldecode($_GET['user']) . '/session_' . $_GET['session'] . '.txt');
-    event_log_write('0', 'Auth', 'Admin destroyed session ' . $_GET['session']);
-    header('Location: users.php?populate=' . $_GET['user_id'] . '#u');
+    $session_file = 'cache/user_' . filter_username(urldecode($_GET['user'])) . '/session_' . filter_letters_and_numbers($_GET['session']) . '.txt';
+    if (file_exists($session_file)) {
+        unlink($session_file);
+    }
+    event_log_write('0', 'Auth', 'Admin destroyed session ' . filter_letters_and_numbers($_GET['session']));
+    header('Location: users.php?populate=' . filter_numbers($_GET['user_id']) . '#u');
     die;
 
 case 'force_logout':
     // Force end session
     ksess_validate($_GET['token']);
     ksess_verify(0);
-    if (file_exists('cache/user_' . urldecode($_GET['user']))) {
-        delete_directory('cache/user_' . urldecode($_GET['user']));
+    $logout_user = filter_username(urldecode($_GET['user']));
+    if (($logout_user !== '') && file_exists('cache/user_' . $logout_user)) {
+        delete_directory('cache/user_' . $logout_user);
         message('info', $_SESSION['lang']['user_logged_out']);
     }
-    event_log_write('0', "Auth", "Admin terminated sessions: ".urldecode($_GET['user']));
+    event_log_write('0', "Auth", "Admin terminated sessions: " . $logout_user);
     header('Location: '.$_SERVER['HTTP_REFERER']);
     die;
 
@@ -184,18 +189,24 @@ case 'create_user':
         !empty($_POST['access']) &&
         password_verify($_POST['current_password'], $_SESSION['user']['password'])
     ) {
-        if ($_POST['delete_user'] === "delete" && $_SESSION['user']['access'] === "0") {
-            $query = $kirjuri_database->prepare('DELETE FROM users WHERE username = :username AND id = :id AND (id != 2 OR id != 1)');
+        if (isset($_POST['delete_user']) && $_POST['delete_user'] === "delete" && $_SESSION['user']['access'] === "0") {
+            // Never delete the built-in anonymous (1) and admin (2) accounts.
+            $query = $kirjuri_database->prepare('DELETE FROM users WHERE username = :username AND id = :id AND id != 2 AND id != 1');
             $query->execute(array(
                     ':username' => $_POST['username'],
                     ':id' => $_POST['user_id']
                 ));
+            if ($query->rowCount() === 0) {
+                message('error', $_SESSION['lang']['create_error']);
+                header('Location: users.php?populate=' . filter_numbers($_POST['user_id']));
+                die;
+            }
             event_log_write('0', 'Remove', 'User deleted permanently: ' . $username_input);
             message('info', $_SESSION['lang']['user_deleted']);
             header('Location: submit.php?type=force_logout&user=' . urlencode($username_input) . '&token=' . $_SESSION['user']['token']);
             die;
         }
-        foreach ($_SESSION['all_users'] as $user) {
+        foreach (get_users_with_credentials() as $user) {
             if ($user['username'] === $username_input) {
                 $oldname = $user['name'];
                 $returnid = $user['id'];
@@ -261,28 +272,32 @@ case 'update_password':
                 ':id' => $_SESSION['user']['id']
             ));
         event_log_write('0', 'Update', 'User changed password.');
-        $_SESSION['user'] = '';
+        $_SESSION['user'] = array();
         session_destroy();
         header('Location: login.php');
     }
     else {
-        message('Error', $_SESSION['lang']['bad_password']);
+        message('error', $_SESSION['lang']['bad_password']);
         header('Location: settings.php');
     }
     die;
 
 case 'clear_cache':
+    ksess_verify(0);
+    ksess_validate($_GET['token']);
     foreach (scandir('cache') as $cache_subdir) {
         if (($cache_subdir[0] !== ".") && (substr($cache_subdir, 0, 4) !== "user")) {
-            delete_directory($cache_subdir);
+            delete_directory('cache/' . $cache_subdir);
         }
     }
+    event_log_write('0', 'Admin', 'Template cache cleared.');
     header('Location: login.php');
     die;
 
     // ----- Messages
 
 case 'send_message':
+    ksess_verify(3);
     ksess_validate($_POST['token']);
     if (!empty($_POST['body']) && !empty($_POST['msgto'])) {
         if ($_POST['msgto'] === "ALL_USERS") {
@@ -328,28 +343,29 @@ case 'send_message':
     }
 
 case 'delete_received':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('UPDATE messages SET deleted_to = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user) AND archived_to = "1"');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
             ':id' => filter_numbers($_GET['id'])
         ));
-    $query->execute();
     header('Location: messages.php#archive');
     die;
 
 case 'delete_sent':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('UPDATE messages SET deleted_from = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user) AND archived_from = "1"');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
             ':id' => filter_numbers($_GET['id'])
         ));
-    $query->execute();
     header('Location: messages.php#archive');
     die;
 
 case 'delete_all':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('UPDATE messages SET deleted_to = "1" WHERE msgto = :user AND archived_to = "1"');
     $query->execute(array(
@@ -359,62 +375,61 @@ case 'delete_all':
     $query->execute(array(
             ':user' => $_SESSION['user']['username']
         ));
-    $query->execute();
     header('Location: messages.php#inbox');
     die;
 
 case 'archive_received':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_to = "1" WHERE id = :id AND received != "0" AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
             ':id' => filter_numbers($_GET['id'])
         ));
-    $query->execute();
     header('Location: messages.php#inbox');
     die;
 
 case 'archive_sent':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_from = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
             ':id' => filter_numbers($_GET['id'])
         ));
-    $query->execute();
     header('Location: messages.php#outbox');
     die;
 
 case 'restore_received':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_to = "0" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
             ':id' => filter_numbers($_GET['id'])
         ));
-    $query->execute();
     header('Location: messages.php');
     die;
 
 case 'restore_sent':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_from = "0" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
             ':id' => filter_numbers($_GET['id'])
         ));
-    $query->execute();
     header('Location: messages.php');
     die;
 
 case 'delete_message':
+    ksess_verify(3);
     ksess_validate($_GET['token']);
     $query = $kirjuri_database->prepare('DELETE FROM messages WHERE id = :id AND msgto = :user');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
             ':id' => filter_numbers($_GET['id'])
         ));
-    $query->execute();
     header('Location: messages.php');
     die;
 
@@ -443,7 +458,7 @@ case 'reserve_tool':
     if (isset($_POST['tool_id'])) {
         $returnid = filter_numbers($_POST['tool_id']);
         if ((empty($res_start)) || (empty($res_end)) || (empty($returnid))) {
-            message('Error', $_SESSION['lang']['missing_form_field']);
+            message('error', $_SESSION['lang']['missing_form_field']);
             header('Location: tools.php?populate=' . $returnid);
             die;
         }
@@ -491,7 +506,7 @@ case 'reserve_tool':
     // If dropping a reservation, check that the user is admin or the reservation is for them.
     // Using real names here, so changing user's real name will prevent removing old reservations.
     if (isset($_GET['drop'])) {
-        if (($_SESSION['user']['access'] === "0") || ($res_arr[$_GET['drop']]['reserved_for'] === $_SESSION['user']['name'])) {
+        if (isset($res_arr[$_GET['drop']]) && (($_SESSION['user']['access'] === "0") || ($res_arr[$_GET['drop']]['reserved_for'] === $_SESSION['user']['name']))) {
             event_log_write('0', "Calendar", "Removed tool ID " . $returnid . " reservation: " . $res_arr[$_GET['drop']]['reserve_start'] . " -> " . $res_arr[$_GET['drop']]['reserve_end'] . " for " . $res_arr[$_GET['drop']]['reserved_for']);
             // Remove the reservation from the reservations array.
             unset($res_arr[$_GET['drop']]);
@@ -508,7 +523,7 @@ case 'reserve_tool':
         $res_arr[$i]['reserve_start'] = $res_start;
         $res_arr[$i]['reserve_end']   = $res_end;
         // Do not allow oversized comments. 500 characters should be enough.
-        $res_arr[$i]['comment']       = substr($_POST['comment'], 0, 500);
+        $res_arr[$i]['comment']       = substr(isset($_POST['comment']) ? $_POST['comment'] : '', 0, 500);
     }
     // Declare a function for sorting the array by start date
     function date_compare($a, $b) {
@@ -625,9 +640,12 @@ case 'case_access':
 
 case 'examination_request':
     // Create an examination request.
+    ksess_verify(3);
     ksess_validate($_POST['token']);
     if (empty($_POST['case_file_number']) || empty($_POST['case_investigator']) || empty($_POST['case_investigator_unit']) || empty($_POST['case_investigator_tel']) || empty($_POST['case_investigation_lead']) || empty($_POST['case_confiscation_date']) || empty($_POST['case_crime']) || empty($_POST['case_suspect']) || empty($_POST['case_request_description']) || empty($_POST['case_urgency']) || empty($_POST['case_requested_action'])) {
-        trigger_error('Fill all required fields.');
+        message('error', 'Fill all required fields.');
+        header('Location: add_case.php');
+        die;
     }
     $query = $kirjuri_database->prepare('select case_id FROM exam_requests WHERE case_added_date BETWEEN :dateStart AND :dateStop ORDER BY case_id DESC LIMIT 1 ');
     $query->execute(array(
@@ -635,7 +653,7 @@ case 'examination_request':
             ':dateStop' => $dateRange['stop']
         ));
     $case_id = $query->fetch(PDO::FETCH_ASSOC);
-    $case_id = $case_id['case_id'] + 1;
+    $case_id = ($case_id === false) ? 1 : $case_id['case_id'] + 1;
     $query = $kirjuri_database->prepare(' INSERT INTO exam_requests ( id, parent_id, case_id, case_name, case_file_number, case_investigator, case_investigator_unit, case_investigator_tel, case_investigation_lead, case_confiscation_date, last_updated, case_added_date, case_crime, examiners_notes, classification, case_suspect, case_request_description, is_removed, case_status, case_urgency, case_urg_justification, case_requested_action, case_contains_mob_dev, case_devicecount ) VALUES ( NULL, "0", :case_id, :case_name, :case_file_number, :case_investigator, :case_investigator_unit, :case_investigator_tel, :case_investigation_lead, :case_confiscation_date, NOW(), NOW(), :case_crime, :examiners_notes, :classification, :case_suspect, :case_request_description, "0", "1", :case_urgency, :case_urg_justification, :case_requested_action, :case_contains_mob_dev, "0" );
         UPDATE exam_requests SET parent_id=last_insert_id() WHERE ID=last_insert_id();
         ');
@@ -683,6 +701,7 @@ case 'case_update':
     // Update examination request.
     ksess_verify(1);
     ksess_validate($_POST['token']);
+    $_GET['uid'] = filter_numbers($_GET['uid']);
     verify_case_ownership($_GET['uid']);
     if (!isset($_POST['phone_investigator'])) {
         $_POST['phone_investigator'] = "-";
@@ -799,6 +818,9 @@ case 'device_attach':
     // Associate a media/device with host device
     ksess_verify(1);
     ksess_validate($_POST['token']);
+    $_GET['returnid'] = filter_numbers($_GET['returnid']);
+    csrf_case_validate($_POST['ct'], $_GET['returnid']);
+    verify_case_ownership($_GET['returnid']);
     if (isset($_POST['isanta'])) {
         $query = $kirjuri_database->prepare('UPDATE exam_requests SET device_host_id = :isanta, last_updated = NOW() where id=:id AND parent_id != id;
         UPDATE exam_requests SET device_is_host = "1" where id = :isanta;');
@@ -817,6 +839,8 @@ case 'device_detach':
     // Remove device association
     ksess_verify(1);
     ksess_validate($_GET['token']);
+    $_GET['returnid'] = filter_numbers($_GET['returnid']);
+    verify_case_ownership($_GET['returnid']);
     $query = $kirjuri_database->prepare('UPDATE exam_requests SET device_host_id = "0", last_updated = NOW() where id=:id AND parent_id != id');
     $query->execute(array(
             ':id' => $_GET['uid']
@@ -904,9 +928,7 @@ case 'update_request_status':
 
 case 'change_device_status':
     // Dynamically set device action
-    if ($_SESSION['user']['access'] > 1) {
-        die;
-    }
+    ksess_verify(1);
     $query = $kirjuri_database->prepare('SELECT parent_id FROM exam_requests where id=:id');
     $query->execute(array(
             ':id' => $_GET['uid']
@@ -931,9 +953,7 @@ case 'change_device_status':
 
 case 'change_device_location':
     // Dynamically set device location.
-    if ($_SESSION['user']['access'] > 1) {
-        die;
-    }
+    ksess_verify(1);
     $query = $kirjuri_database->prepare('SELECT parent_id FROM exam_requests where id=:id');
     $query->execute(array(
             ':id' => $_GET['uid']
@@ -1120,18 +1140,18 @@ case "save_settings":
     $audit_stamp = audit_log_write($_POST);
     $settings_output = "; Saved settings\r\n\r\n[settings]\r\n";
     foreach ($_POST['settings'] as $key => $value) {
-        $settings_output = $settings_output . $key . " = \"" . $value . "\";\r\n";
+        $settings_output = $settings_output . filter_letters_and_numbers($key) . " = \"" . ini_value($value) . "\";\r\n";
     }
     $settings_output = $settings_output . "\r\n[inv_units]\r\n";
     $units = explode(",", $_POST['inv_units']);
     $unit_key = 1;
     foreach ($units as $value) {
         $unit_key++;
-        $settings_output = $settings_output . $unit_key . " = \"" . trim($value) . "\";\r\n";
+        $settings_output = $settings_output . $unit_key . " = \"" . ini_value(trim($value)) . "\";\r\n";
     }
     $settings_output = $settings_output . "\r\n[statistics_chart_colors]\r\n";
     foreach ($_POST['chart'] as $key => $value) {
-        $settings_output = $settings_output . $key . " = \"" . $value . "\";\r\n";
+        $settings_output = $settings_output . filter_letters_and_numbers($key) . " = \"" . ini_value($value) . "\";\r\n";
     }
     file_put_contents('conf/settings.local', $settings_output);
     event_log_write('0', 'Admin', 'Settings saved.', $audit_stamp);
@@ -1146,6 +1166,10 @@ case 'remove_attachment':
     $query = $kirjuri_database->prepare('SELECT name, hash, id, request_id, attr_1 FROM attachments WHERE id = :id');
     $query->execute(array(':id' => $_GET['file']));
     $file = $query->fetch(PDO::FETCH_ASSOC);
+    if ($file === false) {
+        header('Location: index.php');
+        die;
+    }
     csrf_case_validate($_GET['ct'], $file['request_id']);
     verify_case_ownership($file['request_id']);
     $query = $kirjuri_database->prepare('DELETE FROM attachments WHERE id = :id');

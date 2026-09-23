@@ -1,10 +1,11 @@
 <?php
 
 require_once './include_functions.php';
-ksess_verify(9); // Admin only
+ksess_verify(0); // Admin only
 
 $langfile_default = json_decode(file_get_contents('conf/lang_EN.JSON'), true); // Parse language file
 
+$langfiles = array();
 $conffiles = scandir('conf/');
 foreach ($conffiles as $file) {
     if (substr($file, 0, 5) === "lang_") {

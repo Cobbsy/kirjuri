@@ -11,7 +11,7 @@ $session_cache = isset($_SESSION['post_cache']) ? $_SESSION['post_cache'] : ''; 
 $sort_j = isset($_GET['j']) ? $_GET['j'] : '';
 $get_case = isset($_GET['case']) ? $_GET['case'] : '';
 $returntab = isset($_GET['tab']) ? $_GET['tab'] : '';
-$dev_owner = urldecode(isset($_GET['dev_owner'])) ? $_GET['dev_owner'] : '';
+$dev_owner = isset($_GET['dev_owner']) ? urldecode($_GET['dev_owner']) : '';
 $filelist = array();
 $case_number = filter_numbers((substr($get_case, 0, 5)));
 $confCrimes = strip_tags(file_get_contents('conf/crimes_autofill.conf'));
@@ -45,11 +45,6 @@ if (!empty($caserow['0']['case_owner'])) {
 else {
     $case_owner = array();
 }
-
-$query = $kirjuri_database->prepare('CREATE TABLE IF NOT EXISTS attachments (id INT(10) AUTO_INCREMENT PRIMARY KEY,
-request_id INT(10), name VARCHAR(256), description TEXT, type VARCHAR(256), size INT NOT NULL, content MEDIUMBLOB NOT NULL,
-uploader VARCHAR(256), date_uploaded DATETIME, hash VARCHAR(256), attr_1 TEXT, attr_2 TEXT, attr_3 TEXT) ');
-$query->execute();
 
 $query = $kirjuri_database->prepare('SELECT id, case_id, case_suspect, case_name, case_devicecount FROM exam_requests WHERE case_file_number=:case_file_number AND id = parent_id AND is_removed = 0 AND case_id != :case_id');
 $query->execute(array(

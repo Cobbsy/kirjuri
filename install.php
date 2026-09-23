@@ -3,10 +3,13 @@
 session_name('KirjuriSessionID');
 session_start();
 session_destroy();
-if (version_compare(PHP_VERSION, '7.0.0') <= 0) {
-    echo "Kirjuri requires PHP7 to run. You are using " . phpversion() . ". Please upgrade your PHP environment.";
+if (version_compare(PHP_VERSION, '8.1.0') < 0) {
+    echo "Kirjuri requires PHP 8.1 or newer to run. You are using " . phpversion() . ". Please upgrade your PHP environment.";
     die;
 }
+// PHP 8.1 made mysqli throw exceptions by default. This installer checks return values instead,
+// so an existing database or table is reported and skipped rather than aborting the install halfway.
+mysqli_report(MYSQLI_REPORT_OFF);
 ?>
 <html>
 <head>
@@ -31,7 +34,10 @@ function error_handler($n, $s, $f) // Custom error handler for the installation 
 
 set_error_handler('error_handler');
 
-echo '<p>Web server running as "'.exec('whoami').'"</p>';
+if (function_exists('posix_geteuid') && function_exists('posix_getpwuid')) {
+    $process_user = posix_getpwuid(posix_geteuid());
+    echo '<p>Web server running as "'.htmlspecialchars($process_user['name']).'"</p>';
+}
 echo '<p>Testing write permissions...</p>';
 
 $i = 0; // Count folders
@@ -103,6 +109,10 @@ Please choose a name for your database. The default is "kirjuri".
     $mysql_config['mysql_database'] = strtolower(trim(preg_replace('/[^A-Za-z0-9\-]/', '', $_POST['d'])));
 
     // Check for invalid database names
+    if ($mysql_config['mysql_database'] === '') {
+        echo '<p style="color:red;">Please give a database name.</p>';
+        die;
+    }
     if (in_array($mysql_config['mysql_database'], array(
                 'mysql',
                 'information_schema',
@@ -118,12 +128,8 @@ Please choose a name for your database. The default is "kirjuri".
     $conn = new mysqli($mysql_config['mysql_server'], $mysql_config['mysql_username'], $mysql_config['mysql_password']);
     // Check the connection
     if ($conn->connect_error) {
-        die('<p style="color:red;">Connection failed: '.$conn->connect_error.'</p>');
+        die('<p style="color:red;">Connection failed: '.htmlspecialchars($conn->connect_error).'</p>');
     }
-
-    // Save credentials to file
-    $mysql_config_file = '<?php return '.var_export($mysql_config, true).'; ?>'."\n";
-    file_put_contents('conf/mysql_credentials.php', $mysql_config_file);
 
     // Drop database if wanted
     if ($_POST['drop_database'] === 'drop') {
@@ -137,15 +143,24 @@ Please choose a name for your database. The default is "kirjuri".
     }
 
     // Create new database
-    $query = 'CREATE DATABASE '.$mysql_config['mysql_database'];
+    $query = 'CREATE DATABASE IF NOT EXISTS `'.$mysql_config['mysql_database'].'`';
     if ($conn->query($query) === true) {
-        echo '<p style="color:green;">Database created successfully.</p>';
+        echo '<p style="color:green;">Database '.$mysql_config['mysql_database'].' is ready.</p>';
     } else {
-        echo '<p style="color:red;">Error creating database: '.$conn->error.'</p>'; // Fail if exists and continue.
+        die('<p style="color:red;">Error creating database: '.htmlspecialchars($conn->error).'</p>');
     }
     $conn->close();
 
-    $kirjuri_database = new PDO('mysql:host='.$mysql_config['mysql_server'].';dbname='.$mysql_config['mysql_database'].'', $mysql_config['mysql_username'], $mysql_config['mysql_password']);
+    try {
+        $kirjuri_database = new PDO('mysql:host='.$mysql_config['mysql_server'].';dbname='.$mysql_config['mysql_database'].'', $mysql_config['mysql_username'], $mysql_config['mysql_password']);
+    } catch (PDOException $e) {
+        die('<p style="color:red;">Connection failed: '.htmlspecialchars($e->getMessage()).'</p>');
+    }
+
+    // Save credentials to file only once the database is reachable, so a failed install can be retried.
+    $mysql_config_file = '<?php return '.var_export($mysql_config, true).'; ?>'."\n";
+    file_put_contents('conf/mysql_credentials.php', $mysql_config_file);
+
     $kirjuri_database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $kirjuri_database->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
     $kirjuri_database->exec('SET NAMES utf8');
@@ -339,6 +354,16 @@ Please choose a name for your database. The default is "kirjuri".
         echo '<p style="color:green;">Examination requests table created.</p>';
     } catch (Exception $e) {
         echo '<p style="color:red;">Error creating exam_requests: ', $e->getMessage(), '. Tables not created.</p>';
+    }
+
+    try {
+        $query = $kirjuri_database->prepare('CREATE TABLE IF NOT EXISTS attachments (id INT(10) AUTO_INCREMENT PRIMARY KEY,
+  request_id INT(10), name VARCHAR(256), description TEXT, type VARCHAR(256), size INT NOT NULL, content MEDIUMBLOB NOT NULL,
+  uploader VARCHAR(256), date_uploaded DATETIME, hash VARCHAR(256), attr_1 TEXT, attr_2 TEXT, attr_3 TEXT)');
+        $query->execute();
+        echo '<p style="color:green;">Attachments table created.</p>';
+    } catch (Exception $e) {
+        echo '<p style="color:red;">Error creating attachments table: ', $e->getMessage(), '.</p>';
     }
 
     // Bring data from the limited release version database.

@@ -11,12 +11,16 @@ $query->execute(array(
         ':id' => $case_number,
     ));
 $request_items = $query->fetchAll(PDO::FETCH_ASSOC);
+if (empty($request_items)) {
+    header('Location: index.php');
+    die;
+}
 
 $filename = 'Kirjuri '.$request_items[0]['case_id'].'-'.date('Y', strtotime($request_items[0]['case_added_date'])).' '.$request_items[0]['case_name'];
 header('Content-Description: File Transfer');
 header('Content-Encoding: UTF-8');
 header('Content-Type: text; charset=utf-8');
-header('Content-Disposition: attachment; filename='.trim($filename).'.csv');
+header('Content-Disposition: attachment; filename="'.str_replace(array('"', "\r", "\n"), '', trim($filename)).'.csv"');
 echo 'sep=;';
 echo "\n";
 foreach (array_keys($request_items[0]) as $key) {

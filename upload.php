@@ -1,15 +1,26 @@
 <?php
 require_once './include_functions.php';
 ksess_verify(1);
+ksess_validate(isset($_POST['token']) ? $_POST['token'] : '');
 $id = filter_numbers(substr($_POST['case'], 0, 5));
+csrf_case_validate(isset($_POST['ct']) ? $_POST['ct'] : '', $id);
+verify_case_ownership($id);
 unset($_SESSION['failed_uploads']);
 
-if ($prefs['settings']['allow_attachments'] !== '1') {
-    header('Location: '.preg_replace('/\?.*/', '', $_SERVER['HTTP_REFERER']).'?case='.substr($_GET['case'], 0, 5).'');
+if ($prefs['settings']['allow_attachments'] !== '1' || empty($_FILES['fileToUpload']['name'])) {
+    header('Location: edit_request.php?case='.$id);
     die;
 }
 $total = count($_FILES['fileToUpload']['name']);
 for ($i = 0; $i < $total; ++$i) {
+    if ($_FILES['fileToUpload']['error'][$i] !== UPLOAD_ERR_OK) {
+        // Covers files over upload_max_filesize / post_max_size and empty file inputs.
+        if ($_FILES['fileToUpload']['error'][$i] !== UPLOAD_ERR_NO_FILE) {
+            $_SESSION['failed_uploads'][] = basename($_FILES['fileToUpload']['name'][$i]) . " (upload error " . $_FILES['fileToUpload']['error'][$i] . ")";
+            event_log_write($id, 'Error', 'Upload failed (PHP upload error ' . $_FILES['fileToUpload']['error'][$i] . '): '. basename($_FILES['fileToUpload']['name'][$i]));
+        }
+        continue;
+    }
     if ($_FILES['fileToUpload']['size'][$i] > $prefs['settings']['max_attachment_size']) {
         $_SESSION['failed_uploads'][] = $_FILES['fileToUpload']['name'][$i] . "(filesize too big)";
         event_log_write($id, 'Error', 'Upload failed (filesize): '. basename($_FILES['fileToUpload']['name'][$i]));
@@ -39,13 +50,14 @@ for ($i = 0; $i < $total; ++$i) {
                 ':uploader' => $_SESSION['user']['username'],
                 ':hash' => $file['hash']
             ));
-        $compression_ratio = (100 - (($size_in_database / $file['size']) * 100));
+        $compression_ratio = ($file['size'] > 0) ? (100 - (($size_in_database / $file['size']) * 100)) : 0;
         $_POST['content'] = "File data, " . $file['size'] . " bytes, compressed to " . $size_in_database . " bytes. (Reduction of " . round($compression_ratio, 2) . "%). sha256: " . $file['hash'];
         $audit_stamp = audit_log_write($_POST);
-        $query = $kirjuri_database->prepare('UPDATE attachments SET attr_1 = :audit_stamp WHERE hash = :hash');
+        $query = $kirjuri_database->prepare('UPDATE attachments SET attr_1 = :audit_stamp WHERE hash = :hash AND request_id = :request_id');
         $query->execute(array(
                 ':audit_stamp' => $audit_stamp,
-                ':hash' => $file['hash']
+                ':hash' => $file['hash'],
+                ':request_id' => $id
             ));
         event_log_write($id, 'Add', 'Attachment uploaded: '. $file['name'] . ", file sha256: " . $file['hash'], $audit_stamp);
     } else {
@@ -53,5 +65,5 @@ for ($i = 0; $i < $total; ++$i) {
         event_log_write($id, 'Error', 'Upload failed (file exists): '. $file['name']);
     }
 }
-header('Location: '.preg_replace('/\?.*/', '', $_SERVER['HTTP_REFERER']).'?case='.$id);
+header('Location: edit_request.php?case='.$id);
 die;
