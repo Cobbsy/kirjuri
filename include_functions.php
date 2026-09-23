@@ -49,6 +49,7 @@ session_set_cookie_params(array(
         'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
     ));
 session_start(); // Start a PHP session
+kirjuri_keep_request_data_out_of_session();
 
 foreach ($_GET as $key => $value) { // Lightly sanitize GET variables
     $strip_chars = array("<", ">", "'", ";");

@@ -164,6 +164,25 @@ final class AccessControlTest extends IntegrationTestCase
         }
     }
 
+    public function testSessionsHoldOnlyTheirOwnState(): void
+    {
+        $other = $this->uniqueName('otheruser');
+        $this->createUser($other, 'password1', 1);
+        $client = $this->login($other, 'password1');
+        $this->assertSame(200, $client->get('index.php')->status);
+
+        $admin = $this->admin();
+        $admin->get('index.php');
+        foreach ($this->server->sessionFiles() as $session) {
+            // Language strings, the user and tool lists and the unread count are reloaded on every
+            // request; storing them made each session file about 26 KB and put every user in it.
+            $this->assertLessThan(4096, strlen($session));
+            $this->assertStringNotContainsString('all_users', $session);
+            $this->assertStringNotContainsString('lang|', $session); // PHP's session format writes top-level keys as key|value.
+        }
+        $this->assertSame(200, $admin->get('messages.php')->status, 'Pages still get the language strings.');
+    }
+
     public function testPasswordChangeStillChecksTheCurrentPassword(): void
     {
         $username = $this->uniqueName('changer');

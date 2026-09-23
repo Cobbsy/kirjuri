@@ -1,6 +1,19 @@
 <?php
 // Session handling, CSRF tokens, access levels and case access groups.
 
+function kirjuri_keep_request_data_out_of_session() {
+    // The bootstrap loads the language strings, users, tools and unread count into $_SESSION on every
+    // request, where pages and templates expect them. Drop them before PHP writes the session file:
+    // they were 90% of its size, and the user list put every user's record in everyone's session.
+    // Shutdown functions run before the session is written.
+    register_shutdown_function(function () {
+        if (session_status() === PHP_SESSION_ACTIVE) { // ksess_destroy() nulls $_SESSION, but also ends the session.
+            unset($_SESSION['lang'], $_SESSION['all_users'], $_SESSION['all_tools'], $_SESSION['unread']);
+        }
+    });
+}
+
+
 function kirjuri_set_session_user($user_record) {
     // Log a user in. The password hash stays out of the session: sessions are stored on disk
     // and shown to templates. Use kirjuri_session_user_credentials() when the hash is needed.
