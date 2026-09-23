@@ -9,6 +9,7 @@ abstract class IntegrationTestCase extends TestCase
     protected KirjuriServer $server;
     private int $eventLogStart;
     private int $serverLogStart;
+    private int $errorLogStart;
     private array $expectedErrors = array();
 
     protected function setUp(): void
@@ -19,11 +20,12 @@ abstract class IntegrationTestCase extends TestCase
         $this->server = KirjuriServer::get();
         $this->eventLogStart = count($this->server->eventLog());
         $this->serverLogStart = count($this->server->serverLog());
+        $this->errorLogStart = count($this->server->errorLog());
     }
 
     /**
      * Every PHP warning, notice and error Kirjuri handles is written to its event log with the
-     * level "Error", and fatal errors go to the server's stderr. A test fails if either gains an
+     * level "Error" and to logs/error.log, and fatal errors go to the server's stderr. A test fails if either gains an
      * entry it did not declare with expectLoggedError().
      */
     protected function assertPostConditions(): void
@@ -31,6 +33,11 @@ abstract class IntegrationTestCase extends TestCase
         $unexpected = array();
         foreach (array_slice($this->server->eventLog(), $this->eventLogStart) as $line) {
             if (strpos($line, ';Error;') !== false && !$this->isExpected($line)) {
+                $unexpected[] = $line;
+            }
+        }
+        foreach (array_slice($this->server->errorLog(), $this->errorLogStart) as $line) {
+            if (!$this->isExpected($line)) {
                 $unexpected[] = $line;
             }
         }

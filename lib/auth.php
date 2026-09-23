@@ -4,16 +4,10 @@
 function local_authenticate($username, $password) {
     // Authenticate against a local account
     $username = filter_username($username);
-    try {
-        $kirjuri_database = connect_database('kirjuri-database');
-        $query = $kirjuri_database->prepare('SELECT * FROM users WHERE username = :username AND (NOT attr_3 = :attr_3 OR attr_3 IS NULL) LIMIT 1');
-        $query->execute(array(':username' => $username, ':attr_3' => "LDAP_AUTH_ONLY"));
-        $user_record = $query->fetch(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        session_destroy();
-        echo 'Database error: '.$e->getMessage().'. Run <a href="install.php">install</a> to create or upgrade tables and check your credentials.';
-        die;
-    }
+    $kirjuri_database = connect_database('kirjuri-database');
+    $query = $kirjuri_database->prepare('SELECT * FROM users WHERE username = :username AND (NOT attr_3 = :attr_3 OR attr_3 IS NULL) LIMIT 1');
+    $query->execute(array(':username' => $username, ':attr_3' => "LDAP_AUTH_ONLY"));
+    $user_record = $query->fetch(PDO::FETCH_ASSOC);
 
 
     if (($user_record !== false) && password_verify($password, $user_record['password'])) {
@@ -94,16 +88,10 @@ function ldap_authenticate($username, $password) {
         }
         @ldap_close($ldap);
 
-        try {
-            $kirjuri_database = connect_database('kirjuri-database');
-            $query = $kirjuri_database->prepare('SELECT * FROM users WHERE username = :username AND attr_3 = "LDAP_AUTH_ONLY" LIMIT 1');
-            $query->execute(array(':username' => $username));
-            $user_record = $query->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            session_destroy();
-            echo 'Database error: '.$e->getMessage().'. Run <a href="install.php">install</a> to create or upgrade tables and check your credentials.';
-            die;
-        }
+        $kirjuri_database = connect_database('kirjuri-database');
+        $query = $kirjuri_database->prepare('SELECT * FROM users WHERE username = :username AND attr_3 = "LDAP_AUTH_ONLY" LIMIT 1');
+        $query->execute(array(':username' => $username));
+        $user_record = $query->fetch(PDO::FETCH_ASSOC);
         if (empty($user_record)) {
             $query = $kirjuri_database->prepare('SELECT * FROM users WHERE username = :username AND (NOT attr_3 = :attr_3 OR attr_3 IS NULL) LIMIT 1');
             $query->execute(array(':username' => $username, ':attr_3' => "LDAP_AUTH_ONLY"));

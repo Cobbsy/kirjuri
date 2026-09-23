@@ -24,18 +24,12 @@ foreach ($conffiles as $file) {
 $langfiles = array_unique($langfiles);
 
 $php_servertime = time();
-try {
-    $kirjuri_database = connect_database('kirjuri-database');
-    $query = $kirjuri_database->prepare('SELECT @@global.time_zone AS tz');
-    $query->execute();
-    $mysql_timezone = $query->fetch(PDO::FETCH_ASSOC);
-    $mysql_timezone = $mysql_timezone['tz'];
+$kirjuri_database = connect_database('kirjuri-database');
+$query = $kirjuri_database->prepare('SELECT @@global.time_zone AS tz');
+$query->execute();
+$mysql_timezone = $query->fetch(PDO::FETCH_ASSOC);
+$mysql_timezone = $mysql_timezone['tz'];
 
-} catch (PDOException $e) {
-    session_destroy();
-    echo 'Database error: '.$e->getMessage().'. Run <a href="install.php">install</a> to create or upgrade tables and check your credentials.';
-    die;
-}
 
 if (file_exists('conf/report_notes.local')) {
     $templates['report_notes'] = file_get_contents('conf/report_notes.local');

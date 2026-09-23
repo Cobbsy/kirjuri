@@ -44,6 +44,15 @@ function kirjuri_error_handler($errno, $errstr, $errfile, $errline) // Trigger a
     if (!(error_reporting() & $errno)) {
         return false; // Error suppressed with @ or excluded by error_reporting.
     }
+    // trigger_error() notices are how Kirjuri shows messages to users, so only log real PHP problems.
+    $is_php_problem = !in_array($errno, array(E_USER_NOTICE), true);
+    if ($is_php_problem && function_exists('kirjuri_log_error')) {
+        $trace = array();
+        foreach (array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 1) as $i => $frame) {
+            $trace[] = '#' . $i . ' ' . (isset($frame['file']) ? $frame['file'] . ':' . $frame['line'] : '[internal]') . ' ' . $frame['function'] . '()';
+        }
+        kirjuri_log_error('PHP error ' . $errno, $errstr, $errfile, $errline, $trace);
+    }
     if (isset($prefs['settings']['show_errors']) && $prefs['settings']['show_errors'] === '1') {
         // Show a message if errors are permitted on screen.
         $errnums = array(
@@ -68,7 +77,7 @@ function kirjuri_error_handler($errno, $errstr, $errfile, $errline) // Trigger a
         $_SESSION['message']['content'] = (isset($errnums[$errno]) ? $errnums[$errno] : 'Error').': '.$errstr;
         $_SESSION['message_set'] = true;
     }
-    event_log_write('0', 'Error', $errno.' '.$errstr.', File: '.$errfile.', line '.$errline);
+    event_log_write('0', 'Error', $errno.' '.$errstr.', File: '.$errfile.', line '.$errline.($is_php_problem && function_exists('kirjuri_request_id') ? ' [request '.kirjuri_request_id().']' : ''));
 }
 
 

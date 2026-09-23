@@ -70,6 +70,13 @@ final class KirjuriServer
         return file_exists($file) ? file($file, FILE_IGNORE_NEW_LINES) : array();
     }
 
+    /** Lines of logs/error.log (JSON, one error per line) so far. */
+    public function errorLog(): array
+    {
+        $file = $this->dir . '/logs/error.log';
+        return file_exists($file) ? file($file, FILE_IGNORE_NEW_LINES) : array();
+    }
+
     /** Lines the built-in server has written to stderr so far (fatal errors end up here). */
     public function serverLog(): array
     {
