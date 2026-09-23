@@ -22,6 +22,7 @@ if (!file_exists('conf/mysql_credentials.php')) {
 // Load dependencies
 require __DIR__.'/vendor/autoload.php';
 require_once __DIR__.'/lib/helpers.php';
+require_once __DIR__.'/lib/config.php';
 require_once __DIR__.'/lib/logging.php';
 require_once __DIR__.'/lib/database.php';
 require_once __DIR__.'/lib/migrations.php';
@@ -67,32 +68,21 @@ set_error_handler('kirjuri_error_handler'); // Give errors to the custom error h
 
 /* Some things to run on every page load. */
 
-if (file_exists('conf/mysql_credentials.php')) {
-    // Read credentials array from a file
-    $mysql_config = include 'conf/mysql_credentials.php';
-} else {
+$mysql_config = kirjuri_mysql_config();
+if ($mysql_config === null) {
     session_destroy();
     header('Location: install.php'); // If file not found, assume install.php needs to be run.
     die;
 }
 
-if (file_exists('conf/settings.local')) {
-    $settings_file = 'conf/settings.local';
-} elseif (file_exists('conf/settings.conf')) {
-    $settings_file = 'conf/settings.conf'; // Fall back to default settings.
-} else {
+$settings_file = kirjuri_settings_file();
+if ($settings_file === null) {
     echo "Missing settings file at conf/settings.conf. Can not continue.";
     die;
 }
-$prefs = parse_ini_file($settings_file, true); // Parse settings file
+$prefs = kirjuri_load_settings($settings_file);
 $prefs['settings']['self'] = $_SERVER['PHP_SELF'];
-$prefs['settings']['release'] = file_get_contents('conf/RELEASE');
-
-if (file_exists('conf/' . basename($prefs['settings']['lang'], '.conf') . '.JSON')) {
-    $_SESSION['lang'] = json_decode(file_get_contents('conf/' . basename($prefs['settings']['lang'], '.conf') . '.JSON'), true); // Parse language file
-} else {
-    $_SESSION['lang'] = parse_ini_file('conf/' . basename($prefs['settings']['lang'], '.conf') . '.conf', true); // Parse language file
-}
+$_SESSION['lang'] = kirjuri_load_language($prefs);
 
 if (isset($prefs['settings']['timezone'])) {
     date_default_timezone_set($prefs['settings']['timezone']);

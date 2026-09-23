@@ -57,11 +57,11 @@ function kirjuri_trace_lines($throwable) {
 
 
 function kirjuri_exception_handler($throwable) {
-    $chain = array();
-    for ($e = $throwable; $e !== null; $e = $e->getPrevious()) {
-        $chain[] = get_class($e) . ': ' . $e->getMessage();
+    $message = $throwable->getMessage();
+    for ($e = $throwable->getPrevious(); $e !== null; $e = $e->getPrevious()) {
+        $message .= ' <- caused by ' . get_class($e) . ': ' . $e->getMessage();
     }
-    kirjuri_log_error(get_class($throwable), implode(' <- ', $chain), $throwable->getFile(), $throwable->getLine(), kirjuri_trace_lines($throwable));
+    kirjuri_log_error(get_class($throwable), $message, $throwable->getFile(), $throwable->getLine(), kirjuri_trace_lines($throwable));
     if (function_exists('event_log_write') && isset($_SERVER['REQUEST_URI'])) {
         @event_log_write('0', 'Error', 'Uncaught ' . get_class($throwable) . ' [request ' . kirjuri_request_id() . ']');
     }

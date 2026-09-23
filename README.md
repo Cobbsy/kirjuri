@@ -21,6 +21,28 @@ OVERVIEW & LICENSE
 
 Kirjuri is developed by Antti Kurittu. It was started at the Helsinki Police Department as an internal tool. Original development released under the MIT license. Some components are distributed with their own licenses, please see folders & help for details.
 
+COMMAND LINE TOOL AND TROUBLESHOOTING
+------------
+
+`bin/kirjuri` handles maintenance from a shell on the server. Run it as the web server user so files it creates stay writable, e.g. `sudo -u www-data php bin/kirjuri doctor`.
+
+```
+php bin/kirjuri doctor                      # check PHP, extensions, folder permissions, settings and the database
+php bin/kirjuri migrate [--status]          # apply or list database migrations
+php bin/kirjuri user:list
+php bin/kirjuri user:create <username> <name> <access 0-3> [--api]   # password from stdin
+php bin/kirjuri user:password <username>    # reset a password (e.g. a locked out admin) from stdin
+php bin/kirjuri user:unlock <username>      # clear the failed login counter
+php bin/kirjuri errors [--id <id>] [--last <n>]
+php bin/kirjuri log [--case <uid>] [--last <n>]
+php bin/kirjuri audit:show <audit file>     # decrypt an audit log entry
+php bin/kirjuri cache:clear
+```
+
+When a page fails, Kirjuri shows a reference like `3f9a1c0b77de`, which is also sent in the `X-Request-Id` header. `php bin/kirjuri errors --id 3f9a1c0b77de` prints the full error and stack trace from `logs/error.log`.
+
+Database changes are versioned migrations in `lib/migrations.php`. After upgrading Kirjuri, pending migrations are applied on the next page load, or run `php bin/kirjuri migrate` first. You no longer need to rerun `install.php`.
+
 TESTING
 ------------
 

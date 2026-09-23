@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+<?php
+/* Kirjuri command line tool. Run `php bin/kirjuri help` for the list of commands.
+** Run it as the web server user (e.g. `sudo -u www-data php bin/kirjuri ...`) so that
+** files it creates in cache/ and logs/ stay writable by the web server.
+*/
+
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+chdir(dirname(__DIR__));
+require 'lib/errors.php';
+kirjuri_register_error_handlers();
+require 'lib/helpers.php';
+require 'lib/config.php';
+require 'lib/logging.php';
+require 'lib/database.php';
+require 'lib/migrations.php';
+require 'lib/cli.php';
+
+$settings_file = kirjuri_settings_file();
+if ($settings_file !== null) {
+    $prefs = kirjuri_load_settings($settings_file);
+    if (!empty($prefs['settings']['timezone'])) {
+        date_default_timezone_set($prefs['settings']['timezone']);
+    }
+}
+
+exit(cli_main($argv));

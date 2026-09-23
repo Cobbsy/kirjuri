@@ -83,6 +83,23 @@ final class KirjuriServer
         return file_exists($this->serverLog) ? file($this->serverLog, FILE_IGNORE_NEW_LINES) : array();
     }
 
+    /**
+     * Run bin/kirjuri in the test installation.
+     * @return array{0: int, 1: string, 2: string} exit code, stdout, stderr
+     */
+    public function cli(array $args, string $stdin = ''): array
+    {
+        $process = proc_open(array_merge(array(PHP_BINARY, 'bin/kirjuri'), $args),
+            array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, $this->dir);
+        fwrite($pipes[0], $stdin);
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        return array(proc_close($process), $stdout, $stderr);
+    }
+
     /** Contents of all stored PHP session files. */
     public function sessionFiles(): array
     {

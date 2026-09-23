@@ -10,14 +10,14 @@ function event_log_write($case_id, $event_level, $description, $audit_log_file =
     }
 
     if (!isset($_SESSION['user']['username'])) {
-        $session_username = "-";
+        $session_username = (PHP_SAPI === 'cli') ? 'cli' : "-";
     } else {
         $session_username = $_SESSION['user']['username'];
     }
 
     $case_id = filter_numbers($case_id);
     $description = str_replace(array("\r", "\n"), ' ', $description); // Keep one event per line.
-    $log = date('d/M/Y:H:i:s O').';'.$session_username.';'.$event_level.';"'.$description.'";'.$_SERVER['REQUEST_URI'].';'.$_SERVER['REMOTE_ADDR'].';'.$audit_log_file.';Session ID: '.$sessiontoken.';';
+    $log = date('d/M/Y:H:i:s O').';'.$session_username.';'.$event_level.';"'.$description.'";'.(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'bin/kirjuri').';'.(isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'cli').';'.$audit_log_file.';Session ID: '.$sessiontoken.';';
 
     if ($case_id === "0") {
         file_put_contents('logs/kirjuri.log', $log."-;\r\n", FILE_APPEND);

@@ -12,7 +12,7 @@ final class SourceTest extends TestCase
     public static function phpFiles(): array
     {
         $files = array();
-        foreach (array_merge(glob(KIRJURI_ROOT . '/*.php'), glob(KIRJURI_ROOT . '/lib/*.php'), glob(KIRJURI_ROOT . '/extra/*.php')) as $file) {
+        foreach (array_merge(glob(KIRJURI_ROOT . '/*.php'), glob(KIRJURI_ROOT . '/lib/*.php'), glob(KIRJURI_ROOT . '/extra/*.php'), array(KIRJURI_ROOT . '/bin/kirjuri')) as $file) {
             $files[substr($file, strlen(KIRJURI_ROOT) + 1)] = array($file);
         }
         return $files;
