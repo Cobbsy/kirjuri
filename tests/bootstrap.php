@@ -9,6 +9,7 @@ require __DIR__ . '/vendor/autoload.php';
 require KIRJURI_ROOT . '/vendor/autoload.php';
 require KIRJURI_ROOT . '/lib/helpers.php';
 require KIRJURI_ROOT . '/lib/errors.php';
+require KIRJURI_ROOT . '/lib/migrations.php';
 
 spl_autoload_register(function ($class) {
     $prefix = 'Kirjuri\\Tests\\';

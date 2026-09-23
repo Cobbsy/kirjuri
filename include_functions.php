@@ -24,6 +24,7 @@ require __DIR__.'/vendor/autoload.php';
 require_once __DIR__.'/lib/helpers.php';
 require_once __DIR__.'/lib/logging.php';
 require_once __DIR__.'/lib/database.php';
+require_once __DIR__.'/lib/migrations.php';
 require_once __DIR__.'/lib/auth.php';
 require_once __DIR__.'/lib/session.php';
 require_once __DIR__.'/lib/output.php';
@@ -97,12 +98,8 @@ if (isset($prefs['settings']['timezone'])) {
     date_default_timezone_set($prefs['settings']['timezone']);
 }
 
-// Create the attachments table for installations upgraded from versions without attachments.
 $kirjuri_database = connect_database('kirjuri-database');
-$query = $kirjuri_database->prepare('CREATE TABLE IF NOT EXISTS attachments (id INT(10) AUTO_INCREMENT PRIMARY KEY,
-  request_id INT(10), name VARCHAR(256), description TEXT, type VARCHAR(256), size INT NOT NULL, content MEDIUMBLOB NOT NULL,
-  uploader VARCHAR(256), date_uploaded DATETIME, hash VARCHAR(256), attr_1 TEXT, attr_2 TEXT, attr_3 TEXT) ');
-$query->execute();
+kirjuri_ensure_schema($kirjuri_database); // Apply pending migrations after an upgrade.
 
 // Read users from database to settings. Password hashes are left out, as the session
 // is stored on disk and passed to every template. Use get_users_with_credentials() when they are needed.
