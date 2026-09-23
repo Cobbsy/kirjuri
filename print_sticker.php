@@ -21,10 +21,8 @@ $sticker_uid = isset($_GET['uid']) ? filter_numbers($_GET['uid']) : '';
 <body>
 <?php
 if ($sticker_type === 'examination_request') {
-    $query = $kirjuri_database->prepare('select * FROM exam_requests WHERE id=:id AND parent_id=id');
-    $query->execute(array(':id' => $sticker_uid));
-    $row = $query->fetch(PDO::FETCH_ASSOC);
-    if ($row === false) {
+    $row = kirjuri_find_case($kirjuri_database, $sticker_uid);
+    if ($row === null) {
         exit;
     }
     verify_case_ownership($row['id']);
@@ -38,27 +36,13 @@ if ($sticker_type === 'examination_request') {
 
 
 if ($sticker_type === 'device') {
-    $query = $kirjuri_database->prepare('select parent_id FROM exam_requests WHERE id=:uid');
-    $query->execute(array(
-            ':uid' => $sticker_uid,
-        ));
-    $parentrow = $query->fetch(PDO::FETCH_ASSOC);
-    if ($parentrow === false) {
+    $row = kirjuri_find_device($kirjuri_database, $sticker_uid, true);
+    if ($row === null) {
         exit;
     }
-    $parent = $parentrow['parent_id'];
-    verify_case_ownership($parent);
-    $query = $kirjuri_database->prepare('select * FROM exam_requests WHERE id=:uid AND id = parent_id LIMIT 1');
-    $query->execute(array(
-            ':uid' => $parent,
-        ));
-    $parentrow = $query->fetch(PDO::FETCH_ASSOC);
-    $query = $kirjuri_database->prepare('select * FROM exam_requests WHERE id=:uid AND id != parent_id LIMIT 1');
-    $query->execute(array(
-            ':uid' => $sticker_uid,
-        ));
-    $row = $query->fetch(PDO::FETCH_ASSOC);
-    if (($row === false) || ($parentrow === false)) {
+    verify_case_ownership($row['parent_id']);
+    $parentrow = kirjuri_find_case($kirjuri_database, $row['parent_id']);
+    if ($parentrow === null) {
         exit;
     }
     $generator = new \Picqer\Barcode\BarcodeGeneratorSVG();
