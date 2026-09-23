@@ -296,7 +296,7 @@ $(function() {
                <td style="width:1px;white-space:nowrap;"><span class="pull-right">
                  {{filesize_calc.bytesToSize(file.size)}}
                  {% if (settings.allow_attachments == "1") and (caserow.0.case_status == "2") %}
-                 <a href="submit.php?type=remove_attachment&file={{ file.id }}&token={{ session.user.token }}&ct={{ ct }}" onclick="return confirm('{{lang.file_remove_confirm}}')"><i class="fa fa-remove" style="color:red;"></i></span></a>
+                 <a href="submit.php?type=remove_attachment&file={{ file.id }}" data-post data-ct="{{ ct }}" onclick="return confirm('{{lang.file_remove_confirm}}')"><i class="fa fa-remove" style="color:red;"></i></span></a>
                  {% endif %}
                </td>
                {% endfor%}
@@ -778,7 +778,7 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
         {% endif %}
         </small>
       </h4>
-      <a href="submit.php?type=device_detach&uid={{ entry.id }}&returnid={{ entry.parent_id }}&token={{session.user.token}}" onclick="return confirm('{{ lang.remove_association_warning }}')"><i class="fa fa-unlink"></i> {{ lang.remove_association }}</a>
+      <a href="submit.php?type=device_detach&uid={{ entry.id }}&returnid={{ entry.parent_id }}" data-post onclick="return confirm('{{ lang.remove_association_warning }}')"><i class="fa fa-unlink"></i> {{ lang.remove_association }}</a>
     </td>
     <td style="vertical-align:middle;{% if entry.device_contains_evidence %}background:linear-gradient(to right, #e1f0d6 , #ffffff);{% endif %}">
       {% if hosting_dev_owner != entry.device_owner %}<span style="color:darkred;"><i class="fa fa-user"></i> {{ entry.device_owner }} {{ lang.different_owner }}</span><br>{% endif %}

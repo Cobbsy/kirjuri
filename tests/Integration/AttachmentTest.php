@@ -48,7 +48,7 @@ final class AttachmentTest extends IntegrationTestCase
         $this->assertStringContainsString('filename="notes.txt"', $download->header('Content-Disposition'));
         $this->assertSame('nosniff', $download->header('X-Content-Type-Options'));
 
-        $admin->get("submit.php?type=remove_attachment&file={$files[0]['id']}&token=$token&ct=$ct");
+        $admin->post("submit.php?type=remove_attachment&file={$files[0]['id']}", array('token' => $token, 'ct' => $ct));
         $this->assertSame(array('empty.txt'), array_column($this->attachments($caseId), 'name'));
     }
 

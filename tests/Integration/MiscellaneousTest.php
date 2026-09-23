@@ -21,7 +21,7 @@ final class MiscellaneousTest extends IntegrationTestCase
 
         $id = $this->server->pdo()->query("SELECT id FROM messages WHERE msgto = '$recipient'")->fetchColumn();
         $user->get('messages.php?open=' . $id);
-        $user->get("submit.php?type=archive_received&id=$id&token=" . $this->token($user));
+        $user->post("submit.php?type=archive_received&id=$id", array('token' => $this->token($user)));
         $this->assertSame('1', $this->server->pdo()->query("SELECT archived_to FROM messages WHERE id = $id")->fetchColumn());
     }
 
@@ -78,7 +78,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertStringContainsString("<title>Settings - Kirjuri &#039;test&#039;", $admin->get('settings.php')->body);
 
         // Put the defaults back for the other tests.
-        $admin->get('submit.php?type=reset_default_settings&token=' . $this->token($admin));
+        $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
         $this->assertFileDoesNotExist($this->server->dir . '/conf/settings.local');
     }
 

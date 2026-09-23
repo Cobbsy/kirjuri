@@ -29,6 +29,19 @@ function ksess_init() {
 }
 
 
+function posted_token() {
+    // The CSRF token of a POST request. Tokens are never read from URLs, where they would end up
+    // in logs, browser history and Referer headers.
+    return isset($_POST['token']) ? $_POST['token'] : '';
+}
+
+
+function posted_case_token() {
+    // The case access token of a POST request.
+    return isset($_POST['ct']) ? $_POST['ct'] : '';
+}
+
+
 function ksess_validate($token) {
     // Validate a session token against token stored on user session.
     if (is_string($token) && isset($_SESSION['user']['token']) && hash_equals($_SESSION['user']['token'], $token)) {

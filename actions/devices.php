@@ -12,8 +12,8 @@ switch ($action) {
 case 'set_removed':
     // Remove device from case
     ksess_verify(1);
-    ksess_validate($_GET['token']);
-    csrf_case_validate($_GET['ct'], $_GET['returnid']);
+    ksess_validate(posted_token());
+    csrf_case_validate(posted_case_token(), $_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
     $audit_stamp = audit_log_write($_GET);
     $query = $kirjuri_database->prepare('UPDATE exam_requests SET is_removed = "1", last_updated = NOW() where id=:id AND parent_id = :returnid;
@@ -64,7 +64,7 @@ case 'device_attach':
 case 'device_detach':
     // Remove device association
     ksess_verify(1);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $_GET['returnid'] = filter_numbers($_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
     $query = $kirjuri_database->prepare('UPDATE exam_requests SET device_host_id = "0", last_updated = NOW() where id=:id AND parent_id != id');

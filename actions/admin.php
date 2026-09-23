@@ -11,7 +11,7 @@ switch ($action) {
 
 case 'clear_cache':
     ksess_verify(0);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     foreach (scandir('cache') as $cache_subdir) {
         if (($cache_subdir[0] !== ".") && (substr($cache_subdir, 0, 4) !== "user")) {
             delete_directory('cache/' . $cache_subdir);
@@ -32,7 +32,7 @@ case 'save_template':
 
 case 'reset_default_settings':
     ksess_verify(0);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     unlink('conf/settings.local');
     event_log_write('0', 'Admin', 'Default settings restored.');
     header('Location: settings.php');

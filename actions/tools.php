@@ -16,15 +16,7 @@ case 'reserve_tool':
     $_POST['reserve_end_date']   = isset($_POST['reserve_end_date']) ? $_POST['reserve_end_date'] : '';
     $_POST['reserve_end_time']   = isset($_POST['reserve_end_time']) ? $_POST['reserve_end_time'] : '';
     ksess_verify(1);
-    // Check for CSRF token, no POST token present if removing a reservation
-    if (isset($_POST['token'])) {
-        ksess_validate($_POST['token']);
-    } elseif (isset($_GET['token'])) {
-        ksess_validate($_GET['token']);
-    } else {
-        // Y U no token? U die!!
-        die;
-    }
+    ksess_validate(posted_token());
     // Concatenate time and date to one string.
     $res_start = $_POST['reserve_start_date'] . " " . $_POST['reserve_start_time'];
     $res_end   = $_POST['reserve_end_date'] . " " . $_POST['reserve_end_time'];

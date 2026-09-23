@@ -181,7 +181,7 @@
                             <td style="width:1px;" class="text-center">
                                 {% if (session.user.name == entry.reserved_for)
                                     or(session.user.access == "0") %}
-                                    <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}&token={{ session.user.token }}">
+                                    <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}" data-post>
                                         <i class="fa fa-times" style="color:red;"></i>
                                     </a>
                                 {% endif %}

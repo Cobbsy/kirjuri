@@ -57,7 +57,7 @@ case 'send_message':
 
 case 'delete_received':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('UPDATE messages SET deleted_to = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user) AND archived_to = "1"');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
@@ -68,7 +68,7 @@ case 'delete_received':
 
 case 'delete_sent':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('UPDATE messages SET deleted_from = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user) AND archived_from = "1"');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
@@ -79,7 +79,7 @@ case 'delete_sent':
 
 case 'delete_all':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('UPDATE messages SET deleted_to = "1" WHERE msgto = :user AND archived_to = "1"');
     $query->execute(array(
             ':user' => $_SESSION['user']['username']
@@ -93,7 +93,7 @@ case 'delete_all':
 
 case 'archive_received':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_to = "1" WHERE id = :id AND received != "0" AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
@@ -104,7 +104,7 @@ case 'archive_received':
 
 case 'archive_sent':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_from = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
@@ -115,7 +115,7 @@ case 'archive_sent':
 
 case 'restore_received':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_to = "0" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
@@ -126,7 +126,7 @@ case 'restore_received':
 
 case 'restore_sent':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('UPDATE messages SET archived_from = "0" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],
@@ -137,7 +137,7 @@ case 'restore_sent':
 
 case 'delete_message':
     ksess_verify(3);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('DELETE FROM messages WHERE id = :id AND msgto = :user');
     $query->execute(array(
             ':user' => $_SESSION['user']['username'],

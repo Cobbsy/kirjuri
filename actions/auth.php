@@ -94,6 +94,9 @@ case 'login':
     }
 
 case 'logout':
+    if (isset($_SESSION['user']['token'])) {
+        ksess_validate(posted_token()); // Other sites must not be able to log users out.
+    }
     event_log_write('0', 'Auth', 'Logged out.');
     ksess_destroy();
     header('Location: index.php');
@@ -101,7 +104,7 @@ case 'logout':
 
 case 'drop_session':
     ksess_verify(0);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $session_file = 'cache/user_' . filter_username(urldecode($_GET['user'])) . '/session_' . filter_letters_and_numbers($_GET['session']) . '.txt';
     if (file_exists($session_file)) {
         unlink($session_file);
@@ -113,7 +116,7 @@ case 'drop_session':
 case 'force_logout':
     // Force end session
     ksess_verify(0);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $logout_user = filter_username(urldecode($_GET['user']));
     if (($logout_user !== '') && file_exists('cache/user_' . $logout_user)) {
         delete_directory('cache/user_' . $logout_user);

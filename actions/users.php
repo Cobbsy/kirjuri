@@ -53,7 +53,11 @@ case 'create_user':
             }
             event_log_write('0', 'Remove', 'User deleted permanently: ' . $username_input);
             message('info', $_SESSION['lang']['user_deleted']);
-            header('Location: submit.php?type=force_logout&user=' . urlencode($username_input) . '&token=' . $_SESSION['user']['token']);
+            // End the deleted user's sessions.
+            if (file_exists('cache/user_' . $username_input)) { // Not empty, checked above.
+                delete_directory('cache/user_' . $username_input);
+            }
+            header('Location: users.php');
             die;
         }
         foreach (get_users_with_credentials() as $user) {

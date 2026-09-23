@@ -61,14 +61,14 @@ final class CaseWorkflowTest extends IntegrationTestCase
 
         $admin->post('submit.php?type=device_attach&uid=' . $media . '&returnid=' . $caseId, array('token' => $token, 'ct' => $ct, 'isanta' => (string) $host));
         $this->assertSame((string) $host, $this->row($media)['device_host_id']);
-        $admin->get('submit.php?type=device_detach&uid=' . $media . '&returnid=' . $caseId . '&token=' . $token);
+        $admin->post('submit.php?type=device_detach&uid=' . $media . '&returnid=' . $caseId, array('token' => $token));
         $this->assertSame('0', $this->row($media)['device_host_id']);
 
         $admin->post('submit.php?type=move_all&returnid=' . $caseId, array('token' => $token, 'ct' => $ct, 'device_action' => 'NO_CHANGE', 'device_location' => 'Vault'));
         $this->assertSame('Vault', $this->row($host)['device_location']);
         $this->assertSame('Vault', $this->row($media)['device_location']);
 
-        $admin->get("submit.php?type=set_removed&uid=$media&returnid=$caseId&token=$token&ct=$ct");
+        $admin->post("submit.php?type=set_removed&uid=$media&returnid=$caseId", array('token' => $token, 'ct' => $ct));
         $this->assertSame('1', $this->row($media)['is_removed']);
         $this->assertSame('1', $this->row($caseId)['case_devicecount']);
     }

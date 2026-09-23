@@ -220,7 +220,7 @@ case 'update_request_status':
 
 case 'remove_attachment':
     ksess_verify(1);
-    ksess_validate($_GET['token']);
+    ksess_validate(posted_token());
     $query = $kirjuri_database->prepare('SELECT name, hash, id, request_id, attr_1 FROM attachments WHERE id = :id');
     $query->execute(array(':id' => $_GET['file']));
     $file = $query->fetch(PDO::FETCH_ASSOC);
@@ -228,7 +228,7 @@ case 'remove_attachment':
         header('Location: index.php');
         die;
     }
-    csrf_case_validate($_GET['ct'], $file['request_id']);
+    csrf_case_validate(posted_case_token(), $file['request_id']);
     verify_case_ownership($file['request_id']);
     $query = $kirjuri_database->prepare('DELETE FROM attachments WHERE id = :id');
     $query->execute(array(':id' => $_GET['file']));

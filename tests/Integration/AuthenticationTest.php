@@ -82,8 +82,33 @@ final class AuthenticationTest extends IntegrationTestCase
     public function testLogoutEndsTheSession(): void
     {
         $admin = $this->admin();
-        $this->assertSame('login.php', $admin->get('submit.php?type=logout')->location());
+        $this->assertSame('login.php', $admin->post('submit.php?type=logout', array('token' => $this->token($admin)))->location());
         $this->assertSame('login.php', $admin->get('index.php')->location());
+    }
+
+    public function testLogoutLinkFromAnotherSiteDoesNothing(): void
+    {
+        $this->expectLoggedError('CSRF token mismatch');
+        $admin = $this->admin();
+        $admin->get('submit.php?type=logout');
+        $this->assertSame(200, $admin->get('index.php')->status, 'Still logged in.');
+    }
+
+    public function testTokensInTheUrlAreNotAccepted(): void
+    {
+        $this->expectLoggedError('CSRF token mismatch');
+        $recipient = $this->uniqueName('urltoken');
+        $this->createUser($recipient, 'password1', 1);
+        $admin = $this->admin();
+        $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => $recipient, 'subject' => 'Keep me', 'body' => '<p>x</p>'));
+        $id = $this->server->pdo()->query("SELECT id FROM messages WHERE msgto = '$recipient'")->fetchColumn();
+
+        $user = $this->login($recipient, 'password1');
+        $user->get('messages.php?open=' . $id);
+        // A token in the query string is ignored, even when it is the right one.
+        $user->get("submit.php?type=archive_received&id=$id&token=" . $this->token($user));
+        $this->assertSame('0', $this->server->pdo()->query("SELECT archived_to FROM messages WHERE id = $id")->fetchColumn());
+        $this->assertStringNotContainsString('token=', $user->get('messages.php')->body, 'Pages must not put tokens in links.');
     }
 
     public function testAdminCanForceLogoutOtherSessions(): void
@@ -94,7 +119,7 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->assertSame(200, $user->get('index.php')->status);
 
         $admin = $this->admin();
-        $admin->get('submit.php?type=force_logout&user=' . $username . '&token=' . $this->token($admin));
+        $admin->post('submit.php?type=force_logout&user=' . $username, array('token' => $this->token($admin)));
         $this->assertSame('login.php', $user->get('index.php')->location());
     }
 
