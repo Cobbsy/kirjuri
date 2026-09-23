@@ -17,6 +17,7 @@ if (!file_exists('conf/mysql_credentials.php')) {
 
 // Load dependencies
 require __DIR__.'/vendor/autoload.php';
+require_once __DIR__.'/lib/helpers.php';
 $loader = new \Twig\Loader\FilesystemLoader('views/');
 $twig = new \Twig\Environment($loader, array(
         'cache' => 'cache',
@@ -120,16 +121,6 @@ function kirjuri_error_handler($errno, $errstr, $errfile, $errline) // Trigger a
         $_SESSION['message_set'] = true;
     }
     event_log_write('0', 'Error', $errno.' '.$errstr.', File: '.$errfile.', line '.$errline);
-}
-
-
-function array_trim($array) {
-    foreach ($array as $key => $value) {
-        if ( ($value === "") || ($value === null) ) {
-            unset($array[$key]);
-        }
-    }
-    return $array;
 }
 
 
@@ -321,62 +312,6 @@ function ip_allowed() {
 }
 
 
-function filter_username($username) {
-    $strip_chars = array("!", "<", ">", "'", ":", ";", "/", "\"", "#", "%", "\\", "&", "|", "?", "*", "$", ")", "(", "[", "]", "{", "}");
-    $username = strtolower(trim(str_replace($strip_chars, "", $username)));
-    return $username;
-}
-
-
-define('LOGIN_MAX_FAILURES', 10); // Failed logins allowed per username...
-define('LOGIN_FAILURE_WINDOW', 900); // ...within this many seconds before further attempts are refused.
-
-function login_throttle_file($username) {
-    if (!file_exists('cache/login_throttle')) {
-        mkdir('cache/login_throttle');
-    }
-    return 'cache/login_throttle/' . hash('sha256', strtolower($username)) . '.json';
-}
-
-
-function login_throttle_state($username) {
-    $file = login_throttle_file($username);
-    $state = file_exists($file) ? json_decode(file_get_contents($file), true) : null;
-    if (!is_array($state) || (time() - $state['last_failure']) > LOGIN_FAILURE_WINDOW) {
-        return array('failures' => 0, 'last_failure' => 0);
-    }
-    return $state;
-}
-
-
-function login_throttled($username) {
-    $state = login_throttle_state($username);
-    return $state['failures'] >= LOGIN_MAX_FAILURES;
-}
-
-
-function login_throttle_record_failure($username) {
-    $state = login_throttle_state($username);
-    $state['failures']++;
-    $state['last_failure'] = time();
-    file_put_contents(login_throttle_file($username), json_encode($state), LOCK_EX);
-}
-
-
-function login_throttle_clear($username) {
-    $file = login_throttle_file($username);
-    if (file_exists($file)) {
-        unlink($file);
-    }
-}
-
-
-function ini_value($value) {
-    // Make a value safe to write inside double quotes in an ini file.
-    return str_replace(array('"', "\r", "\n"), array("'", ' ', ' '), (string) $value);
-}
-
-
 function upgrade_insecure_password($username, $password) {
     $kirjuri_database = connect_database('kirjuri-database');
     $query = $kirjuri_database->prepare('UPDATE users SET password = :secure_password_hash WHERE username = :username AND password = :legacy_password');
@@ -389,63 +324,6 @@ function upgrade_insecure_password($username, $password) {
 }
 
 
-function generate_token($length) {
-    // Generate a random hex token, used for session, CSRF and file name tokens.
-    return substr(bin2hex(random_bytes((int) ceil($length / 2))), 0, $length);
-}
-
-
-function seconds_to_time($seconds) {
-    // Thanks to https://stackoverflow.com/questions/8273804/convert-seconds-into-days-hours-minutes-and-seconds
-    $dtF = new \DateTime('@0');
-    $dtT = new \DateTime("@$seconds");
-    return $dtF->diff($dtT)->format('%a days, %h hours, %i minutes and %s seconds');
-}
-
-
-function delete_directory($dir) {
-    // Thanks to http://stackoverflow.com/questions/1653771/how-do-i-remove-a-directory-that-is-not-empty
-    if (!file_exists($dir)) {
-        return true;
-    }
-    if (!is_dir($dir)) {
-        return unlink($dir);
-    }
-    foreach (scandir($dir) as $item) {
-        if ($item == '.' || $item == '..') {
-            continue;
-        }
-        if (!delete_directory($dir . DIRECTORY_SEPARATOR . $item)) {
-            return false;
-        }
-    }
-    return rmdir($dir);
-}
-
-
-function ip_in_range( $ip, $range ) {
-    if ( strpos( $ip, ":" ) !== false ) {
-        // Return default false for ipv6 addresses.
-        return false;
-    }
-    // Copied and modified from https://gist.github.com/tott/7684443, thanks!
-    if ( strpos( $range, '/' ) === false ) {
-        $range .= '/32';
-    }
-    // $range is in IP/CIDR format eg 127.0.0.1/24
-    list( $range, $netmask ) = explode( '/', $range, 2 );
-    $netmask = (int) $netmask;
-    $range_decimal = ip2long( $range );
-    $ip_decimal = ip2long( $ip );
-    if ( ($range_decimal === false) || ($ip_decimal === false) || ($netmask < 0) || ($netmask > 32) ) {
-        return false;
-    }
-    $wildcard_decimal = pow( 2, ( 32 - $netmask ) ) - 1;
-    $netmask_decimal = ~ $wildcard_decimal;
-    return ( $ip_decimal & $netmask_decimal ) == ( $range_decimal & $netmask_decimal );
-}
-
-
 function ksess_init() {
     // Initialize a session token.
     session_regenerate_id(true); // Prevent session fixation.
@@ -453,7 +331,7 @@ function ksess_init() {
     if (!file_exists('cache/user_' . $_SESSION['user']['username'])) {
         mkdir('cache/user_' . $_SESSION['user']['username']);
     }
-    file_put_contents('cache/user_' . $_SESSION['user']['username'] . '/session_' . $_SESSION['user']['token'] . '.txt', $_SESSION['user']['username'] . ' is logged in at ' . $_SERVER['REMOTE_ADDR'] . ', user agent ' . $_SERVER['HTTP_USER_AGENT'] . '. Request timestamp ' . gmdate("Y-m-d\TH:i:s\Z", $_SERVER['REQUEST_TIME']) . ". Remove this file to force logout.\r\n");
+    file_put_contents('cache/user_' . $_SESSION['user']['username'] . '/session_' . $_SESSION['user']['token'] . '.txt', $_SESSION['user']['username'] . ' is logged in at ' . $_SERVER['REMOTE_ADDR'] . ', user agent ' . (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '-') . '. Request timestamp ' . gmdate("Y-m-d\TH:i:s\Z", $_SERVER['REQUEST_TIME']) . ". Remove this file to force logout.\r\n");
 }
 
 
@@ -590,45 +468,6 @@ function filter_html($string) // Purify HTML content for raw presentation.
 }
 
 
-function filter_numbers($a)  // Filter out everything but numbers.
-{
-    return preg_replace('/[^0-9]/', '', (string) $a);
-}
-
-
-function filter_letters_and_numbers($a) {
-    return preg_replace('/[^a-zA-Z0-9_]/', '', (string) $a);
-}
-
-
-function encrypt($in, $key) {
-    // Encrypt a string with AES-256-CBC
-    if (!function_exists('openssl_encrypt')) {
-        event_log_write('0', 'Error', 'Missing dependency: OpenSSL. Can not encrypt audit log files. Please install OpenSSL.');
-        return $in;
-    }
-    $iv = generate_token(16); // 16 printable characters, as decrypt() reads the IV from the first 16 bytes.
-    $key = base64_encode($key);
-    $in = gzencode($in);
-    $encrypted = openssl_encrypt($in, 'AES-256-CBC', $key, 0, $iv);
-    return $iv.$encrypted;
-}
-
-
-function decrypt($in, $key) {
-    // Decrypt a string.
-    if (!function_exists('openssl_decrypt')) {
-        event_log_write('0', 'Error', 'Missing dependency: OpenSSL. Can not decrypt audit log files. Please install OpenSSL.');
-        return $in;
-    }
-    $iv = substr($in, 0, 16);
-    $key = base64_encode($key);
-    $decrypted = openssl_decrypt(substr($in, 16), 'AES-256-CBC', $key, 0, $iv);
-    $decrypted = gzdecode($decrypted);
-    return $decrypted;
-}
-
-
 function show_saved_succesfully() {
     // Display a "changes saved"-message
     $_SESSION['message']['type'] = 'info';
@@ -684,12 +523,6 @@ function get_users_with_credentials() {
     $query = $kirjuri_database->prepare('SELECT * FROM users ORDER BY access, username');
     $query->execute();
     return $query->fetchAll(PDO::FETCH_ASSOC);
-}
-
-
-function api_key_for($user) {
-    // The API key is derived from the username and password hash, so changing the password changes the key.
-    return hash('sha1', $user['username'].$user['password']);
 }
 
 

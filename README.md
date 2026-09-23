@@ -21,6 +21,25 @@ OVERVIEW & LICENSE
 
 Kirjuri is developed by Antti Kurittu. It was started at the Helsinki Police Department as an internal tool. Original development released under the MIT license. Some components are distributed with their own licenses, please see folders & help for details.
 
+TESTING
+------------
+
+The tests live in `tests/` and have their own `composer.json`, so the committed `vendor/` folder stays free of development dependencies.
+
+```
+cd tests
+composer install
+vendor/bin/phpunit --testsuite unit
+```
+
+The unit tests need nothing else. The integration tests install a throwaway copy of Kirjuri into a new database, run it with PHP's built-in web server and drive it over HTTP. They need a MySQL or MariaDB user that can create and drop databases, and are skipped when it is not configured:
+
+```
+KIRJURI_TEST_DB_HOST=127.0.0.1 KIRJURI_TEST_DB_USER=root KIRJURI_TEST_DB_PASSWORD=secret vendor/bin/phpunit
+```
+
+The temporary installation and database are removed afterwards. Set `KIRJURI_TEST_KEEP=1` to keep the installation folder for debugging. GitHub Actions runs the whole suite on every push and pull request.
+
 CHANGELOG
 ------------
 

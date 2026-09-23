@@ -31,6 +31,11 @@ foreach ($default_to_zero as $key) {
     }
 }
 
+// Unchecked checkboxes are not sent at all, so default the user and tool flag checkboxes to unset.
+foreach (array('flag1', 'flag2', 'flag3', 'flag4') as $flag) {
+    $_POST[$flag] = isset($_POST[$flag]) ? $_POST[$flag] : '';
+}
+
 if ( (isset($_POST['phone_investigator'])) && (empty($_POST['phone_investigator']) )) {
     $_POST['phone_investigator'] = "-";
 }
@@ -136,8 +141,8 @@ case 'logout':
 
 
 case 'drop_session':
-    ksess_validate($_GET['token']);
     ksess_verify(0);
+    ksess_validate($_GET['token']);
     $session_file = 'cache/user_' . filter_username(urldecode($_GET['user'])) . '/session_' . filter_letters_and_numbers($_GET['session']) . '.txt';
     if (file_exists($session_file)) {
         unlink($session_file);
@@ -148,20 +153,20 @@ case 'drop_session':
 
 case 'force_logout':
     // Force end session
-    ksess_validate($_GET['token']);
     ksess_verify(0);
+    ksess_validate($_GET['token']);
     $logout_user = filter_username(urldecode($_GET['user']));
     if (($logout_user !== '') && file_exists('cache/user_' . $logout_user)) {
         delete_directory('cache/user_' . $logout_user);
         message('info', $_SESSION['lang']['user_logged_out']);
     }
     event_log_write('0', "Auth", "Admin terminated sessions: " . $logout_user);
-    header('Location: '.$_SERVER['HTTP_REFERER']);
+    header('Location: '.(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'users.php'));
     die;
 
 case 'create_user':
-    ksess_validate($_POST['token']);
     ksess_verify(0);
+    ksess_validate($_POST['token']);
     $ip_access_control['allow'] = explode(",", preg_replace("/[^0-9,\.\/]+/", "", $_POST['ip_whitelist']));
     $ip_access_control['deny'] = explode(",", preg_replace("/[^0-9,\.\/]+/", "", $_POST['ip_blacklist']));
     foreach ($ip_access_control['allow'] as $ip) {
@@ -262,8 +267,8 @@ case 'create_user':
     die;
 
 case 'update_password':
-    ksess_validate($_POST['token']);
     ksess_verify(1);
+    ksess_validate($_POST['token']);
     if ((!empty($_POST['new_password'])) && (password_verify($_POST['current_password'], $_SESSION['user']['password']))) {
         $query = $kirjuri_database->prepare('UPDATE users SET password = :newpassword WHERE username = :username AND id = :id');
         $query->execute(array(

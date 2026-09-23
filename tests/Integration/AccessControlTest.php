@@ -1,0 +1,146 @@
+<?php
+
+namespace Kirjuri\Tests\Integration;
+
+final class AccessControlTest extends IntegrationTestCase
+{
+    public function testAddOnlyUserCanOnlyAddRequests(): void
+    {
+        $username = $this->uniqueName('addonly');
+        $this->createUser($username, 'password1', 3);
+        $caseId = $this->createCase($this->admin(), $this->uniqueName('Admin case '));
+
+        $user = $this->login($username, 'password1');
+        // Access levels are compared as strings; PHP 8.1 returning ints broke this redirect.
+        $this->assertSame('add_case.php', $user->get('index.php')->location());
+        $this->assertSame(200, $user->get('add_case.php')->status);
+        foreach (array('edit_request.php?case=' . $caseId, 'users.php', 'settings.php', 'statistics.php', 'print_sticker.php?type=examination_request&uid=' . $caseId) as $page) {
+            $this->assertSame('index.php', $user->get($page)->location(), $page);
+        }
+
+        $ownCase = $this->createCase($user, $this->uniqueName('Add only case '));
+        $this->assertSame('1', $this->row($ownCase)['case_status']);
+    }
+
+    public function testCasesRestrictedToAnAccessGroupAreHiddenFromOthers(): void
+    {
+        $outsider = $this->uniqueName('outsider');
+        $member = $this->uniqueName('member');
+        $this->createUser($outsider, 'password1', 1);
+        $this->createUser($member, 'password1', 1);
+
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Restricted '));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('M'));
+        $response = $admin->post('submit.php?type=case_access&id=' . $caseId, array(
+                'token' => $this->token($admin),
+                'ct' => $this->caseToken($admin, $caseId),
+                'access' => array($member => $member),
+            ));
+        $this->assertSame($member, $this->row($caseId)['case_owner']);
+
+        $this->expectLoggedError('Denied, user not in access group');
+        $this->expectLoggedError('out-of-bounds POST request');
+        $outside = $this->login($outsider, 'password1');
+        foreach (array('edit_request.php?case=' . $caseId, 'device_memo.php?uid=' . $deviceId, 'case_report.php?case=' . $caseId,
+                'download_csv.php?case=' . $caseId, 'download_krf.php?case=' . $caseId, 'timeline.php?case=' . $caseId,
+                'print_sticker.php?type=device&uid=' . $deviceId) as $page) {
+            $response = $outside->get($page);
+            $this->assertSame('index.php', $response->location(), $page);
+            $this->assertStringNotContainsString('Doe John', $response->body, $page);
+        }
+
+        $inside = $this->login($member, 'password1');
+        $this->assertSame(200, $inside->get('edit_request.php?case=' . $caseId)->status);
+        // Admins always have access.
+        $this->assertSame(200, $admin->get('edit_request.php?case=' . $caseId)->status);
+    }
+
+    public function testRegularUserCannotOpenAdminPages(): void
+    {
+        $username = $this->uniqueName('regular');
+        $this->createUser($username, 'password1', 1);
+        $user = $this->login($username, 'password1');
+        foreach (array('users.php', 'lang_editor.php', 'log.php', 'backup.php', 'auditor.php') as $page) {
+            $this->assertSame('index.php', $user->get($page)->location(), $page);
+        }
+        $this->assertSame(200, $user->get('settings.php')->status, 'Users may change their own password.');
+    }
+
+    public function testBuiltInAccountsCannotBeDeleted(): void
+    {
+        $admin = $this->admin();
+        foreach (array(1 => 'anonymous', 2 => 'admin') as $id => $username) {
+            $response = $admin->post('submit.php?type=create_user', array(
+                    'token' => $this->token($admin),
+                    'username' => $username,
+                    'name' => $username,
+                    'access' => 'A', // The form sends A for admin; submit.php turns it into 0.
+                    'current_password' => KirjuriServer::ADMIN_PASSWORD,
+                    'delete_user' => 'delete',
+                    'user_id' => (string) $id,
+                    'ip_whitelist' => '',
+                    'ip_blacklist' => '',
+                ));
+            $this->assertSame('users.php?populate=' . $id, $response->location());
+        }
+        $this->assertSame('2', $this->server->pdo()->query('SELECT COUNT(*) FROM users WHERE id IN (1, 2)')->fetchColumn());
+    }
+
+    public function testOtherUsersCanBeDeleted(): void
+    {
+        $username = $this->uniqueName('deleteme');
+        $this->createUser($username, 'password1', 1);
+        $id = $this->server->pdo()->query("SELECT id FROM users WHERE username = '$username'")->fetchColumn();
+
+        $admin = $this->admin();
+        $admin->post('submit.php?type=create_user', array(
+                'token' => $this->token($admin),
+                'username' => $username,
+                'name' => $username,
+                'access' => '1',
+                'current_password' => KirjuriServer::ADMIN_PASSWORD,
+                'delete_user' => 'delete',
+                'user_id' => $id,
+                'ip_whitelist' => '',
+                'ip_blacklist' => '',
+            ));
+        $this->assertSame('0', $this->server->pdo()->query("SELECT COUNT(*) FROM users WHERE username = '$username'")->fetchColumn());
+    }
+
+    public function testIpWhitelistBlocksLoginFromOtherAddresses(): void
+    {
+        $username = $this->uniqueName('ipuser');
+        $this->createUser($username, 'password1', 1);
+        $admin = $this->admin();
+        $admin->post('submit.php?type=create_user', array(
+                'token' => $this->token($admin),
+                'username' => $username,
+                'name' => $username,
+                'access' => '1',
+                'password' => '',
+                'current_password' => KirjuriServer::ADMIN_PASSWORD,
+                'flag1' => '',
+                'flag2' => '',
+                'ip_whitelist' => '10.99.0.0/16',
+                'ip_blacklist' => '',
+                'user_id' => '',
+            ));
+        $response = $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'password1', 'auth_type' => 'local'));
+        $this->assertSame('login.php', $response->location());
+    }
+
+    public function testSessionsDoNotContainOtherUsersPasswordHashes(): void
+    {
+        $username = $this->uniqueName('hashcheck');
+        $this->createUser($username, 'password1', 1);
+        $hash = $this->server->pdo()->query("SELECT password FROM users WHERE username = '$username'")->fetchColumn();
+
+        $admin = $this->admin();
+        $admin->get('users.php');
+        $this->assertNotEmpty($this->server->sessionFiles());
+        foreach ($this->server->sessionFiles() as $session) {
+            $this->assertStringNotContainsString($hash, $session);
+        }
+    }
+}

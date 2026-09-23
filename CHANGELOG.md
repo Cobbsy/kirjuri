@@ -4,6 +4,7 @@ CHANGELOG
 Unreleased
 
 * Kirjuri now runs on PHP 8.1 and newer (tested on PHP 8.4 with MariaDB 10.11). It no longer runs on PHP 7.
+* Added a test suite in tests/ (PHPUnit unit tests and HTTP integration tests against a real database), run by GitHub Actions. See the README.
 * Security fixes:
 * - import_krf.php required no login and built SQL from unchecked keys in the uploaded file. It now requires a login and a CSRF token, and every key is validated before anything is written.
 * - print_sticker.php, request.php and progress_bar_static.php showed case data without a login.
@@ -27,6 +28,9 @@ Unreleased
 * - The message subject prefill always showed "1".
 * - The case timeline page loaded jQuery from a path that does not exist.
 * - log.php could not redirect unauthenticated users, and the language editor was open to all access levels.
+* - delete_directory() followed symbolic links and deleted their targets' contents.
+* - Logging in without a User-Agent header, editing a user without ticking every flag and force logging out without a Referer header logged PHP warnings.
+* - Twig deprecation notices from index.twig were shown to users as error messages.
 * Updated the following dependencies:
 * - twig/twig (v2.4.6 => v3.29.0)
 * - ezyang/htmlpurifier (v4.10.0 => v4.19.1)
