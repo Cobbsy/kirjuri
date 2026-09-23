@@ -55,26 +55,19 @@ case 'send_message':
         die;
     }
 
-case 'delete_received':
-    ksess_verify(3);
-    ksess_validate(posted_token());
-    $query = $kirjuri_database->prepare('UPDATE messages SET deleted_to = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user) AND archived_to = "1"');
-    $query->execute(array(
-            ':user' => $_SESSION['user']['username'],
-            ':id' => filter_numbers($_GET['id'])
-        ));
-    header('Location: messages.php#archive');
-    die;
 
+
+case 'archive_received':
+case 'restore_received':
+case 'delete_received':
+case 'archive_sent':
+case 'restore_sent':
 case 'delete_sent':
     ksess_verify(3);
     ksess_validate(posted_token());
-    $query = $kirjuri_database->prepare('UPDATE messages SET deleted_from = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user) AND archived_from = "1"');
-    $query->execute(array(
-            ':user' => $_SESSION['user']['username'],
-            ':id' => filter_numbers($_GET['id'])
-        ));
-    header('Location: messages.php#archive');
+    kirjuri_change_message($kirjuri_database, $action, filter_numbers($_GET['id']), $_SESSION['user']['username']);
+    $message_actions = kirjuri_message_actions();
+    header('Location: ' . $message_actions[$action]['return']);
     die;
 
 case 'delete_all':
@@ -91,49 +84,9 @@ case 'delete_all':
     header('Location: messages.php#inbox');
     die;
 
-case 'archive_received':
-    ksess_verify(3);
-    ksess_validate(posted_token());
-    $query = $kirjuri_database->prepare('UPDATE messages SET archived_to = "1" WHERE id = :id AND received != "0" AND (msgto = :user OR msgfrom = :user)');
-    $query->execute(array(
-            ':user' => $_SESSION['user']['username'],
-            ':id' => filter_numbers($_GET['id'])
-        ));
-    header('Location: messages.php#inbox');
-    die;
 
-case 'archive_sent':
-    ksess_verify(3);
-    ksess_validate(posted_token());
-    $query = $kirjuri_database->prepare('UPDATE messages SET archived_from = "1" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
-    $query->execute(array(
-            ':user' => $_SESSION['user']['username'],
-            ':id' => filter_numbers($_GET['id'])
-        ));
-    header('Location: messages.php#outbox');
-    die;
 
-case 'restore_received':
-    ksess_verify(3);
-    ksess_validate(posted_token());
-    $query = $kirjuri_database->prepare('UPDATE messages SET archived_to = "0" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
-    $query->execute(array(
-            ':user' => $_SESSION['user']['username'],
-            ':id' => filter_numbers($_GET['id'])
-        ));
-    header('Location: messages.php');
-    die;
 
-case 'restore_sent':
-    ksess_verify(3);
-    ksess_validate(posted_token());
-    $query = $kirjuri_database->prepare('UPDATE messages SET archived_from = "0" WHERE id = :id AND (msgto = :user OR msgfrom = :user)');
-    $query->execute(array(
-            ':user' => $_SESSION['user']['username'],
-            ':id' => filter_numbers($_GET['id'])
-        ));
-    header('Location: messages.php');
-    die;
 
 case 'delete_message':
     ksess_verify(3);

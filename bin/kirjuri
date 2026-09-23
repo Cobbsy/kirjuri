@@ -19,6 +19,7 @@ require __DIR__ . '/../lib/logging.php';
 require __DIR__ . '/../lib/database.php';
 require __DIR__ . '/../lib/migrations.php';
 require __DIR__ . '/../lib/install.php';
+require __DIR__ . '/../lib/users.php';
 require __DIR__ . '/../lib/cli.php';
 
 $settings_file = kirjuri_settings_file();

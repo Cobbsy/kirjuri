@@ -56,20 +56,14 @@ case 'reserve_tool':
     } else {
         $res_arr = array();
     }
-    // Compare the proposed reservation date with existing dates if POST data present.
-    // Convert the string to epoch for easier comparison.
+    // A new reservation must not collide with existing ones; highlight the first conflict.
     if (isset($_POST['tool_id'])) {
-        $c = strtotime($res_start);
-        $d = strtotime($res_end);
-        foreach ($res_arr as $key => $compare) {
-            $a = strtotime($compare['reserve_start']);
-            $b = strtotime($compare['reserve_end']);
-            // If new reservation overlaps old reservations, exit with error and highlight first conflict.
-            if ( ($a <= $c) && ($c < $b) || ($a < $d) && ($d <= $b) || ($c < $a) && ($d > $b)) {
-                message('error', $_SESSION['lang']['calendar_conflict'] . ": " . $compare['reserve_start'] . ' -> ' . $compare['reserve_end'] . ": " . $compare['reserved_for']);
-                header('Location: tools.php?populate=' . $returnid . '&highlight=' . $key);
-                die;
-            }
+        $conflict = kirjuri_find_reservation_conflict($res_arr, $res_start, $res_end);
+        if ($conflict !== null) {
+            $compare = $res_arr[$conflict];
+            message('error', $_SESSION['lang']['calendar_conflict'] . ": " . $compare['reserve_start'] . ' -> ' . $compare['reserve_end'] . ": " . $compare['reserved_for']);
+            header('Location: tools.php?populate=' . $returnid . '&highlight=' . $conflict);
+            die;
         }
     }
     // If dropping a reservation, check that the user is admin or the reservation is for them.
@@ -94,16 +88,7 @@ case 'reserve_tool':
         // Do not allow oversized comments. 500 characters should be enough.
         $res_arr[$i]['comment']       = substr(isset($_POST['comment']) ? $_POST['comment'] : '', 0, 500);
     }
-    // Declare a function for sorting the array by start date
-    function date_compare($a, $b) {
-        $t1 = strtotime($a['reserve_start']);
-        $t2 = strtotime($b['reserve_start']);
-        return $t1 - $t2;
-    }
-
-
-    // Sort the array
-    usort($res_arr, 'date_compare');
+    $res_arr = kirjuri_sort_reservations($res_arr);
     // Encode the reservations array back to JSON
     $res_json = json_encode($res_arr);
     // Write the JSON string back to the database.

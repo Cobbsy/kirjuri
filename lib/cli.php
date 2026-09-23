@@ -285,22 +285,18 @@ function cli_user_create($args) {
     list($username, $name, $access) = $positional;
     $username = filter_username($username);
     $db = cli_database();
-    $query = $db->prepare('SELECT COUNT(*) FROM users WHERE username = :username');
-    $query->execute(array(':username' => $username));
-    if ((int) $query->fetchColumn() > 0) {
+    if (kirjuri_username_exists($db, $username)) {
         cli_err('User "' . $username . '" already exists. Use user:password to change the password.');
         return 1;
     }
     $password = cli_read_password();
-    $query = $db->prepare('INSERT INTO users (username, password, name, access, flags, attr_1, attr_2) VALUES (:username, :password, :name, :access, :flags, :attr_1, :attr_2)');
-    $query->execute(array(
-            ':username' => $username,
-            ':password' => password_hash($password, PASSWORD_DEFAULT),
-            ':name' => ucwords(trim($name)),
-            ':access' => $access,
-            ':flags' => in_array('--api', $args, true) ? 'A' : '',
-            ':attr_1' => 'User created from the command line at ' . date('Y-m-d H:i'),
-            ':attr_2' => json_encode(array('allow' => array(''), 'deny' => array(''))),
+    kirjuri_create_user($db, array(
+            'username' => $username,
+            'name' => $name,
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            'access' => $access,
+            'flags' => in_array('--api', $args, true) ? 'A' : '',
+            'note' => 'User created from the command line at ' . date('Y-m-d H:i'),
         ));
     event_log_write('0', 'Add', 'User created from the command line: ' . $username . ', access level ' . $access);
     cli_out('Created user "' . $username . '".');

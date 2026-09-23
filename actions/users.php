@@ -95,17 +95,14 @@ case 'create_user':
             }
         }
 
-        $query = $kirjuri_database->prepare('INSERT INTO users (username, password, name, access, flags, attr_1, attr_2, attr_3, attr_4, attr_5, attr_6, attr_7, attr_8) VALUES (
-    :username, :password, :name, :access, :flags, :attr_1, :attr_2,
-    NULL, NULL, NULL, NULL, NULL, NULL);');
-        $query->execute(array(
-                ':username' => $username_input,
-                ':name' => ucwords(trim(substr($_POST['name'], 0, 256))),
-                ':password' => password_hash($_POST['password'], PASSWORD_DEFAULT),
-                ':flags' => $_POST['flag1'] . $_POST['flag2'],
-                ':access' => str_replace("A", "0", substr($_POST['access'], 0, 1)),
-                ':attr_1' => 'User created by ' . $_SESSION['user']['username'] . ' at ' . date('Y-m-d H:i'),
-                ':attr_2' => $ip_json
+        kirjuri_create_user($kirjuri_database, array(
+                'username' => $username_input,
+                'name' => $_POST['name'],
+                'password_hash' => password_hash($_POST['password'], PASSWORD_DEFAULT),
+                'flags' => $_POST['flag1'] . $_POST['flag2'],
+                'access' => str_replace("A", "0", substr($_POST['access'], 0, 1)),
+                'note' => 'User created by ' . $_SESSION['user']['username'] . ' at ' . date('Y-m-d H:i'),
+                'ip_access' => $ip_access_control,
             ));
         event_log_write('0', 'Add', 'User created: ' . $username_input . ', access level ' . substr($_POST['access'], 0, 1));
         message('info', $_SESSION['lang']['user_created']);

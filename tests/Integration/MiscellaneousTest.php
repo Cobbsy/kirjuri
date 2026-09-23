@@ -25,6 +25,45 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame('1', $this->server->pdo()->query("SELECT archived_to FROM messages WHERE id = $id")->fetchColumn());
     }
 
+    public function testOnlyTheRecipientCanArchiveOrDeleteTheirCopy(): void
+    {
+        $sender = $this->uniqueName('sender');
+        $recipient = $this->uniqueName('recipient');
+        $this->createUser($sender, 'password1', 1);
+        $this->createUser($recipient, 'password1', 1);
+        $from = $this->login($sender, 'password1');
+        $from->post('submit.php?type=send_message', array('token' => $this->token($from), 'msgto' => $recipient, 'subject' => 'Owned', 'body' => '<p>x</p>'));
+        $id = (int) $this->server->pdo()->query("SELECT id FROM messages WHERE msgto = '$recipient'")->fetchColumn();
+        $to = $this->login($recipient, 'password1');
+        $to->get('messages.php?open=' . $id);
+        $state = fn () => $this->server->pdo()->query("SELECT archived_to, archived_from FROM messages WHERE id = $id")->fetch(\PDO::FETCH_ASSOC);
+
+        // The sender used to be able to archive the recipient's copy.
+        $from->post("submit.php?type=archive_received&id=$id", array('token' => $this->token($from)));
+        $this->assertSame('0', $state()['archived_to']);
+        $to->post("submit.php?type=archive_sent&id=$id", array('token' => $this->token($to)));
+        $this->assertSame('0', $state()['archived_from'], 'The recipient can not archive the sender\'s copy.');
+
+        $to->post("submit.php?type=archive_received&id=$id", array('token' => $this->token($to)));
+        $from->post("submit.php?type=archive_sent&id=$id", array('token' => $this->token($from)));
+        $this->assertSame(array('archived_to' => '1', 'archived_from' => '1'), $state());
+    }
+
+    public function testMessagesToYourselfCanBeArchivedOnBothSides(): void
+    {
+        $username = $this->uniqueName('self');
+        $this->createUser($username, 'password1', 1);
+        $user = $this->login($username, 'password1');
+        $user->post('submit.php?type=send_message', array('token' => $this->token($user), 'msgto' => $username, 'subject' => 'Note to self', 'body' => '<p>x</p>'));
+        $id = (int) $this->server->pdo()->query("SELECT id FROM messages WHERE msgto = '$username'")->fetchColumn();
+        $this->assertSame('Myself', $this->server->pdo()->query("SELECT msgfrom FROM messages WHERE id = $id")->fetchColumn());
+        $user->get('messages.php?open=' . $id);
+        $user->post("submit.php?type=archive_received&id=$id", array('token' => $this->token($user)));
+        $user->post("submit.php?type=archive_sent&id=$id", array('token' => $this->token($user)));
+        $this->assertSame(array('archived_to' => '1', 'archived_from' => '1'),
+            $this->server->pdo()->query("SELECT archived_to, archived_from FROM messages WHERE id = $id")->fetch(\PDO::FETCH_ASSOC));
+    }
+
     public function testComposeSubjectIsPrefilled(): void
     {
         $admin = $this->admin();

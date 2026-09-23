@@ -100,17 +100,14 @@ function ldap_authenticate($username, $password) {
                 event_log_write('0', "Error", "Local-only account exists for succesfully remote authenticated user " . $username);
                 return false; // FAIL LOGIN IF LOCAL ACCOUNT EXISTS
             } else {
-                $query = $kirjuri_database->prepare('INSERT INTO users (username, password, name, access, flags, attr_1, attr_2, attr_3, attr_4, attr_5, attr_6, attr_7, attr_8)
-        VALUES (:username, :password, :name, :access, :flags, :attr_1, :attr_2, :attr_3, NULL, NULL, NULL, NULL, NULL)');
-                $query->execute(array(
-                        ':username' => $username,
-                        ':name' => $ldap_realname,
-                        ':password' => "API_ONLY_" . generate_token(32),
-                        ':flags' => "MF",
-                        ':access' => "1",
-                        ':attr_1' => 'User imported from LDAP at ' . date('Y-m-d H:i'),
-                        ':attr_2' => "",
-                        ':attr_3' => "LDAP_AUTH_ONLY"
+                kirjuri_create_user($kirjuri_database, array(
+                        'username' => $username,
+                        'name' => $ldap_realname,
+                        'password_hash' => "API_ONLY_" . generate_token(32), // Not a hash: LDAP accounts never log in locally.
+                        'flags' => "MF",
+                        'access' => "1",
+                        'note' => 'User imported from LDAP at ' . date('Y-m-d H:i'),
+                        'ldap_only' => true,
                     ));
             }
             event_log_write('0', "Auth", "LDAP: Created account for user " . $username);

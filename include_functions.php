@@ -29,6 +29,8 @@ require_once __DIR__.'/lib/migrations.php';
 require_once __DIR__.'/lib/cases.php';
 require_once __DIR__.'/lib/statistics.php';
 require_once __DIR__.'/lib/messages.php';
+require_once __DIR__.'/lib/tools.php';
+require_once __DIR__.'/lib/users.php';
 require_once __DIR__.'/lib/auth.php';
 require_once __DIR__.'/lib/session.php';
 require_once __DIR__.'/lib/output.php';

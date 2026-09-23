@@ -49,6 +49,8 @@ Unreleased
 * - verify_case_ownership() checked the access group of the row it was given, so a device UID was checked against the device's empty group instead of its case's.
 * - The case page never showed its warning about other requests with the same case file number.
 * - The statistics page ran one query per case per unit; it now uses a few grouped queries.
+* - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
+* - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
 * Actions that change data are sent as POST, with no CSRF or case token in the URL, and logout needs the token. The logged in user's password hash is no longer kept in the session.
 * The API's add operation returns the new case's UID and case number.
 * Added a Docker setup (docker compose up) that installs itself, and `php bin/kirjuri install` for installing without a browser.
