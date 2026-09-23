@@ -73,6 +73,20 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('1', $this->row($caseId)['case_devicecount']);
     }
 
+    public function testDeviceFormKeepsInputAfterAValidationError(): void
+    {
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Refill '));
+        $response = $admin->post('submit.php?type=device', array(
+                'token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'parent_id' => (string) $caseId,
+                'device_host_id' => '0', 'device_type' => '', 'device_manuf' => 'Remembered Manufacturer', 'device_model' => 'M1',
+                'device_action' => '1', 'device_location' => 'Locker', 'is_removed' => '0',
+            ));
+        $this->assertSame('edit_request.php?case=' . $caseId . '&tab=devices', $response->location());
+        // The form refills from the failed submission (the template used to check a variable that never existed).
+        $this->assertStringContainsString('value="Remembered Manufacturer"', $admin->get('edit_request.php?case=' . $caseId . '&tab=devices')->body);
+    }
+
     public function testDeviceMemoSaves(): void
     {
         $admin = $this->admin();

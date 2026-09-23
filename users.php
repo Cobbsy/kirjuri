@@ -46,11 +46,8 @@ foreach ($_SESSION['all_users'] as $user) { // Get user information based on GET
 }
 
 $_SESSION['message_set'] = false;
-echo $twig->render('users.twig', array(
+echo kirjuri_render('users.twig', array(
         'your_ip' => $_SERVER['REMOTE_ADDR'],
-        'session' => $_SESSION,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
         'referer' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
-        'fields' => $fields,
+        'fields' => $fields
     ));

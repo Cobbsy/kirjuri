@@ -57,6 +57,7 @@ foreach ($_GET as $key => $value) { // Lightly sanitize GET variables
 $_SESSION['message_set'] = isset($_SESSION['message_set']) ? $_SESSION['message_set'] : '';
 // An empty array rather than a string, as PHP 8 throws on string offsets like $_SESSION['user']['token'].
 $_SESSION['user'] = (isset($_SESSION['user']) && is_array($_SESSION['user'])) ? $_SESSION['user'] : array();
+unset($_SESSION['user']['password']); // Sessions created before password hashes were kept out of them.
 
 // If message has been set, do not clear it. Invidial files set message as shown before rendering page.
 if ($_SESSION['message_set'] === false) {

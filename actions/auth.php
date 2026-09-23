@@ -18,7 +18,7 @@ case 'anon_login':
                 die;
             }
             else {
-                $_SESSION['user'] = $user;
+                kirjuri_set_session_user($user);
                 ksess_init();
                 event_log_write('0', 'Action', 'Anonymous login, created session ' . $_SESSION['user']['token']);
                 message('info', $_SESSION['lang']['anon_login']);

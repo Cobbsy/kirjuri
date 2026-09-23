@@ -35,3 +35,23 @@ function message($type, $content) {
     $_SESSION['message_set'] = true;
     return true;
 }
+
+
+function kirjuri_template_session() {
+    // What templates see as "session": the PHP session minus anything secret.
+    $view = $_SESSION;
+    unset($view['user']['password'], $view['case_token']);
+    return $view;
+}
+
+
+function kirjuri_render($template, $variables = array()) {
+    // Render a page template with the variables every page uses (session, settings, lang).
+    // Variables passed in take precedence.
+    global $twig, $prefs;
+    return $twig->render($template, $variables + array(
+            'session' => kirjuri_template_session(),
+            'settings' => $prefs['settings'],
+            'lang' => isset($_SESSION['lang']) ? $_SESSION['lang'] : array(),
+        ));
+}

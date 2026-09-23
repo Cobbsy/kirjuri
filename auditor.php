@@ -44,16 +44,13 @@ if (isset($_GET['view'])) {
     //show results:
 
     $_SESSION['message_set'] = false;
-    echo $twig->render('auditor.twig', array(
+    echo kirjuri_render('auditor.twig', array(
             'returnid' => isset($_GET['returnid']) ? filter_numbers($_GET['returnid']) : '',
             'log_matches' => $matches,
             'output_format' => $output_format,
             'request_contents' => $data_array['request_contents'],
             'filename' => $audit_file,
             'encrypted' => $encrypted,
-            'session' => $_SESSION,
-            'settings' => $prefs['settings'],
-            'lang' => $_SESSION['lang'],
             'data' => $data,
             'data_array' => $data_array,
             'timestamp' => $audit_file_date,
@@ -61,14 +58,11 @@ if (isset($_GET['view'])) {
         ));
 
 } else {
-    echo $twig->render('auditor.twig', array(
+    echo kirjuri_render('auditor.twig', array(
             'returnid' => isset($_GET['returnid']) ? filter_numbers($_GET['returnid']) : '',
             'output_format' => "",
             'request_contents' => "",
             'filename' => "",
-            'session' => $_SESSION,
-            'settings' => $prefs['settings'],
-            'lang' => $_SESSION['lang'],
             'data' => ""
         ));
 }

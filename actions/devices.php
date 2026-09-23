@@ -128,9 +128,8 @@ case 'change_device_status':
         ));
     $_SESSION['post_cache'] = '';
     event_log_write($case_id['parent_id'], "Update", "Changed device UID".$_GET['uid']." status to " .$_POST['device_action']. ". " , $audit_stamp);
-    echo $twig->render('progress_bar.twig', array(
-            'device_action' => $_POST['device_action'],
-            'settings' => $prefs['settings']
+    echo kirjuri_render('progress_bar.twig', array(
+            'device_action' => $_POST['device_action']
         ));
     die;
 

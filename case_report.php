@@ -16,10 +16,7 @@ $query->execute(array(
         ':id' => $id,
     ));
 $mediarow = $query->fetchAll(PDO::FETCH_ASSOC);
-echo $twig->render('case_report.twig', array(
-        'session' => $_SESSION,
+echo kirjuri_render('case_report.twig', array(
         'caserow' => $caserow,
-        'mediarow' => $mediarow,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+        'mediarow' => $mediarow
     ));

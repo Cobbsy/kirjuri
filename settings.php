@@ -44,17 +44,14 @@ else {
 }
 
 $_SESSION['message_set'] = false;
-echo $twig->render('settings.twig', array(
+echo kirjuri_render('settings.twig', array(
         'template_report_notes' => $templates['report_notes'],
         'server_time' => $php_servertime,
         'php_timezone' => date_default_timezone_get(),
         'mysql_timezone' => $mysql_timezone,
-        'settings' => $prefs['settings'],
         'langfiles' => $langfiles,
         'settings_contents' => $prefs,
         'diff' => $diff,
-        'apikey' => api_key_for($_SESSION['user']),
-        'session' => $_SESSION,
-        'settings_file' => $settings_file,
-        'lang' => $_SESSION['lang'],
+        'apikey' => api_key_for(kirjuri_session_user_credentials()),
+        'settings_file' => $settings_file
     ));

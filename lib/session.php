@@ -1,6 +1,23 @@
 <?php
 // Session handling, CSRF tokens, access levels and case access groups.
 
+function kirjuri_set_session_user($user_record) {
+    // Log a user in. The password hash stays out of the session: sessions are stored on disk
+    // and shown to templates. Use kirjuri_session_user_credentials() when the hash is needed.
+    unset($user_record['password']);
+    $_SESSION['user'] = $user_record;
+}
+
+
+function kirjuri_session_user_credentials() {
+    // The logged in user's database record, including the password hash.
+    global $kirjuri_database;
+    $query = $kirjuri_database->prepare('SELECT * FROM users WHERE id = :id');
+    $query->execute(array(':id' => $_SESSION['user']['id']));
+    return $query->fetch(PDO::FETCH_ASSOC);
+}
+
+
 function ksess_init() {
     // Initialize a session token.
     session_regenerate_id(true); // Prevent session fixation.

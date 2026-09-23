@@ -170,9 +170,8 @@ else {
     $show_columns = "";
 }
 
-echo $twig->render('index.twig', array(
+echo kirjuri_render('index.twig', array(
         'show_columns' => $show_columns,
-        'session' => $_SESSION,
         'attachments' => $attachments,
         'search_term' => $search_term,
         'sort_s' => $sort_s,
@@ -182,7 +181,5 @@ echo $twig->render('index.twig', array(
         'order_by' => $order_by,
         'dateStart' => $dateRange['start'],
         'row_cases' => $row_cases,
-        'row_devices' => $row_devices,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+        'row_devices' => $row_devices
     ));

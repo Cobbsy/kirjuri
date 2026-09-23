@@ -11,7 +11,7 @@ function local_authenticate($username, $password) {
 
 
     if (($user_record !== false) && password_verify($password, $user_record['password'])) {
-        $_SESSION['user'] = $user_record;
+        kirjuri_set_session_user($user_record);
         event_log_write('0', "Auth", "Succesful local authentication for user " . $username);
         return true;
     } else {
@@ -121,13 +121,13 @@ function ldap_authenticate($username, $password) {
                     ':attr_3' => "LDAP_AUTH_ONLY"
                 ));
             $user_record = $query->fetch(PDO::FETCH_ASSOC);
-            $_SESSION['user'] = $user_record;
+            kirjuri_set_session_user($user_record);
             event_log_write('0', "Auth", "Succesful remote authentication for user " . $username);
             return true;
 
         } elseif ($username === $user_record['username']) {
             event_log_write('0', "Auth", "Succesful remote authentication for user " . $username);
-            $_SESSION['user'] = $user_record;
+            kirjuri_set_session_user($user_record);
             return true;
 
         } else {

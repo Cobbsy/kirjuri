@@ -19,12 +19,9 @@ ksort($_SESSION['lang']);
 ksort($diff);
 
 $_SESSION['message_set'] = false;
-echo $twig->render('lang_editor.twig', array(
-        'settings' => $prefs['settings'],
+echo kirjuri_render('lang_editor.twig', array(
         'langfiles' => $langfiles,
-        'session' => $_SESSION,
         'langfile' => $_SESSION['lang'],
         'diff' => $diff,
-        'langfile_name' => $prefs['settings']['lang'],
-        'lang' => $_SESSION['lang'],
+        'langfile_name' => $prefs['settings']['lang']
     ));

@@ -127,8 +127,7 @@ foreach ($cases_by_unit as $key => $unit) {
 
 
 $_SESSION['message_set'] = false;
-echo $twig->render('statistics.twig', array(
-        'session' => $_SESSION,
+echo kirjuri_render('statistics.twig', array(
         'statistics_chart_colors' => $prefs['statistics_chart_colors'],
         'devices' => $_SESSION['lang']['devices'],
         'media_objs' => $_SESSION['lang']['media_objs'],
@@ -147,7 +146,5 @@ echo $twig->render('statistics.twig', array(
         'dateStop' => $dateRange['stop'],
         'summed_size' => $summed_size,
         'device_data_by_unit' => $device_data_by_unit,
-        'device_count_by_unit' => $device_count_by_unit,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+        'device_count_by_unit' => $device_count_by_unit
     ));

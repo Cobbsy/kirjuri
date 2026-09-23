@@ -84,12 +84,9 @@ case 'examination_request':
     }
     $_SESSION['post_cache'] = '';
     event_log_write($new_uid['id'], 'Add', 'Added examination request ' . $case_id . ' / ' . $_POST['case_name'] . ".", $audit_stamp);
-    echo $twig->render('thankyou.twig', array(
-            'session' => $_SESSION,
+    echo kirjuri_render('thankyou.twig', array(
             'case_id' => $case_id,
-            'id' => $new_uid['id'],
-            'settings' => $prefs['settings'],
-            'lang' => $_SESSION['lang']
+            'id' => $new_uid['id']
         ));
     die;
 

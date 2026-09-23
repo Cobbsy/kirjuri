@@ -47,11 +47,8 @@ foreach ($messages as $message) {
 }
 
 $_SESSION['message_set'] = false;
-echo $twig->render('messages.twig', array(
+echo kirjuri_render('messages.twig', array(
         'post' => $_POST,
-        'session' => $_SESSION,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
         'messages' => $messages,
         'open' => $open,
         'show' => $show,

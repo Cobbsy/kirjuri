@@ -26,10 +26,7 @@ else {
 }
 
 $_SESSION['message_set'] = false; // Prevent a message from being shown twice.
-echo $twig->render('timeline.twig', array(
+echo kirjuri_render('timeline.twig', array(
         'caselog' => $caselog,
-        'session' => $_SESSION,
-        'caserow' => $caserow,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+        'caserow' => $caserow
     ));

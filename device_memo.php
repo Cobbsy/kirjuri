@@ -78,11 +78,10 @@ else {
 }
 
 $_SESSION['message_set'] = false;
-echo $twig->render('device_memo.twig', array(
+echo kirjuri_render('device_memo.twig', array(
         'ct' => $_SESSION['case_token'][$casefetch['parent_id']],
         'templates' => $templates,
         'imei_data' => $imei_data,
-        'session' => $_SESSION,
         'device_actions' => $_SESSION['lang']['device_actions'],
         'device_locations' => $_SESSION['lang']['device_locations'],
         'connectedmediarow' => $connectedmediarow,
@@ -92,7 +91,5 @@ echo $twig->render('device_memo.twig', array(
         'allcases' => $allcases,
         'caserow' => $caserow,
         'devices' => $_SESSION['lang']['devices'],
-        'media_objs' => $_SESSION['lang']['media_objs'],
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+        'media_objs' => $_SESSION['lang']['media_objs']
     ));

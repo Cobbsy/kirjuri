@@ -64,7 +64,7 @@ if (in_array($operation, array(
 
 foreach (get_users_with_credentials() as $user) {
     if ((strlen($key) === 40) && hash_equals(api_key_for($user), $key) && (strpos((string) $user['flags'], 'A') !== false) && (strpos((string) $user['flags'], 'I') === false)) {
-        $_SESSION['user'] = $user;
+        kirjuri_set_session_user($user);
         $key_found = true;
         break;
     }

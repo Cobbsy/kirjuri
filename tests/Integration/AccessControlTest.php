@@ -130,17 +130,34 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertSame('login.php', $response->location());
     }
 
-    public function testSessionsDoNotContainOtherUsersPasswordHashes(): void
+    public function testSessionsDoNotContainPasswordHashes(): void
     {
         $username = $this->uniqueName('hashcheck');
         $this->createUser($username, 'password1', 1);
-        $hash = $this->server->pdo()->query("SELECT password FROM users WHERE username = '$username'")->fetchColumn();
+        $hashes = $this->server->pdo()->query("SELECT password FROM users WHERE username IN ('$username', 'admin')")->fetchAll(\PDO::FETCH_COLUMN);
 
         $admin = $this->admin();
         $admin->get('users.php');
+        $this->login($username, 'password1')->get('settings.php');
         $this->assertNotEmpty($this->server->sessionFiles());
         foreach ($this->server->sessionFiles() as $session) {
-            $this->assertStringNotContainsString($hash, $session);
+            foreach ($hashes as $hash) {
+                $this->assertStringNotContainsString($hash, $session);
+            }
+            $this->assertDoesNotMatchRegularExpression('/\$2y\$\d\d\$/', $session);
         }
+    }
+
+    public function testPasswordChangeStillChecksTheCurrentPassword(): void
+    {
+        $username = $this->uniqueName('changer');
+        $this->createUser($username, 'password1', 1);
+        $user = $this->login($username, 'password1');
+        $user->post('submit.php?type=update_password', array('token' => $this->token($user), 'current_password' => 'wrong', 'new_password' => 'password2'));
+        $this->login($username, 'password1');
+
+        $user = $this->login($username, 'password1');
+        $this->assertSame('login.php', $user->post('submit.php?type=update_password', array('token' => $this->token($user), 'current_password' => 'password1', 'new_password' => 'password2'))->location());
+        $this->login($username, 'password2');
     }
 }

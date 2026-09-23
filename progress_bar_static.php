@@ -7,5 +7,5 @@ $device_action = $query->fetch(PDO::FETCH_ASSOC);
 if ($device_action === false) {
     die;
 }
-echo $twig->render('progress_bar.twig', array('device_action' => $device_action['device_action'], 'settings' => $prefs['settings']));
+echo kirjuri_render('progress_bar.twig', array('device_action' => $device_action['device_action']));
 ?>

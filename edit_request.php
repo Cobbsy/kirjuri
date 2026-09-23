@@ -107,11 +107,10 @@ else {
 }
 
 $_SESSION['message_set'] = false; // Prevent a message from being shown twice.
-echo $twig->render('edit_request.twig', array(
+echo kirjuri_render('edit_request.twig', array(
         'ct' => $_SESSION['case_token'][$case_number],
         'caselog' => $caselog,
         'case_owner' => $case_owner,
-        'session' => $_SESSION,
         'session_cache' => $session_cache,
         'free_disk_space' => disk_free_space('/'),
         'attachment_files' => $attachment_files,
@@ -123,13 +122,11 @@ echo $twig->render('edit_request.twig', array(
         'caserow' => $caserow,
         'mediarow' => $mediarow,
         'tasks' => $tasks,
-        'settings' => $prefs['settings'],
         'device_locations' => $_SESSION['lang']['device_locations'],
         'device_actions' => $_SESSION['lang']['device_actions'],
         'media_objs' => $_SESSION['lang']['media_objs'],
         'devices' => $_SESSION['lang']['devices'],
         'inv_units' => $prefs['inv_units'],
         'classifications' => $_SESSION['lang']['classifications'],
-        'confCrimes' => $confCrimes,
-        'lang' => $_SESSION['lang'],
+        'confCrimes' => $confCrimes
     ));

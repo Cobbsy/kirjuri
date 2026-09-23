@@ -37,7 +37,7 @@ case 'create_user':
         !empty($username_input) &&
         !empty($_POST['name']) &&
         !empty($_POST['access']) &&
-        password_verify($_POST['current_password'], $_SESSION['user']['password'])
+        password_verify($_POST['current_password'], kirjuri_session_user_credentials()['password'])
     ) {
         if (isset($_POST['delete_user']) && $_POST['delete_user'] === "delete" && $_SESSION['user']['access'] === "0") {
             // Never delete the built-in anonymous (1) and admin (2) accounts.
@@ -114,7 +114,7 @@ case 'create_user':
 case 'update_password':
     ksess_verify(1);
     ksess_validate($_POST['token']);
-    if ((!empty($_POST['new_password'])) && (password_verify($_POST['current_password'], $_SESSION['user']['password']))) {
+    if ((!empty($_POST['new_password'])) && (password_verify($_POST['current_password'], kirjuri_session_user_credentials()['password']))) {
         $query = $kirjuri_database->prepare('UPDATE users SET password = :newpassword WHERE username = :username AND id = :id');
         $query->execute(array(
                 ':newpassword' => password_hash($_POST['new_password'], PASSWORD_DEFAULT),
