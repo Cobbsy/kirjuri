@@ -85,6 +85,21 @@ final class ApiTest extends IntegrationTestCase
         $this->assertNull($row['case_owner']);
     }
 
+    public function testNotesFromTheApiCannotRunScripts(): void
+    {
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Api notes '));
+        $this->client()->post('api.php?operation=update&id=' . $caseId . '&key=' . $this->apiKey($this->apiUser()), array(
+                'report_notes' => 'Safe text<script>alert("report")</script><img src="x.png" onerror="alert(1)">',
+                'examiners_notes' => '<a href="javascript:alert(2)">Link</a><script>alert("examiner")</script>',
+            ));
+        foreach (array('edit_request.php?case=' . $caseId, 'case_report.php?case=' . $caseId) as $page) {
+            $body = $admin->get($page)->body;
+            $this->assertStringContainsString('Safe text', $body, $page);
+            $this->assertDoesNotMatchRegularExpression('/<script>alert|<img[^>]*onerror|href="javascript:/i', $body, $page);
+        }
+    }
+
     public function testUnknownColumnReturnsServerError(): void
     {
         $this->expectLoggedError('API update failed');

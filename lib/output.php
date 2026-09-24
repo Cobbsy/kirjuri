@@ -55,3 +55,28 @@ function kirjuri_render($template, $variables = array()) {
             'lang' => isset($_SESSION['lang']) ? $_SESSION['lang'] : array(),
         ));
 }
+
+
+/**
+ * Kirjuri's own Twig filters. |purify prints rich text (notes, messages, the message of the day)
+ * through HTMLPurifier. Use it instead of |raw: the API and KRF import store notes as received,
+ * and older rows were saved before some of the checks on input.
+ */
+function kirjuri_add_twig_filters(\Twig\Environment $twig) {
+    $twig->addFilter(new \Twig\TwigFilter('purify', 'filter_html', array('is_safe' => array('html'))));
+}
+
+
+/**
+ * Headers for every page: no framing by other sites (clickjacking), no MIME sniffing, and no case
+ * URLs in the Referer sent to other sites. Kirjuri frames only its own pages (the download frame).
+ */
+function kirjuri_send_security_headers() {
+    if (headers_sent()) {
+        return;
+    }
+    header('X-Frame-Options: SAMEORIGIN');
+    header("Content-Security-Policy: frame-ancestors 'self'");
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: same-origin');
+}

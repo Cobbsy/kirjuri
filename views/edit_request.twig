@@ -400,12 +400,12 @@ $(function() {
         <hr>
         {% if caserow.0.report_notes %}
         <h3>{{ lang.examination_report }}</h3>
-        {{ caserow.0.report_notes|raw }}
+        {{ caserow.0.report_notes|purify }}
         <hr>
         {% endif %}
         {% if caserow.0.examiners_notes %}
         <h3>{{ lang.examiners_private_notes }}</h3>
-        {{ caserow.0.examiners_notes|raw }}
+        {{ caserow.0.examiners_notes|purify }}
         <hr>
         {% endif %}
 
@@ -1083,7 +1083,7 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
   <h3 id="report_notes" class="panel-title">{{ lang.examination_report }}</h3>
   </div>
   <div class="panel-body">
-  {{ caserow.0.report_notes|raw }}
+  {{ caserow.0.report_notes|purify }}
   </div>
   </div>
   {% endif %}
@@ -1109,7 +1109,7 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
   <h3 id="report_notes" class="panel-title">{{ lang.examiners_private_notes }}</h3>
   </div>
   <div class="panel-body">
-  {{ caserow.0.examiners_notes|raw }}
+  {{ caserow.0.examiners_notes|purify }}
   </div>
   </div>
   {% endif %}

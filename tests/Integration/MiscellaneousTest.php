@@ -154,6 +154,16 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertFalse($tool());
     }
 
+    public function testPagesCannotBeFramedByOtherSites(): void
+    {
+        foreach (array($this->client()->get('login.php'), $this->admin()->get('index.php')) as $response) {
+            $this->assertSame('SAMEORIGIN', $response->header('X-Frame-Options'));
+            $this->assertSame("frame-ancestors 'self'", $response->header('Content-Security-Policy'));
+            $this->assertSame('nosniff', $response->header('X-Content-Type-Options'));
+            $this->assertSame('same-origin', $response->header('Referrer-Policy'));
+        }
+    }
+
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void
     {
         $admin = $this->admin();

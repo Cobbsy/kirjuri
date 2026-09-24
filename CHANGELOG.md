@@ -21,6 +21,8 @@ Unreleased
 * - Session cookies are HttpOnly and SameSite=Lax, and the session ID is regenerated at login.
 * - Admin session handling, the backup, settings and audit viewer no longer accept path or shell metacharacters.
 * - conf/, logs/ and cache/ include .htaccess files denying direct web access on Apache.
+* - Notes stored through the API or a KRF import could hold scripts that ran for everyone who opened the case. Notes, messages and the message of the day are now purified as they are printed, which also covers rows already in the database.
+* - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
 * Bug fixes:
 * - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.
 * - Installer: on PHP 8.1+ an existing database aborted the install halfway and left a credentials file behind, which blocked rerunning it.

@@ -49,6 +49,22 @@ final class KrfImportTest extends IntegrationTestCase
         $this->assertSame($devices[0]['id'], $devices[1]['device_host_id'], 'Device associations point at the new UIDs.');
     }
 
+    public function testImportedNotesCannotRunScripts(): void
+    {
+        $admin = $this->admin();
+        $krf = $this->exportCase($admin, $this->uniqueName('Scripted '));
+        $krf['parent']['report_notes'] = '<p>Imported text</p><script>alert("krf")</script>';
+        $krf['parent']['examiners_notes'] = '<img src="x.png" onerror="alert(1)">';
+
+        $newId = (int) substr($this->upload($admin, gzencode(json_encode($krf)))->location(), strlen('edit_request.php?case='));
+        $this->assertGreaterThan(0, $newId);
+        foreach (array('edit_request.php?case=' . $newId, 'case_report.php?case=' . $newId) as $page) {
+            $body = $admin->get($page)->body;
+            $this->assertStringContainsString('<p>Imported text</p>', $body, $page);
+            $this->assertDoesNotMatchRegularExpression('/<script>alert|<img[^>]*onerror/i', $body, $page);
+        }
+    }
+
     public function testInjectedColumnNameIsRejectedBeforeAnythingIsWritten(): void
     {
         $admin = $this->admin();

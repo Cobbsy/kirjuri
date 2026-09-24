@@ -72,7 +72,7 @@
       {% if open == msg.id %}
       <tr>
         <td style="border:1px solid #DDD;background-color:#EEE;" colspan="5">
-          {{ msg.body|raw }}
+          {{ msg.body|purify }}
           <br>
           <form class="form-horizontal" role="form" method="post" action="submit.php?type=send_message">
             <input type="hidden" name="token" value="{{session.user.token}}">
@@ -133,7 +133,7 @@
       {% if open == msg.id %}
       <tr>
         <td style="border:1px solid #DDD;background-color:#EEE;" colspan="6">
-          {{ msg.body|raw }}
+          {{ msg.body|purify }}
           <br>
           <span class="pull-right">
           <form method="post" action="messages.php?show=compose">
@@ -192,7 +192,7 @@
       {% if open == msg.id %}
       <tr>
         <td style="border:1px solid #DDD;background-color:#EEE;" colspan="7">
-          {{ msg.body|raw }}
+          {{ msg.body|purify }}
           <br>
           <span class="pull-right">
           <form method="post" action="messages.php?show=compose">

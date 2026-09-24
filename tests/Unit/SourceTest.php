@@ -38,6 +38,8 @@ final class SourceTest extends TestCase
     public function testTemplateCompilesWithoutDeprecations(string $template): void
     {
         $twig = new Environment(new FilesystemLoader(KIRJURI_ROOT . '/views'), array('cache' => false));
+        require_once KIRJURI_ROOT . '/lib/output.php';
+        kirjuri_add_twig_filters($twig);
         $deprecations = array();
         set_error_handler(function ($errno, $errstr) use (&$deprecations) {
             $deprecations[] = $errstr;
@@ -79,5 +81,14 @@ final class SourceTest extends TestCase
             }
         }
         $this->assertSame(array(), $found, 'Move database access into a lib/ function.');
+    }
+
+    /** Rich text goes through |purify. |raw is only for values that are not user input. */
+    #[DataProvider('templates')]
+    public function testTemplatePrintsRawOnlyForTrustedValues(string $template): void
+    {
+        preg_match_all('/\{\{\s*([\w.]+)\s*\|\s*raw\b/', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $matches);
+        $trusted = array('confCrimes'); // conf/crimes_autofill.conf, edited by the administrator.
+        $this->assertSame(array(), array_values(array_diff($matches[1], $trusted)), 'Use |purify for rich text.');
     }
 }

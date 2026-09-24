@@ -45,6 +45,9 @@ $twig = new \Twig\Environment($loader, array(
 $pur_config = HTMLPurifier_Config::createDefault();
 $pur_config->set('Cache.SerializerPath', './cache');
 $purifier = new HTMLPurifier($pur_config);
+kirjuri_add_twig_filters($twig);
+
+kirjuri_send_security_headers();
 
 session_name('KirjuriSessionID');
 session_set_cookie_params(array(
