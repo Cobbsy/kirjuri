@@ -50,4 +50,34 @@ final class SourceTest extends TestCase
         }
         $this->assertSame(array(), $deprecations);
     }
+
+    public static function filesOutsideDataLayer(): array
+    {
+        return array_filter(self::phpFiles(), function ($file) {
+            // rest_api.php is entirely commented out; see its header.
+            return strpos($file, 'lib/') !== 0 && $file !== 'rest_api.php';
+        }, ARRAY_FILTER_USE_KEY);
+    }
+
+    /** SQL lives in lib/, so every query can be found, reviewed and tested in one place. */
+    #[DataProvider('filesOutsideDataLayer')]
+    public function testNoDatabaseAccessOutsideLib(string $file): void
+    {
+        $tokens = array_values(array_filter(\PhpToken::tokenize(file_get_contents($file)), function ($token) {
+            return !$token->isIgnorable();
+        }));
+        $found = array();
+        foreach ($tokens as $i => $token) {
+            $next = $tokens[$i + 1] ?? null;
+            $after = $tokens[$i + 2] ?? null;
+            if ($token->is(array(T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR)) && $next !== null && $after !== null
+                && in_array(strtolower($next->text), array('prepare', 'query', 'exec', 'quote'), true) && $after->text === '(') {
+                $found[] = 'line ' . $token->line . ': ->' . $next->text . '()';
+            }
+            if ($token->is(T_NEW) && $next !== null && in_array(strtolower(ltrim($next->text, '\\')), array('pdo', 'mysqli'), true)) {
+                $found[] = 'line ' . $token->line . ': new ' . $next->text;
+            }
+        }
+        $this->assertSame(array(), $found, 'Move database access into a lib/ function.');
+    }
 }

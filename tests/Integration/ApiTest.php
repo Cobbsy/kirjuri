@@ -35,6 +35,20 @@ final class ApiTest extends IntegrationTestCase
         $this->assertSame($name, json_decode($response->body, true)[0]['case_name']);
     }
 
+    public function testFindSearchesCasesAndDevices(): void
+    {
+        $admin = $this->admin();
+        $word = 'Needle' . generate_token(6);
+        $caseId = $this->createCase($admin, 'Api find ' . $word);
+        $deviceId = $this->addDevice($admin, $caseId, 'Model ' . $word);
+        $this->addDevice($admin, $caseId, 'Other model');
+
+        $response = $this->client()->post('api.php?operation=find&key=' . $this->apiKey($this->apiUser()), array('find' => $word));
+        $found = json_decode($response->body, true);
+        $this->assertSame(array((string) $caseId), array_column($found['cases'], 'id'));
+        $this->assertSame(array((string) $deviceId), array_column($found['devices'], 'id'));
+    }
+
     public function testAddCreatesACaseInTheCurrentYear(): void
     {
         $name = $this->uniqueName('Api add ');

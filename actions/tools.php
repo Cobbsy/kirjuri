@@ -43,19 +43,7 @@ case 'reserve_tool':
         $res_start = $tmp;
         unset($tmp);
     }
-    // Get tool reservations stored as a JSON value in attr_4.
-    $query = $kirjuri_database->prepare('SELECT attr_4 FROM tools WHERE id = :tool_id');
-    $query->execute(array(
-            ':tool_id' => $returnid
-        ));
-    $res_json = $query->fetch(PDO::FETCH_ASSOC);
-    $res_json = $res_json['attr_4'];
-    // Decode the array if it is populated, set an empty array if not.
-    if (!empty($res_json)) {
-        $res_arr = json_decode($res_json, true);
-    } else {
-        $res_arr = array();
-    }
+    $res_arr = kirjuri_tool_reservations($kirjuri_database, $returnid);
     // A new reservation must not collide with existing ones; highlight the first conflict.
     if (isset($_POST['tool_id'])) {
         $conflict = kirjuri_find_reservation_conflict($res_arr, $res_start, $res_end);
@@ -89,14 +77,7 @@ case 'reserve_tool':
         $res_arr[$i]['comment']       = substr(isset($_POST['comment']) ? $_POST['comment'] : '', 0, 500);
     }
     $res_arr = kirjuri_sort_reservations($res_arr);
-    // Encode the reservations array back to JSON
-    $res_json = json_encode($res_arr);
-    // Write the JSON string back to the database.
-    $query    = $kirjuri_database->prepare('UPDATE tools SET attr_4 = :attr_4 WHERE id = :tool_id');
-    $query->execute(array(
-            ':tool_id' => $returnid,
-            ':attr_4' => $res_json
-        ));
+    kirjuri_save_tool_reservations($kirjuri_database, $returnid, $res_arr);
     // Done, return to tools.
     header('Location: tools.php?populate=' . $returnid);
     die;
@@ -105,15 +86,13 @@ case 'add_tool':
     ksess_verify(0);
     ksess_validate($_POST['token']);
     if (!empty($_POST['product_name'])) {
-        $query = $kirjuri_database->prepare('INSERT INTO tools (product_name, hw_version, sw_version, serialno, flags, attr_1, attr_2, attr_3, attr_4, attr_5, attr_6, attr_7, attr_8) VALUES (
-    :product_name, :hw_version, :sw_version, :serialno, :flags, NOW(), "", :comment, NULL, NULL, NULL, NULL, NULL);');
-        $query->execute(array(
-                ':product_name' => trim(substr($_POST['product_name'], 0, 128)),
-                ':hw_version' => trim(substr($_POST['hw_version'], 0, 64)),
-                ':sw_version' => trim(substr($_POST['sw_version'], 0, 64)),
-                ':serialno' => $_POST['serialno'],
-                ':comment' => $_POST['comment'],
-                ':flags' => $_POST['flag1'] . $_POST['flag2']
+        kirjuri_add_tool($kirjuri_database, array(
+                'product_name' => $_POST['product_name'],
+                'hw_version' => $_POST['hw_version'],
+                'sw_version' => $_POST['sw_version'],
+                'serialno' => $_POST['serialno'],
+                'comment' => $_POST['comment'],
+                'flags' => $_POST['flag1'] . $_POST['flag2'],
             ));
         event_log_write('0', 'Add', 'tool created: ' . trim(substr($_POST['product_name'], 0, 64)));
         message('info', $_SESSION['lang']['tool_added'] . ": " . trim(substr($_POST['product_name'], 0, 128)));
@@ -129,23 +108,17 @@ case 'update_tool':
     ksess_verify(0);
     ksess_validate($_POST['token']);
     if ($_POST['drop_tool'] === "yes") {
-        $query = $kirjuri_database->prepare('DELETE FROM tools WHERE id = :tool_id');
-        $query->execute(array(
-                ':tool_id' => $_POST['tool_id']
-            ));
+        kirjuri_delete_tool($kirjuri_database, $_POST['tool_id']);
         event_log_write('0', 'Remove', 'tool ID ' . $_POST['tool_id'] . ' removed: ' . trim(substr($_POST['product_name'], 0, 128)));
         message('info', $_SESSION['lang']['tool_removed'] . ": " . trim(substr($_POST['product_name'], 0, 128)));
     } else {
-        $query = $kirjuri_database->prepare('UPDATE tools SET hw_version = :hw_version, sw_version = :sw_version, attr_3 = :comment, flags = :flags,
-        attr_2 = CONCAT(NOW(),";", :hw_version_old, " -> ", :hw_version, ";", :sw_version_old, " -> ", :sw_version, ";", :flags, ";", ", ", IFNULL(attr_2,"")) WHERE id = :tool_id');
-        $query->execute(array(
-                ':tool_id' => $_POST['tool_id'],
-                ':hw_version' => trim(substr($_POST['hw_version'], 0, 64)),
-                ':sw_version' => trim(substr($_POST['sw_version'], 0, 64)),
-                ':hw_version_old' => trim(substr($_POST['hw_version_old'], 0, 64)),
-                ':sw_version_old' => trim(substr($_POST['sw_version_old'], 0, 64)),
-                ':comment' => $_POST['comment'],
-                ':flags' => $_POST['flag1']
+        kirjuri_update_tool($kirjuri_database, $_POST['tool_id'], array(
+                'hw_version' => $_POST['hw_version'],
+                'sw_version' => $_POST['sw_version'],
+                'hw_version_old' => $_POST['hw_version_old'],
+                'sw_version_old' => $_POST['sw_version_old'],
+                'comment' => $_POST['comment'],
+                'flags' => $_POST['flag1'],
             ));
         event_log_write('0', 'Update', 'tool updated: ' . trim(substr($_POST['product_name'], 0, 128)) . ", HW version: " .
             $_POST['hw_version_old'] . " -> " . $_POST['hw_version'] . ", SW version: " .

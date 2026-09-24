@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/lib/errors.php';
+require_once __DIR__ . '/lib/config.php';
+require_once __DIR__ . '/lib/database.php';
 require_once __DIR__ . '/lib/messages.php';
 kirjuri_register_error_handlers();
 session_name('KirjuriSessionID');
@@ -13,40 +15,19 @@ if (!isset($_SESSION['user']['username'], $_SESSION['user']['token']) || !file_e
 // Update session file timestamp
 touch('cache/user_' . $_SESSION['user']['username'] . "/session_" . $_SESSION['user']['token'] . ".txt");
 
-if (file_exists('conf/mysql_credentials.php')) {
-    // Read credentials array from a file
-    $mysql_config = include 'conf/mysql_credentials.php';
-} else {
+$mysql_config = kirjuri_mysql_config();
+if ($mysql_config === null) {
     header('Location: install.php'); // If file not found, assume install.php needs to be run.
     die;
 }
 
-if (empty($mysql_config['mysql_server'])) {
-    $mysql_config['mysql_server'] = "localhost";
+try { // Check inbox
+    $kirjuri_database = connect_database('kirjuri-database');
+} catch (PDOException $e) {
+    // This fragment is polled in the background; log the problem rather than showing it in the menu.
+    kirjuri_log_error(get_class($e), $e->getMessage(), $e->getFile(), $e->getLine(), kirjuri_trace_lines($e));
+    die;
 }
-
-function db_r($database) // PDO Database connection
-{
-    global $mysql_config;
-    if ($database === 'kirjuri-database') {
-        try {
-            $kirjuri_database = new PDO('mysql:host='.$mysql_config['mysql_server'].';dbname='.$mysql_config['mysql_database'].'', $mysql_config['mysql_username'], $mysql_config['mysql_password']);
-            $kirjuri_database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $kirjuri_database->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
-            $kirjuri_database->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, true);
-            $kirjuri_database->exec('SET NAMES utf8');
-
-            return $kirjuri_database;
-        } catch (PDOException $e) {
-            // This fragment is polled in the background; log the problem rather than showing it in the menu.
-            kirjuri_log_error(get_class($e), $e->getMessage(), $e->getFile(), $e->getLine(), kirjuri_trace_lines($e));
-            die;
-        }
-    }
-}
-
-
-$kirjuri_database = db_r('kirjuri-database'); // Check inbox
 $_SESSION['unread'] = array('new' => (string) kirjuri_unread_count($kirjuri_database, $_SESSION['user']['username']));
 if ($_SESSION['unread']['new'] > 0) {
     echo '<span style="color:white;" class="label label-danger">' . $_SESSION['unread']['new'] . '</span>';

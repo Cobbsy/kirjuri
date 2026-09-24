@@ -56,6 +56,7 @@ Unreleased
 * Added a Docker setup (docker compose up) that installs itself, and `php bin/kirjuri install` for installing without a browser.
 * Added deny rules for .git/, tests/, docker/ and build files (composer.json, Dockerfile, docker-compose.yml), so a git checkout in the web root does not expose the repository.
 * Database connections no longer allow several SQL statements in one query.
+* All SQL moved into lib/ (a unit test keeps it there). The messages, tools, users, API, settings and installer pages, the unread counter and the bootstrap now call lib functions; the installer uses PDO and no longer needs the mysqli extension.
 * Updated the following dependencies:
 * - twig/twig (v2.4.6 => v3.29.0)
 * - ezyang/htmlpurifier (v4.10.0 => v4.19.1)

@@ -134,12 +134,7 @@ function cli_install($args) {
         throw new RuntimeException('KIRJURI_ADMIN_PASSWORD must be at least 8 characters long.');
     }
 
-    $server = new PDO('mysql:host=' . $config['mysql_server'], $config['mysql_username'], $config['mysql_password'],
-        array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
-    $exists = $server->prepare('SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = :name');
-    $exists->execute(array(':name' => $config['mysql_database']));
-    if ((int) $exists->fetchColumn() === 0) {
-        $server->exec('CREATE DATABASE `' . $config['mysql_database'] . '`');
+    if (kirjuri_create_database(kirjuri_connect_server($config), $config['mysql_database'])) {
         cli_out('Created database ' . $config['mysql_database'] . '.');
     }
 
@@ -167,7 +162,7 @@ function cli_doctor($args) {
     };
 
     $report(version_compare(PHP_VERSION, '8.1.0') >= 0 ? 'ok' : 'fail', 'PHP ' . PHP_VERSION . ' (8.1 or newer required)');
-    foreach (array('pdo_mysql', 'mysqli', 'mbstring', 'openssl', 'zlib', 'json', 'session') as $extension) {
+    foreach (array('pdo_mysql', 'mbstring', 'openssl', 'zlib', 'json', 'session') as $extension) {
         $report(extension_loaded($extension) ? 'ok' : 'fail', 'PHP extension ' . $extension);
     }
     $report(file_exists('vendor/autoload.php') ? 'ok' : 'fail', 'Dependencies in vendor/');

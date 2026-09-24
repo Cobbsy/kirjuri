@@ -35,3 +35,35 @@ function kirjuri_create_default_users(PDO $db, $admin_password) {
     $query->execute(array(':admin_password' => password_hash($admin_password, PASSWORD_DEFAULT)));
     return $query->rowCount();
 }
+
+
+/** A connection to the database server itself, for creating and dropping the Kirjuri database. */
+function kirjuri_connect_server(array $config) {
+    $server = empty($config['mysql_server']) ? 'localhost' : $config['mysql_server'];
+    return new PDO('mysql:host=' . $server, $config['mysql_username'], $config['mysql_password'],
+        array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION));
+}
+
+
+/** Create the database unless it exists. $name must come from kirjuri_validate_database_name(). Returns whether it was created. */
+function kirjuri_create_database(PDO $server, $name) {
+    $exists = $server->prepare('SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = :name');
+    $exists->execute(array(':name' => $name));
+    if ((int) $exists->fetchColumn() > 0) {
+        return false;
+    }
+    $server->exec('CREATE DATABASE `' . $name . '`');
+    return true;
+}
+
+
+/** $name must come from kirjuri_validate_database_name(). */
+function kirjuri_drop_database(PDO $server, $name) {
+    $server->exec('DROP DATABASE `' . $name . '`');
+}
+
+
+/** Copy the cases of the Kirjuri predecessor from tutkinta.jutut. Needs the 001_baseline table layout. */
+function kirjuri_import_legacy_cases(PDO $db) {
+    $db->exec('INSERT INTO exam_requests SELECT * FROM tutkinta.jutut');
+}

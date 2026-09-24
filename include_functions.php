@@ -102,16 +102,8 @@ kirjuri_ensure_schema($kirjuri_database); // Apply pending migrations after an u
 
 // Read users from database to settings. Password hashes are left out, as the session
 // is stored on disk and passed to every template. Use get_users_with_credentials() when they are needed.
-$query = $kirjuri_database->prepare('SELECT id, username, name, access, flags, attr_1, attr_2, attr_3, attr_4, attr_5, attr_6, attr_7, attr_8 from users ORDER BY access, username;');
-$query->execute();
-$users = $query->fetchAll(PDO::FETCH_ASSOC);
-$_SESSION['all_users'] = $users;
-
-// Read tools from database to settings.
-$query = $kirjuri_database->prepare('SELECT * FROM tools ORDER BY product_name;');
-$query->execute();
-$tools = $query->fetchAll(PDO::FETCH_ASSOC);
-$_SESSION['all_tools'] = $tools;
+$_SESSION['all_users'] = kirjuri_list_users($kirjuri_database);
+$_SESSION['all_tools'] = kirjuri_list_tools($kirjuri_database);
 
 if (!empty($_SESSION['user']['username'])) { // Get unread message count
     $_SESSION['unread'] = array('new' => (string) kirjuri_unread_count($kirjuri_database, $_SESSION['user']['username']));

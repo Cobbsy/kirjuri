@@ -8,7 +8,7 @@ As always, I can not guarantee the security of this software, and any users will
 
 # Kirjuri
 
-Kirjuri is a simple php/mysql web application for managing physical forensic evidence items. It is intended to be used as a workflow tool from receiving, booking, note-taking and possibly reporting findings. It simplifies and helps in case management when dealing with a large (or small!) number of devices submitted for forensic analysis. Kirjuri requires PHP 8.1 or newer with the pdo_mysql, mysqli, mbstring and openssl extensions (and ldap if you use LDAP authentication).
+Kirjuri is a simple php/mysql web application for managing physical forensic evidence items. It is intended to be used as a workflow tool from receiving, booking, note-taking and possibly reporting findings. It simplifies and helps in case management when dealing with a large (or small!) number of devices submitted for forensic analysis. Kirjuri requires PHP 8.1 or newer with the pdo_mysql, mbstring and openssl extensions (and ldap if you use LDAP authentication).
 
 The `conf/`, `logs/` and `cache/` folders hold credentials, audit logs and session data. They ship with `.htaccess` files that deny web access on Apache. On other web servers, deny access to them in the server configuration, for example on nginx: `location ~ ^/(conf|logs|cache)/ { deny all; }`
 
@@ -71,6 +71,8 @@ KIRJURI_TEST_DB_HOST=127.0.0.1 KIRJURI_TEST_DB_USER=root KIRJURI_TEST_DB_PASSWOR
 ```
 
 Static analysis runs with `vendor/bin/phpstan` from the same folder.
+
+All SQL lives in the `lib/` modules (cases, devices, attachments, messages, tools, users and so on); pages and the files in `actions/` call their functions. A unit test fails if code outside `lib/` prepares or runs a query or opens its own database connection, so new queries go into a `lib/` function where they can be found, reviewed and tested together.
 
 The temporary installation and database are removed afterwards. Set `KIRJURI_TEST_KEEP=1` to keep the installation folder for debugging. GitHub Actions runs the whole suite on every push and pull request.
 

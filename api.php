@@ -1,6 +1,7 @@
 <?php
 
 require_once './include_functions.php';
+require_once __DIR__ . '/lib/api.php';
 
 function api_case_access($id) {
     // The same rule as the pages, for the case that $id (a case or device UID) belongs to.
@@ -68,91 +69,24 @@ if ($key_found === false) {
         if (!api_case_access($request_id)) {
             return_with_code('403');
         }
-        $query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = :id');
-        $query->execute(array(
-                ':id' => $request_id,
-            ));
-        $output = $query->fetchAll(PDO::FETCH_ASSOC);
+        $output = kirjuri_api_get($kirjuri_database, $request_id);
     }
     // Get information on cases in Kirjuri.
     elseif ($operation === 'find') {
         $search_term = substr(isset($_POST['find']) ? $_POST['find'] : '', 0, 128);
-        $query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id = parent_id AND is_removed = "0" AND MATCH (
-      case_name,
-      case_suspect,
-      case_file_number,
-      case_investigator,
-      forensic_investigator,
-      phone_investigator,
-      case_investigation_lead,
-      case_investigator_unit,
-      case_crime,
-      case_requested_action,
-      case_request_description,
-      report_notes,
-      examiners_notes)
-      AGAINST
-      (:search_term IN BOOLEAN MODE) AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
-        $query->execute(array(
-                ':search_term' => $search_term,
-                ':dateStart' => $dateRange['start'],
-                ':dateStop' => $dateRange['stop'],
-            ));
-        $output['cases'] = $query->fetchAll(PDO::FETCH_ASSOC);
-        $query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id != parent_id AND is_removed = "0" AND MATCH (
-      report_notes,
-      examiners_notes,
-      device_manuf,
-      device_model,
-      device_identifier,
-      device_owner)
-      AGAINST
-      (:search_term IN BOOLEAN MODE) AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
-        $query->execute(array(
-                ':search_term' => $search_term,
-                ':dateStart' => $dateRange['start'],
-                ':dateStop' => $dateRange['stop'],
-            ));
-        $output['devices'] = $query->fetchAll(PDO::FETCH_ASSOC);
+        $output = kirjuri_api_find($kirjuri_database, $search_term, $dateRange);
     }
-    // Update case information fields.
+    // List all cases and devices.
     elseif ($operation === 'info') {
-        $query = $kirjuri_database->prepare('SELECT id, case_id, case_name, case_status, forensic_investigator, phone_investigator FROM exam_requests WHERE id = parent_id');
-        $query->execute();
-        $output['cases'] = $query->fetchAll(PDO::FETCH_ASSOC);
-        $query = $kirjuri_database->prepare('SELECT id, device_type, device_manuf, device_model, device_identifier, device_owner, device_action, device_location FROM exam_requests WHERE id != parent_id');
-        $query->execute();
-        $output['devices'] = $query->fetchAll(PDO::FETCH_ASSOC);
+        $output = kirjuri_api_info($kirjuri_database);
     }
     // Update case information fields.
     elseif ($operation === 'update') {
         if (!api_case_access($request_id)) {
             return_with_code('403');
         }
-        $build_query = 'UPDATE exam_requests SET last_updated = NOW()';
-
-        // This loop will build an SQL query out of the POST fields submitted.
-        foreach ($_POST as $key => $field) {
-            $key = preg_replace('/[^a-zA-Z0-9_]/', '', $key);
-            if (in_array($key, array('', 'id', 'parent_id', 'case_owner'), true)) {
-                continue; // Moving items between cases or changing access groups is not allowed via the API.
-            }
-            // Do not overwrite existing data for report notes or examination notes but append instead.
-            if (($key === 'examiners_notes') || ($key === 'report_notes')) {
-                $field = '<p>'.$field.'</p>';
-                $build_query = $build_query.', '.$key.' = concat(ifnull('.$key.',""), '.$kirjuri_database->quote($field).')';
-            } else {
-                $build_query = $build_query.', '.$key.' = '.$kirjuri_database->quote($field);
-            }
-        }
-
-        $build_query = $build_query.' WHERE id = :id';
-
         try {
-            $query = $kirjuri_database->prepare($build_query);
-            $query->execute(array(
-                    ':id' => $request_id,
-                ));
+            kirjuri_api_update_item($kirjuri_database, $request_id, $_POST);
             $case_of_item = kirjuri_case_of($kirjuri_database, $request_id);
             if ($case_of_item !== null) {
                 kirjuri_update_device_count($kirjuri_database, $case_of_item); // is_removed may have changed.

@@ -2,34 +2,39 @@
 // Database connection and queries shared across pages.
 
 function connect_database($database) {
-    // PDO Database connector. Connection errors are thrown and handled by lib/errors.php.
+    // The Kirjuri database with the credentials from conf/mysql_credentials.php.
+    // Connection errors are thrown and handled by lib/errors.php.
     global $mysql_config;
-    global $prefs;
-    if (!isset($mysql_config['mysql_server'])) {
-        $server = 'localhost';
-    } else {
-        $server = $mysql_config['mysql_server'];
-    }
     if ($database === 'kirjuri-database') {
-        $pdo_connect_string = 'mysql:host='.$server.';dbname='.$mysql_config['mysql_database'];
-        // One statement per query: multi-statement mode would let an SQL injection add statements of its own.
-        $kirjuri_database = new PDO($pdo_connect_string, $mysql_config['mysql_username'], $mysql_config['mysql_password'],
-            array(PDO::MYSQL_ATTR_MULTI_STATEMENTS => false));
-        $kirjuri_database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $kirjuri_database->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
-        // PHP 8.1 started returning integer columns as ints. Kirjuri compares them as strings
-        // (e.g. access === "0"), so keep fetching everything as strings.
-        $kirjuri_database->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, true);
-        $kirjuri_database->exec('SET NAMES utf8');
-        return $kirjuri_database;
+        return kirjuri_open_database($mysql_config);
     }
+}
+
+
+/** A connection to the database named in $config, set up the way the rest of Kirjuri expects. */
+function kirjuri_open_database(array $config) {
+    $server = empty($config['mysql_server']) ? 'localhost' : $config['mysql_server'];
+    // One statement per query: multi-statement mode would let an SQL injection add statements of its own.
+    $db = new PDO('mysql:host=' . $server . ';dbname=' . $config['mysql_database'], $config['mysql_username'], $config['mysql_password'],
+        array(PDO::MYSQL_ATTR_MULTI_STATEMENTS => false));
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+    // PHP 8.1 started returning integer columns as ints. Kirjuri compares them as strings
+    // (e.g. access === "0"), so keep fetching everything as strings.
+    $db->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, true);
+    $db->exec('SET NAMES utf8');
+    return $db;
+}
+
+
+/** The database server's time zone setting, shown on the settings page. */
+function kirjuri_database_timezone(PDO $db) {
+    return $db->query('SELECT @@global.time_zone')->fetchColumn();
 }
 
 
 function get_users_with_credentials() {
     // Read all users including password hashes. $_SESSION['all_users'] leaves the hashes out.
     global $kirjuri_database;
-    $query = $kirjuri_database->prepare('SELECT * FROM users ORDER BY access, username');
-    $query->execute();
-    return $query->fetchAll(PDO::FETCH_ASSOC);
+    return kirjuri_list_users_with_credentials($kirjuri_database);
 }

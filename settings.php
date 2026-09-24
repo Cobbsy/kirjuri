@@ -25,10 +25,7 @@ $langfiles = array_unique($langfiles);
 
 $php_servertime = time();
 $kirjuri_database = connect_database('kirjuri-database');
-$query = $kirjuri_database->prepare('SELECT @@global.time_zone AS tz');
-$query->execute();
-$mysql_timezone = $query->fetch(PDO::FETCH_ASSOC);
-$mysql_timezone = $mysql_timezone['tz'];
+$mysql_timezone = kirjuri_database_timezone($kirjuri_database);
 
 
 if (file_exists('conf/report_notes.local')) {

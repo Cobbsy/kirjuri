@@ -64,6 +64,42 @@ final class MiscellaneousTest extends IntegrationTestCase
             $this->server->pdo()->query("SELECT archived_to, archived_from FROM messages WHERE id = $id")->fetch(\PDO::FETCH_ASSOC));
     }
 
+    public function testMessageToAllUsersSkipsTheSender(): void
+    {
+        $recipient = $this->uniqueName('everyone');
+        $this->createUser($recipient, 'password1', 1);
+        $admin = $this->admin();
+        $subject = $this->uniqueName('Broadcast ');
+        $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => 'ALL_USERS', 'subject' => $subject, 'body' => '<p>All</p>'));
+
+        $count = fn ($to) => (int) $this->server->pdo()->query("SELECT COUNT(*) FROM messages WHERE msgto = '$to' AND subject = '" . base64_encode(gzdeflate($subject)) . "'")->fetchColumn();
+        $this->assertSame(1, $count($recipient));
+        $this->assertSame(1, $count('anonymous'));
+        $this->assertSame(0, $count('admin'));
+        $this->assertStringContainsString($subject, $this->login($recipient, 'password1')->get('messages.php')->body);
+    }
+
+    public function testDeleteAllRemovesOnlyArchivedMessages(): void
+    {
+        $username = $this->uniqueName('tidy');
+        $this->createUser($username, 'password1', 1);
+        $admin = $this->admin();
+        foreach (array('Keep', 'Archive') as $subject) {
+            $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => $username, 'subject' => $subject, 'body' => '<p>x</p>'));
+        }
+        $ids = $this->server->pdo()->query("SELECT id FROM messages WHERE msgto = '$username' ORDER BY id")->fetchAll(\PDO::FETCH_COLUMN);
+        $user = $this->login($username, 'password1');
+        $user->get('messages.php?open=' . $ids[1]);
+        $user->post("submit.php?type=archive_received&id={$ids[1]}", array('token' => $this->token($user)));
+        $user->post('submit.php?type=delete_all', array('token' => $this->token($user)));
+
+        $deleted = $this->server->pdo()->query("SELECT id, deleted_to FROM messages WHERE msgto = '$username' ORDER BY id")->fetchAll(\PDO::FETCH_KEY_PAIR);
+        $this->assertSame(array($ids[0] => '0', $ids[1] => '1'), $deleted);
+
+        $user->post("submit.php?type=delete_message&id={$ids[0]}", array('token' => $this->token($user)));
+        $this->assertSame(array($ids[1]), $this->server->pdo()->query("SELECT id FROM messages WHERE msgto = '$username'")->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
     public function testComposeSubjectIsPrefilled(): void
     {
         $admin = $this->admin();
@@ -95,6 +131,27 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame('tools.php?populate=' . $toolId, $incomplete->location());
         $this->assertCount(2, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
         $this->assertSame(200, $admin->get('tools.php?populate=' . $toolId)->status);
+    }
+
+    public function testToolUpdatesKeepAVersionHistoryAndToolsCanBeRemoved(): void
+    {
+        $admin = $this->admin();
+        $name = $this->uniqueName('Writeblocker ');
+        $admin->post('submit.php?type=add_tool', array('token' => $this->token($admin), 'product_name' => $name, 'hw_version' => ' 1.0 ', 'sw_version' => '2.0', 'serialno' => 'S1', 'comment' => 'New', 'flag1' => 'X', 'flag2' => ''));
+        $tool = fn () => $this->server->pdo()->query("SELECT * FROM tools WHERE product_name = '$name'")->fetch(\PDO::FETCH_ASSOC);
+        $this->assertSame(array('1.0', '2.0', 'S1', 'X', '', 'New'), array_values(array_intersect_key($tool(), array_flip(array('hw_version', 'sw_version', 'serialno', 'flags', 'attr_2', 'attr_3')))));
+        $toolId = $tool()['id'];
+
+        $update = array('token' => $this->token($admin), 'tool_id' => $toolId, 'drop_tool' => 'no', 'product_name' => $name, 'comment_old' => 'New', 'flag1' => '');
+        $admin->post('submit.php?type=update_tool', $update + array('hw_version' => '1.1', 'hw_version_old' => '1.0', 'sw_version' => '2.0', 'sw_version_old' => '2.0', 'comment' => 'Firmware'));
+        $admin->post('submit.php?type=update_tool', $update + array('hw_version' => '1.1', 'hw_version_old' => '1.1', 'sw_version' => '3.0', 'sw_version_old' => '2.0', 'comment' => 'Software'));
+        $updated = $tool();
+        $this->assertSame(array('1.1', '3.0', 'Software', ''), array($updated['hw_version'], $updated['sw_version'], $updated['attr_3'], $updated['flags']));
+        // Newest change first: "time;hw;sw;flags;, " per change.
+        $this->assertMatchesRegularExpression('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d;1\.1 -> 1\.1;2\.0 -> 3\.0;;, \d{4}-\d\d-\d\d \d\d:\d\d:\d\d;1\.0 -> 1\.1;2\.0 -> 2\.0;;, $/', $updated['attr_2']);
+
+        $admin->post('submit.php?type=update_tool', array('drop_tool' => 'yes') + $update);
+        $this->assertFalse($tool());
     }
 
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void

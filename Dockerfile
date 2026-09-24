@@ -1,7 +1,7 @@
 # Kirjuri on PHP 8.3 with Apache. See docker-compose.yml and the README for use.
 FROM php:8.3-apache
 
-RUN docker-php-ext-install pdo_mysql mysqli \
+RUN docker-php-ext-install pdo_mysql \
     && a2enmod headers
 
 # The stock image ignores .htaccess files; Kirjuri's deny access to conf/, logs/, cache/ and code folders.

@@ -41,12 +41,7 @@ case 'create_user':
     ) {
         if (isset($_POST['delete_user']) && $_POST['delete_user'] === "delete" && $_SESSION['user']['access'] === "0") {
             // Never delete the built-in anonymous (1) and admin (2) accounts.
-            $query = $kirjuri_database->prepare('DELETE FROM users WHERE username = :username AND id = :id AND id != 2 AND id != 1');
-            $query->execute(array(
-                    ':username' => $_POST['username'],
-                    ':id' => $_POST['user_id']
-                ));
-            if ($query->rowCount() === 0) {
+            if (!kirjuri_delete_user($kirjuri_database, $_POST['user_id'], $_POST['username'])) {
                 message('error', $_SESSION['lang']['create_error']);
                 header('Location: users.php?populate=' . filter_numbers($_POST['user_id']));
                 die;
@@ -72,22 +67,15 @@ case 'create_user':
                     $user_password = $user['password'];
                 }
                 $new_name = ucwords(trim(substr($_POST['name'], 0, 256)));
-                $query = $kirjuri_database->prepare('UPDATE users SET password = :password, name = :name, access = :access,
-          flags = :flags, attr_1 = :attr_1, attr_2 = :attr_2 WHERE username = :username');
-                $query->execute(array(
-                        ':username' => $username_input,
-                        ':name' => $new_name,
-                        ':password' => $user_password,
-                        ':flags' => $_POST['flag1'] . $_POST['flag2'] . $_POST['flag3'] . $_POST['flag4'],
-                        ':access' => str_replace("A", "0", substr($_POST['access'], 0, 1)),
-                        ':attr_1' => 'User modified by ' . $_SESSION['user']['username'] . ' at ' . date('Y-m-d H:i'),
-                        ':attr_2' => $ip_json
+                kirjuri_update_user($kirjuri_database, $username_input, array(
+                        'name' => $new_name,
+                        'password_hash' => $user_password,
+                        'flags' => $_POST['flag1'] . $_POST['flag2'] . $_POST['flag3'] . $_POST['flag4'],
+                        'access' => str_replace("A", "0", substr($_POST['access'], 0, 1)),
+                        'note' => 'User modified by ' . $_SESSION['user']['username'] . ' at ' . date('Y-m-d H:i'),
+                        'ip_access' => $ip_json,
                     ));
-                // Cases name their examiners by real name, so follow a rename.
-                foreach (array('forensic_investigator', 'phone_investigator') as $column) {
-                    $query = $kirjuri_database->prepare('UPDATE exam_requests SET ' . $column . ' = :name WHERE ' . $column . ' = :oldname');
-                    $query->execute(array(':name' => $new_name, ':oldname' => $oldname));
-                }
+                kirjuri_rename_examiner($kirjuri_database, $oldname, $new_name);
                 event_log_write('0', 'Update', 'User modified: ' . $username_input . ', access level ' . substr($_POST['access'], 0, 1));
                 message('info', $_SESSION['lang']['user_modified']);
                 header('Location: users.php?populate=' . $returnid . '#u');
@@ -119,12 +107,7 @@ case 'update_password':
     ksess_verify(1);
     ksess_validate($_POST['token']);
     if ((!empty($_POST['new_password'])) && (password_verify($_POST['current_password'], kirjuri_session_user_credentials()['password']))) {
-        $query = $kirjuri_database->prepare('UPDATE users SET password = :newpassword WHERE username = :username AND id = :id');
-        $query->execute(array(
-                ':newpassword' => password_hash($_POST['new_password'], PASSWORD_DEFAULT),
-                ':username' => $_SESSION['user']['username'],
-                ':id' => $_SESSION['user']['id']
-            ));
+        kirjuri_set_password($kirjuri_database, $_SESSION['user']['id'], $_SESSION['user']['username'], password_hash($_POST['new_password'], PASSWORD_DEFAULT));
         event_log_write('0', 'Update', 'User changed password.');
         $_SESSION['user'] = array();
         session_destroy();

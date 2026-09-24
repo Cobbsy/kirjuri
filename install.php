@@ -7,9 +7,7 @@ if (version_compare(PHP_VERSION, '8.1.0') < 0) {
     echo "Kirjuri requires PHP 8.1 or newer to run. You are using " . phpversion() . ". Please upgrade your PHP environment.";
     die;
 }
-// PHP 8.1 made mysqli throw exceptions by default. This installer checks return values instead,
-// so an existing database or table is reported and skipped rather than aborting the install halfway.
-mysqli_report(MYSQLI_REPORT_OFF);
+require_once __DIR__ . '/lib/database.php';
 require_once __DIR__ . '/lib/migrations.php';
 require_once __DIR__ . '/lib/install.php';
 ?>
@@ -114,45 +112,40 @@ Please choose a name for your database. The default is "kirjuri".
         die;
     }
 
-    // Open a MySQL connection for database creation
-    $conn = new mysqli($mysql_config['mysql_server'], $mysql_config['mysql_username'], $mysql_config['mysql_password']);
-    // Check the connection
-    if ($conn->connect_error) {
-        die('<p style="color:red;">Connection failed: '.htmlspecialchars($conn->connect_error).'</p>');
+    // Connect to the server for database creation.
+    try {
+        $server = kirjuri_connect_server($mysql_config);
+    } catch (PDOException $e) {
+        die('<p style="color:red;">Connection failed: '.htmlspecialchars($e->getMessage()).'</p>');
     }
 
     // Drop database if wanted
     if ($_POST['drop_database'] === 'drop') {
-        // Drop database
-        $query = 'DROP DATABASE '.$mysql_config['mysql_database'];
-        if ($conn->query($query) === true) {
+        try {
+            kirjuri_drop_database($server, $mysql_config['mysql_database']);
             echo '<p style="color:green;">Database dropped successfully.</p>';
-        } else {
-            echo '<p style="color:red;">Error dropping database: '.$conn->error.'</p>';
+        } catch (PDOException $e) {
+            echo '<p style="color:red;">Error dropping database: '.htmlspecialchars($e->getMessage()).'</p>';
         }
     }
 
     // Create new database
-    $query = 'CREATE DATABASE IF NOT EXISTS `'.$mysql_config['mysql_database'].'`';
-    if ($conn->query($query) === true) {
+    try {
+        kirjuri_create_database($server, $mysql_config['mysql_database']);
         echo '<p style="color:green;">Database '.$mysql_config['mysql_database'].' is ready.</p>';
-    } else {
-        die('<p style="color:red;">Error creating database: '.htmlspecialchars($conn->error).'</p>');
+    } catch (PDOException $e) {
+        die('<p style="color:red;">Error creating database: '.htmlspecialchars($e->getMessage()).'</p>');
     }
-    $conn->close();
+    $server = null;
 
     try {
-        $kirjuri_database = new PDO('mysql:host='.$mysql_config['mysql_server'].';dbname='.$mysql_config['mysql_database'].'', $mysql_config['mysql_username'], $mysql_config['mysql_password']);
+        $kirjuri_database = kirjuri_open_database($mysql_config);
     } catch (PDOException $e) {
         die('<p style="color:red;">Connection failed: '.htmlspecialchars($e->getMessage()).'</p>');
     }
 
     // Save credentials to file only once the database is reachable, so a failed install can be retried.
     kirjuri_write_mysql_credentials($mysql_config);
-
-    $kirjuri_database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $kirjuri_database->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
-    $kirjuri_database->exec('SET NAMES utf8');
 
     $report = function ($line) {
         echo '<p style="color:green;">' . htmlspecialchars($line) . '</p>';
@@ -164,7 +157,7 @@ Please choose a name for your database. The default is "kirjuri".
 
         if ($_POST['migrate_old_database'] === 'migrate') {
             try {
-                $kirjuri_database->exec('INSERT INTO exam_requests SELECT * FROM tutkinta.jutut');
+                kirjuri_import_legacy_cases($kirjuri_database);
                 echo '<p style="color:green;">Table tutkinta.jutut migrated.</p>';
             } catch (Exception $e) {
                 echo '<p style="color:red;">Can not migrate old tables from tutkinta.jutut: ', htmlspecialchars($e->getMessage()), '.</p>';
