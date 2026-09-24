@@ -209,4 +209,56 @@ final class AccessControlTest extends IntegrationTestCase
 
         $this->assertStringContainsString('title="online"', $admin->get('user_status.php?user=admin')->body);
     }
+
+    private function saveUser(HttpClient $admin, string $username, array $fields): Response
+    {
+        return $admin->post('submit.php?type=create_user', $fields + array(
+                'token' => $this->token($admin),
+                'username' => $username,
+                'name' => $username,
+                'access' => '1',
+                'password' => '',
+                'current_password' => KirjuriServer::ADMIN_PASSWORD,
+                'flag1' => '',
+                'flag2' => '',
+                'ip_whitelist' => '',
+                'ip_blacklist' => '',
+                'user_id' => '',
+            ));
+    }
+
+    public function testIpListsAreValidated(): void
+    {
+        $username = $this->uniqueName('iplist');
+        $admin = $this->admin();
+        // A single address used to log a PHP warning, which fails this test through the error log check.
+        $this->saveUser($admin, $username, array('password' => 'password1', 'ip_whitelist' => '127.0.0.1, ,10.0.0.0/8'));
+        $stored = fn () => json_decode($this->server->pdo()->query("SELECT attr_2 FROM users WHERE username = '$username'")->fetchColumn(), true);
+        $this->assertSame(array('allow' => array('127.0.0.1', '10.0.0.0/8'), 'deny' => array('')), $stored());
+        $this->login($username, 'password1');
+
+        // "10.0.0.1/" used to be accepted and matched every address, like /0.
+        $response = $this->saveUser($admin, $username, array('ip_blacklist' => '10.0.0.1/'));
+        $this->assertStringStartsWith('users.php?populate=', $response->location());
+        $this->assertSame(array('allow' => array('127.0.0.1', '10.0.0.0/8'), 'deny' => array('')), $stored());
+        $this->login($username, 'password1');
+    }
+
+    public function testPasswordsNeedAMinimumLength(): void
+    {
+        $username = $this->uniqueName('short');
+        $admin = $this->admin();
+        $exists = fn () => (int) $this->server->pdo()->query("SELECT COUNT(*) FROM users WHERE username = '$username'")->fetchColumn();
+        foreach (array('', 'short') as $password) {
+            $this->saveUser($admin, $username, array('password' => $password));
+            $this->assertSame(0, $exists(), 'An account was created with the password "' . $password . '".');
+        }
+        $this->saveUser($admin, $username, array('password' => 'long enough'));
+        $this->assertSame(1, $exists());
+
+        $this->saveUser($admin, $username, array('password' => 'short'));
+        $user = $this->login($username, 'long enough');
+        $this->assertSame('settings.php', $user->post('submit.php?type=update_password', array('token' => $this->token($user), 'current_password' => 'long enough', 'new_password' => 'short'))->location());
+        $this->login($username, 'long enough');
+    }
 }

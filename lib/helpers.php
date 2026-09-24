@@ -107,6 +107,34 @@ function delete_directory($dir) {
 }
 
 
+/** Minimum length of passwords set in Kirjuri, on the web and from the command line. */
+const KIRJURI_MIN_PASSWORD_LENGTH = 8;
+
+
+/**
+ * Parse a comma separated list of IPv4 addresses and ranges, e.g. "10.0.0.1, 10.1.0.0/16", for an
+ * account's allow or deny list. Returns the entries, or array('') for an empty list (the stored form).
+ * Throws InvalidArgumentException with the first invalid entry as its message.
+ */
+function kirjuri_parse_ip_list($text) {
+    $entries = array();
+    foreach (explode(',', (string) $text) as $entry) {
+        $entry = trim($entry);
+        if ($entry === '') {
+            continue; // An empty first entry would make ip_allowed() skip the whole allow list.
+        }
+        $parts = explode('/', $entry, 2);
+        $valid = filter_var($parts[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false
+            && (!isset($parts[1]) || (ctype_digit($parts[1]) && (int) $parts[1] <= 32));
+        if (!$valid) {
+            throw new InvalidArgumentException($entry);
+        }
+        $entries[] = $entry;
+    }
+    return empty($entries) ? array('') : $entries;
+}
+
+
 function ip_in_range( $ip, $range ) {
     if ( strpos( $ip, ":" ) !== false ) {
         // Return default false for ipv6 addresses.
@@ -118,6 +146,9 @@ function ip_in_range( $ip, $range ) {
     }
     // $range is in IP/CIDR format eg 127.0.0.1/24
     list( $range, $netmask ) = explode( '/', $range, 2 );
+    if ( !ctype_digit( $netmask ) ) {
+        return false; // "10.0.0.1/" would otherwise be a /0 range matching every address.
+    }
     $netmask = (int) $netmask;
     $range_decimal = ip2long( $range );
     $ip_decimal = ip2long( $ip );

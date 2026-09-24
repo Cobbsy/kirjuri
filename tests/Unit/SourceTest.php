@@ -91,4 +91,31 @@ final class SourceTest extends TestCase
         $trusted = array('confCrimes'); // conf/crimes_autofill.conf, edited by the administrator.
         $this->assertSame(array(), array_values(array_diff($matches[1], $trusted)), 'Use |purify for rich text.');
     }
+
+    public static function languageFiles(): array
+    {
+        $files = array();
+        foreach (glob(KIRJURI_ROOT . '/conf/lang_*.JSON') as $file) {
+            $files[basename($file)] = array($file);
+        }
+        return $files;
+    }
+
+    /** Every language string the code and templates ask for exists, so none prints as blank or logs a warning. */
+    #[DataProvider('languageFiles')]
+    public function testLanguageFileHasEveryStringInUse(string $file): void
+    {
+        $used = array();
+        foreach (self::filesOutsideDataLayer() + array_filter(self::phpFiles(), fn ($f) => strpos($f, 'lib/') === 0, ARRAY_FILTER_USE_KEY) as $php) {
+            preg_match_all("/\\['lang'\\]\\['([A-Za-z0-9_]+)'\\]/", file_get_contents($php[0]), $matches);
+            $used = array_merge($used, $matches[1]);
+        }
+        foreach (glob(KIRJURI_ROOT . '/views/*.twig') as $template) {
+            preg_match_all('/\\blang\\.([A-Za-z0-9_]+)/', file_get_contents($template), $matches);
+            $used = array_merge($used, $matches[1]);
+        }
+        $strings = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertGreaterThan(300, count(array_unique($used)));
+        $this->assertSame(array(), array_values(array_diff(array_unique($used), array_keys($strings))));
+    }
 }

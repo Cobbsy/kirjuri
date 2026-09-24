@@ -24,8 +24,12 @@ Unreleased
 * - Notes stored through the API or a KRF import could hold scripts that ran for everyone who opened the case. Notes, messages and the message of the day are now purified as they are printed, which also covers rows already in the database.
 * - user_status.php (the online indicator on the users page) took a folder path from the URL and deleted files older than three days in it. Loading it as an administrator, for example through an image in a message or case note, could delete conf/mysql_credentials.php and reopen the installer. It now only accepts existing usernames.
 * - upload_IMEI.php, which replaces the IMEI list, did not check the CSRF token.
+* - An IP allow or deny list entry ending in a slash ("10.0.0.1/") was accepted and matched every address, and an empty first entry switched the allow list off. Entries are now validated in one place, and ip_in_range() refuses an empty netmask.
+* - Passwords set from the web (new accounts, password changes, the installer's admin password) must be at least 8 characters, as on the command line. New accounts could be created without a password.
 * - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
 * Bug fixes:
+* - A single IP address without a netmask in an account's allow or deny list logged a PHP warning, and an invalid deny list entry showed an undefined message.
+* - The mobile examiner column header on the front page was blank in one sort order, and the case report and statistics used an undefined "device" string. A unit test now checks that every language string in use exists in every language file.
 * - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.
 * - Installer: on PHP 8.1+ an existing database aborted the install halfway and left a credentials file behind, which blocked rerunning it.
 * - PHP 8.1 returns integer columns as ints, which broke every access level check (admins were not treated as admins and add-only users saw the case list).

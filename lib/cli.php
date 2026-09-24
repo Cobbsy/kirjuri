@@ -100,8 +100,8 @@ function cli_read_password() {
         shell_exec('stty echo');
         fwrite(STDOUT, "\n");
     }
-    if (strlen($password) < 8) {
-        throw new RuntimeException('The password must be at least 8 characters long.');
+    if (strlen($password) < KIRJURI_MIN_PASSWORD_LENGTH) {
+        throw new RuntimeException('The password must be at least ' . KIRJURI_MIN_PASSWORD_LENGTH . ' characters long.');
     }
     return $password;
 }
@@ -130,8 +130,8 @@ function cli_install($args) {
         'mysql_database' => kirjuri_validate_database_name($env('KIRJURI_DB_NAME', 'kirjuri')),
     );
     $admin_password = $env('KIRJURI_ADMIN_PASSWORD');
-    if (strlen($admin_password) < 8) {
-        throw new RuntimeException('KIRJURI_ADMIN_PASSWORD must be at least 8 characters long.');
+    if (strlen($admin_password) < KIRJURI_MIN_PASSWORD_LENGTH) {
+        throw new RuntimeException('KIRJURI_ADMIN_PASSWORD must be at least ' . KIRJURI_MIN_PASSWORD_LENGTH . ' characters long.');
     }
 
     if (kirjuri_create_database(kirjuri_connect_server($config), $config['mysql_database'])) {

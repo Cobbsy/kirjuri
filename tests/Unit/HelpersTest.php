@@ -38,6 +38,8 @@ final class HelpersTest extends TestCase
             '/0 matches everything' => array('8.8.8.8', '0.0.0.0/0', true),
             'ipv6 is never matched' => array('::1', '127.0.0.1', false),
             'invalid range' => array('10.0.0.1', 'not-an-ip', false),
+            'empty netmask is not /0' => array('8.8.8.8', '10.0.0.1/', false),
+            'non-numeric netmask' => array('10.0.0.1', '10.0.0.1/x', false),
             'netmask over 32' => array('10.0.0.1', '10.0.0.1/33', false),
             'invalid address' => array('garbage', '10.0.0.0/8', false),
         );
@@ -47,6 +49,36 @@ final class HelpersTest extends TestCase
     public function testIpInRange(string $ip, string $range, bool $expected): void
     {
         $this->assertSame($expected, ip_in_range($ip, $range));
+    }
+
+    public function testParseIpListAcceptsAddressesAndRanges(): void
+    {
+        $this->assertSame(array('10.0.0.1', '10.1.0.0/16', '0.0.0.0/0'), kirjuri_parse_ip_list(' 10.0.0.1, ,10.1.0.0/16,0.0.0.0/0 '));
+        $this->assertSame(array(''), kirjuri_parse_ip_list(''));
+        $this->assertSame(array('10.0.0.1'), kirjuri_parse_ip_list(',10.0.0.1'), 'A leading empty entry used to disable the allow list.');
+    }
+
+    public static function invalidIpEntries(): array
+    {
+        return array(
+            'empty netmask' => array('10.0.0.1/'),
+            'netmask over 32' => array('10.0.0.0/33'),
+            'signed netmask' => array('10.0.0.0/-1'),
+            'not an address' => array('10.0.0'),
+            'hostname' => array('intranet.example'),
+            'ipv6' => array('::1'),
+        );
+    }
+
+    #[DataProvider('invalidIpEntries')]
+    public function testParseIpListRejectsInvalidEntries(string $entry): void
+    {
+        try {
+            kirjuri_parse_ip_list('10.0.0.1, ' . $entry);
+            $this->fail('Accepted ' . $entry);
+        } catch (\InvalidArgumentException $e) {
+            $this->assertSame($entry, $e->getMessage());
+        }
     }
 
     public function testGenerateTokenIsRandomHexOfRequestedLength(): void

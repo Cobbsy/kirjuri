@@ -12,22 +12,20 @@ switch ($action) {
 case 'create_user':
     ksess_verify(0);
     ksess_validate($_POST['token']);
-    $ip_access_control['allow'] = explode(",", preg_replace("/[^0-9,\.\/]+/", "", $_POST['ip_whitelist']));
-    $ip_access_control['deny'] = explode(",", preg_replace("/[^0-9,\.\/]+/", "", $_POST['ip_blacklist']));
-    foreach ($ip_access_control['allow'] as $ip) {
-        if ((!empty($ip) && ((filter_var(explode("/", $ip)[0], FILTER_VALIDATE_IP) === false) || (explode("/", $ip)[1]) > "32")) ) {
-            message('error', $_SESSION['lang']['whitelist_not_a_valid_ip'] . ": " . $ip);
-            header('Location: users.php?populate=' . $_POST['user_id']);
+    foreach (array('allow' => 'ip_whitelist', 'deny' => 'ip_blacklist') as $list => $field) {
+        try {
+            $ip_access_control[$list] = kirjuri_parse_ip_list($_POST[$field]);
+        } catch (InvalidArgumentException $e) {
+            $error = ($list === 'allow') ? 'whitelist_not_a_valid_ip' : 'blacklist_not_a_valid_ip';
+            message('error', $_SESSION['lang'][$error] . ": " . $e->getMessage());
+            header('Location: users.php?populate=' . filter_numbers($_POST['user_id']));
             die;
         }
     }
-
-    foreach ($ip_access_control['deny'] as $ip) {
-        if ((!empty($ip) && ((filter_var(explode("/", $ip)[0], FILTER_VALIDATE_IP) === false) || (explode("/", $ip)[1]) > "32")) ) {
-            message('error', $_SESSION['lang']['blacklist_not_a_valid_ip'] . ": " . $ip);
-            header('Location: users.php?populate=' . $_POST['user_id']);
-            die;
-        }
+    if (isset($_POST['password']) && $_POST['password'] !== '' && strlen($_POST['password']) < KIRJURI_MIN_PASSWORD_LENGTH) {
+        message('error', sprintf($_SESSION['lang']['password_too_short'], KIRJURI_MIN_PASSWORD_LENGTH));
+        header('Location: users.php?populate=' . filter_numbers($_POST['user_id']));
+        die;
     }
 
     $ip_json = json_encode($ip_access_control);
@@ -83,6 +81,11 @@ case 'create_user':
             }
         }
 
+        if (strlen($_POST['password']) < KIRJURI_MIN_PASSWORD_LENGTH) { // A new account needs a password.
+            message('error', sprintf($_SESSION['lang']['password_too_short'], KIRJURI_MIN_PASSWORD_LENGTH));
+            header('Location: users.php');
+            die;
+        }
         kirjuri_create_user($kirjuri_database, array(
                 'username' => $username_input,
                 'name' => $_POST['name'],
@@ -106,6 +109,11 @@ case 'create_user':
 case 'update_password':
     ksess_verify(1);
     ksess_validate($_POST['token']);
+    if (!empty($_POST['new_password']) && strlen($_POST['new_password']) < KIRJURI_MIN_PASSWORD_LENGTH) {
+        message('error', sprintf($_SESSION['lang']['password_too_short'], KIRJURI_MIN_PASSWORD_LENGTH));
+        header('Location: settings.php');
+        die;
+    }
     if ((!empty($_POST['new_password'])) && (password_verify($_POST['current_password'], kirjuri_session_user_credentials()['password']))) {
         kirjuri_set_password($kirjuri_database, $_SESSION['user']['id'], $_SESSION['user']['username'], password_hash($_POST['new_password'], PASSWORD_DEFAULT));
         event_log_write('0', 'Update', 'User changed password.');

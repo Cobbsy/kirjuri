@@ -7,6 +7,7 @@ if (version_compare(PHP_VERSION, '8.1.0') < 0) {
     echo "Kirjuri requires PHP 8.1 or newer to run. You are using " . phpversion() . ". Please upgrade your PHP environment.";
     die;
 }
+require_once __DIR__ . '/lib/helpers.php';
 require_once __DIR__ . '/lib/database.php';
 require_once __DIR__ . '/lib/migrations.php';
 require_once __DIR__ . '/lib/install.php';
@@ -89,7 +90,7 @@ Please choose a name for your database. The default is "kirjuri".
 <input name="u" type="text"> MySQL username
 <input name="p" type="password"> MySQL password
 <input name="d" type="text" value="kirjuri"> MySQL database
-<input name="ap" type="password"> Create admin password
+<input name="ap" type="password"> Create admin password (at least ' . KIRJURI_MIN_PASSWORD_LENGTH . ' characters)
 
 <button type="submit">Install / rebuild databases</button></form></pre>
 </div>
@@ -105,6 +106,10 @@ Please choose a name for your database. The default is "kirjuri".
     $mysql_config['mysql_server'] = $_POST['s'];
     $mysql_config['mysql_username'] = trim(preg_replace('/[^A-Za-z0-9\-]/', '', $_POST['u']));
     $mysql_config['mysql_password'] = $_POST['p'];
+    if (strlen($_POST['ap']) < KIRJURI_MIN_PASSWORD_LENGTH) {
+        echo '<p style="color:red;">The admin password must be at least ' . KIRJURI_MIN_PASSWORD_LENGTH . ' characters long.</p>';
+        die;
+    }
     try {
         $mysql_config['mysql_database'] = kirjuri_validate_database_name($_POST['d']);
     } catch (InvalidArgumentException $e) {
