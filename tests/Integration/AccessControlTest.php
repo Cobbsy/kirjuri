@@ -195,4 +195,18 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertSame('login.php', $user->post('submit.php?type=update_password', array('token' => $this->token($user), 'current_password' => 'password1', 'new_password' => 'password2'))->location());
         $this->login($username, 'password2');
     }
+
+    public function testUserStatusStaysInsideTheSessionFolders(): void
+    {
+        $admin = $this->admin(); // Creates cache/user_admin, the start of the path below.
+        $decoy = $this->server->dir . '/cache/' . $this->uniqueName('decoy');
+        mkdir($decoy);
+        touch($decoy . '/old.txt', time() - 5 * 86400);
+        // It used to purge every file older than three days in any folder it was pointed at, conf/ included.
+        $response = $admin->get('user_status.php?user=' . rawurlencode('admin/../' . basename($decoy)));
+        $this->assertFileExists($decoy . '/old.txt');
+        $this->assertStringContainsString('fa-circle-o', $response->body);
+
+        $this->assertStringContainsString('title="online"', $admin->get('user_status.php?user=admin')->body);
+    }
 }

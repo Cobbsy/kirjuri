@@ -22,6 +22,8 @@ Unreleased
 * - Admin session handling, the backup, settings and audit viewer no longer accept path or shell metacharacters.
 * - conf/, logs/ and cache/ include .htaccess files denying direct web access on Apache.
 * - Notes stored through the API or a KRF import could hold scripts that ran for everyone who opened the case. Notes, messages and the message of the day are now purified as they are printed, which also covers rows already in the database.
+* - user_status.php (the online indicator on the users page) took a folder path from the URL and deleted files older than three days in it. Loading it as an administrator, for example through an image in a message or case note, could delete conf/mysql_credentials.php and reopen the installer. It now only accepts existing usernames.
+* - upload_IMEI.php, which replaces the IMEI list, did not check the CSRF token.
 * - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
 * Bug fixes:
 * - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.

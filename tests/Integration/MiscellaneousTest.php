@@ -164,6 +164,26 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testImeiDatabaseUploadNeedsTheCsrfToken(): void
+    {
+        $this->expectLoggedError('CSRF token mismatch');
+        $admin = $this->admin();
+        $target = $this->server->dir . '/conf/imei.txt';
+        $file = tempnam(sys_get_temp_dir(), 'imei');
+        try {
+            file_put_contents($file, "35000000|forged\n");
+            $admin->post('upload_IMEI.php', array('fileToUpload' => new \CURLFile($file)), true);
+            $this->assertFalse(file_exists($target) && strpos(file_get_contents($target), 'forged') !== false);
+
+            file_put_contents($file, "35000000|uploaded\n");
+            $response = $admin->post('upload_IMEI.php', array('token' => $this->token($admin), 'fileToUpload' => new \CURLFile($file)), true);
+            $this->assertSame('settings.php', $response->location());
+            $this->assertSame("35000000|uploaded\n", file_get_contents($target));
+        } finally {
+            unlink($file);
+        }
+    }
+
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void
     {
         $admin = $this->admin();
@@ -194,6 +214,8 @@ final class MiscellaneousTest extends IntegrationTestCase
         foreach (array('users.php?populate=2', 'settings.php', 'lang_editor.php', 'log.php', 'help.php', 'tools.php', 'auditor.php') as $page) {
             $this->assertSame(200, $admin->get($page)->status, $page);
         }
+        $caseId = $this->createCase($admin, $this->uniqueName('Audited '));
+        $this->addDevice($admin, $caseId, 'Audited device'); // Adding a device writes an audit file.
         $audit = glob($this->server->dir . '/logs/audit/*/*.log');
         $this->assertNotEmpty($audit, 'Changes should have written audit files.');
         $view = $admin->get('auditor.php?view=' . basename($audit[0]));
