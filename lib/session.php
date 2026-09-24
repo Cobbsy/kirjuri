@@ -31,6 +31,54 @@ function kirjuri_session_user_credentials() {
 }
 
 
+function kirjuri_session_file() {
+    // The file that keeps the logged in user's session valid; removing it logs the session out.
+    return 'cache/user_' . $_SESSION['user']['username'] . '/session_' . $_SESSION['user']['token'] . '.txt';
+}
+
+
+/**
+ * Check a logged in session against the account as it is now, on every request. Changes to an account
+ * (access level, flags, IP lists) apply to its open sessions straight away, and the session ends when
+ * the account is removed or inactive, the IP address is no longer allowed, or the session has been
+ * idle longer than the session_idle_timeout setting (minutes; open pages keep it alive by polling).
+ * The session ends by removing its file, which ksess_verify() then treats as logged out.
+ */
+function kirjuri_check_session(array $users) {
+    global $prefs;
+    if (!isset($_SESSION['user']['username'], $_SESSION['user']['token'], $_SESSION['user']['id'])) {
+        return;
+    }
+    $file = kirjuri_session_file();
+    if (!file_exists($file)) {
+        return;
+    }
+    $idle_limit = isset($prefs['settings']['session_idle_timeout']) ? (int) $prefs['settings']['session_idle_timeout'] : 0;
+    $record = null;
+    foreach ($users as $user) {
+        if ((string) $user['id'] === (string) $_SESSION['user']['id'] && $user['username'] === $_SESSION['user']['username']) {
+            $record = $user;
+        }
+    }
+    if ($idle_limit > 0 && (time() - filemtime($file)) > $idle_limit * 60) {
+        $reason = 'idle for over ' . $idle_limit . ' minutes';
+    } elseif ($record === null) {
+        $reason = 'account removed';
+    } elseif (strpos((string) $record['flags'], 'I') !== false) {
+        $reason = 'account inactive';
+    } else {
+        $_SESSION['user'] = array('token' => $_SESSION['user']['token']) + $record;
+        $reason = ip_allowed() ? null : 'IP address ' . $_SERVER['REMOTE_ADDR'] . ' not allowed';
+    }
+    if ($reason === null) {
+        touch($file);
+        return;
+    }
+    unlink($file);
+    event_log_write('0', 'Auth', 'Ended session ' . $_SESSION['user']['token'] . ' of ' . $_SESSION['user']['username'] . ': ' . $reason . '.');
+}
+
+
 function ksess_init() {
     // Initialize a session token.
     session_regenerate_id(true); // Prevent session fixation.

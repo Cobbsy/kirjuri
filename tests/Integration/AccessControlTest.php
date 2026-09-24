@@ -261,4 +261,48 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertSame('settings.php', $user->post('submit.php?type=update_password', array('token' => $this->token($user), 'current_password' => 'long enough', 'new_password' => 'short'))->location());
         $this->login($username, 'long enough');
     }
+
+    public function testAccountChangesApplyToOpenSessions(): void
+    {
+        $username = $this->uniqueName('demoted');
+        $admin = $this->admin();
+        $this->saveUser($admin, $username, array('access' => 'A', 'password' => 'password1')); // The form sends admin as "A".
+        $user = $this->login($username, 'password1');
+        $this->assertSame(200, $user->get('users.php')->status);
+
+        // Access levels, flags and IP lists used to be read only at login.
+        $this->saveUser($admin, $username, array('access' => '1'));
+        $this->assertSame('index.php', $user->get('users.php')->location());
+        $this->assertSame(200, $user->get('index.php')->status, 'The session itself continues.');
+
+        $this->saveUser($admin, $username, array('access' => '1', 'flag2' => 'I'));
+        $this->assertSame('login.php', $user->get('index.php')->location(), 'Marking the account inactive ends its sessions.');
+    }
+
+    public function testSessionsEndWhenTheIpAddressIsNoLongerAllowed(): void
+    {
+        $username = $this->uniqueName('moved');
+        $this->createUser($username, 'password1', 1);
+        $user = $this->login($username, 'password1');
+        $this->saveUser($this->admin(), $username, array('ip_blacklist' => '127.0.0.1'));
+        $this->assertSame('login.php', $user->get('index.php')->location());
+    }
+
+    public function testIdleSessionsExpire(): void
+    {
+        $username = $this->uniqueName('idle');
+        $this->createUser($username, 'password1', 1);
+        $user = $this->login($username, 'password1');
+        $this->assertSame(200, $user->get('index.php')->status);
+        $sessions = glob($this->server->dir . '/cache/user_' . $username . '/session_*.txt');
+        $this->assertCount(1, $sessions);
+
+        touch($sessions[0], time() - 11 * 3600); // Under the default limit of 12 hours.
+        $this->assertSame(200, $user->get('index.php')->status);
+        $this->assertGreaterThan(time() - 60, filemtime($sessions[0]), 'Each request keeps the session alive.');
+
+        touch($sessions[0], time() - 13 * 3600);
+        $this->assertSame('login.php', $user->get('index.php')->location());
+        $this->assertFileDoesNotExist($sessions[0]);
+    }
 }

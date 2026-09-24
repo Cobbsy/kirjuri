@@ -25,6 +25,8 @@ Unreleased
 * - user_status.php (the online indicator on the users page) took a folder path from the URL and deleted files older than three days in it. Loading it as an administrator, for example through an image in a message or case note, could delete conf/mysql_credentials.php and reopen the installer. It now only accepts existing usernames.
 * - upload_IMEI.php, which replaces the IMEI list, did not check the CSRF token.
 * - An IP allow or deny list entry ending in a slash ("10.0.0.1/") was accepted and matched every address, and an empty first entry switched the allow list off. Entries are now validated in one place, and ip_in_range() refuses an empty netmask.
+* - Changes to an account (access level, inactive flag, IP lists) took effect only at its next login, so a demoted or deactivated user kept their access until they logged out. Open sessions now follow the account on every request, and end when it is removed, made inactive or its IP lists exclude the address.
+* - Sessions now end after the session_idle_timeout setting (default 12 hours) with no Kirjuri page open. Before, a session lasted until its file was removed.
 * - Passwords set from the web (new accounts, password changes, the installer's admin password) must be at least 8 characters, as on the command line. New accounts could be created without a password.
 * - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
 * Bug fixes:
@@ -61,6 +63,7 @@ Unreleased
 * - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
 * Actions that change data are sent as POST, with no CSRF or case token in the URL, and logout needs the token. The logged in user's password hash is no longer kept in the session.
 * The API's add operation returns the new case's UID and case number.
+* Settings added in a new release get their default value when conf/settings.local predates them, as the settings file always promised.
 * Added a Docker setup (docker compose up) that installs itself, and `php bin/kirjuri install` for installing without a browser.
 * Added deny rules for .git/, tests/, docker/ and build files (composer.json, Dockerfile, docker-compose.yml), so a git checkout in the web root does not expose the repository.
 * Database connections no longer allow several SQL statements in one query.

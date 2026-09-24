@@ -22,6 +22,13 @@ function kirjuri_load_settings($settings_file) {
     if ($prefs === false) {
         throw new RuntimeException('Can not parse the settings file ' . $settings_file . '.');
     }
+    // Settings added in a new release are not in an older settings.local yet: use their defaults.
+    if ($settings_file !== 'conf/settings.conf' && file_exists('conf/settings.conf')) {
+        $defaults = parse_ini_file('conf/settings.conf', true);
+        if (is_array($defaults) && isset($defaults['settings'])) {
+            $prefs['settings'] = (isset($prefs['settings']) ? $prefs['settings'] : array()) + $defaults['settings'];
+        }
+    }
     $prefs['settings']['release'] = file_get_contents('conf/RELEASE');
     return $prefs;
 }
