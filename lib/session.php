@@ -115,6 +115,15 @@ function ksess_init() {
 }
 
 
+/** End every session of $username by removing its session files. */
+function kirjuri_end_user_sessions($username) {
+    $username = filter_username($username);
+    if ($username !== '' && file_exists('cache/user_' . $username)) {
+        delete_directory('cache/user_' . $username);
+    }
+}
+
+
 function posted_token() {
     // The CSRF token of a POST request. Tokens are never read from URLs, where they would end up
     // in logs, browser history and Referer headers.

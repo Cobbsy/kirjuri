@@ -46,10 +46,7 @@ case 'create_user':
             }
             event_log_write('0', 'Remove', 'User deleted permanently: ' . $username_input);
             message('info', $_SESSION['lang']['user_deleted']);
-            // End the deleted user's sessions.
-            if (file_exists('cache/user_' . $username_input)) { // Not empty, checked above.
-                delete_directory('cache/user_' . $username_input);
-            }
+            kirjuri_end_user_sessions($username_input); // Not empty, checked above.
             header('Location: users.php');
             die;
         }
@@ -60,6 +57,7 @@ case 'create_user':
                 if (!empty($_POST['password'])) {
                     $user_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
                     event_log_write('0', 'Update', 'Password changed for user ' . $user['username'] . '.');
+                    kirjuri_end_user_sessions($user['username']); // Whoever knew the old password is logged out.
                 }
                 else {
                     $user_password = $user['password'];
@@ -117,6 +115,7 @@ case 'update_password':
     if ((!empty($_POST['new_password'])) && (password_verify($_POST['current_password'], kirjuri_session_user_credentials()['password']))) {
         kirjuri_set_password($kirjuri_database, $_SESSION['user']['id'], $_SESSION['user']['username'], password_hash($_POST['new_password'], PASSWORD_DEFAULT));
         event_log_write('0', 'Update', 'User changed password.');
+        kirjuri_end_user_sessions($_SESSION['user']['username']); // This one and any others, as above.
         $_SESSION['user'] = array();
         session_destroy();
         header('Location: login.php');

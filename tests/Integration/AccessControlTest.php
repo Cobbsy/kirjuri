@@ -279,6 +279,26 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertSame('login.php', $user->get('index.php')->location(), 'Marking the account inactive ends its sessions.');
     }
 
+    public function testPasswordChangesEndTheAccountsOtherSessions(): void
+    {
+        // A password change, often made because the old one may be known to someone, left every other
+        // session of the account logged in.
+        $username = $this->uniqueName('rotated');
+        $this->createUser($username, 'password1', 1);
+        $elsewhere = $this->login($username, 'password1');
+        $here = $this->login($username, 'password1');
+        $here->post('submit.php?type=update_password', array('token' => $this->token($here), 'current_password' => 'password1', 'new_password' => 'password2'));
+        $this->assertSame('login.php', $elsewhere->get('index.php')->location(), 'The user changing their password ends their other sessions.');
+
+        $elsewhere = $this->login($username, 'password2');
+        $this->saveUser($this->admin(), $username, array('password' => 'password3'));
+        $this->assertSame('login.php', $elsewhere->get('index.php')->location(), 'An administrator resetting the password ends its sessions.');
+
+        $unchanged = $this->login($username, 'password3');
+        $this->saveUser($this->admin(), $username, array('name' => 'Renamed'));
+        $this->assertSame(200, $unchanged->get('index.php')->status, 'Other account changes keep the session.');
+    }
+
     public function testSessionsEndWhenTheIpAddressIsNoLongerAllowed(): void
     {
         $username = $this->uniqueName('moved');
