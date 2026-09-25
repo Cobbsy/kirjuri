@@ -123,6 +123,6 @@ case 'force_logout':
         message('info', $_SESSION['lang']['user_logged_out']);
     }
     event_log_write('0', "Auth", "Admin terminated sessions: " . $logout_user);
-    header('Location: '.(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'users.php'));
+    kirjuri_redirect_back('users.php');
     die;
 }

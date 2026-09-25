@@ -27,9 +27,11 @@ Unreleased
 * - An IP allow or deny list entry ending in a slash ("10.0.0.1/") was accepted and matched every address, and an empty first entry switched the allow list off. Entries are now validated in one place, and ip_in_range() refuses an empty netmask.
 * - Changes to an account (access level, inactive flag, IP lists) took effect only at its next login, so a demoted or deactivated user kept their access until they logged out. Open sessions now follow the account on every request, and end when it is removed, made inactive or its IP lists exclude the address.
 * - Sessions now end after the session_idle_timeout setting (default 12 hours) with no Kirjuri page open. Before, a session lasted until its file was removed.
+* - Error redirects (bad CSRF or case token, insufficient access, invalid HTML) went to whatever Referer header the request carried, so a link from another site could bounce users back to it. They now only return to pages of the same site.
 * - Passwords set from the web (new accounts, password changes, the installer's admin password) must be at least 8 characters, as on the command line. New accounts could be created without a password.
 * - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
 * Bug fixes:
+* - Messages could be sent to usernames that did not exist; an account created later with that name received them.
 * - A single IP address without a netmask in an account's allow or deny list logged a PHP warning, and an invalid deny list entry showed an undefined message.
 * - The mobile examiner column header on the front page was blank in one sort order, and the case report and statistics used an undefined "device" string. A unit test now checks that every language string in use exists in every language file.
 * - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.

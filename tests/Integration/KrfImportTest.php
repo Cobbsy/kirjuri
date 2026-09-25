@@ -65,6 +65,20 @@ final class KrfImportTest extends IntegrationTestCase
         }
     }
 
+    public function testNotesThatPurifyToNothingStillLetTheCaseOpen(): void
+    {
+        $admin = $this->admin();
+        $krf = $this->exportCase($admin, $this->uniqueName('Empty notes '));
+        $krf['parent']['report_notes'] = '<script>alert("only")</script>';
+        $newId = (int) substr($this->upload($admin, gzencode(json_encode($krf)))->location(), strlen('edit_request.php?case='));
+        foreach (array('edit_request.php?case=' . $newId, 'case_report.php?case=' . $newId) as $page) {
+            $response = $admin->get($page);
+            // Printing notes used to redirect away, as for invalid input, when they purified to nothing.
+            $this->assertSame(200, $response->status, $page);
+            $this->assertNull($response->location(), $page);
+        }
+    }
+
     public function testInjectedColumnNameIsRejectedBeforeAnythingIsWritten(): void
     {
         $admin = $this->admin();

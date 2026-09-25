@@ -12,7 +12,9 @@ switch ($action) {
 case 'send_message':
     ksess_verify(3);
     ksess_validate($_POST['token']);
-    if (!empty($_POST['body']) && !empty($_POST['msgto'])) {
+    $recipients = array_column($_SESSION['all_users'], 'username');
+    // An unknown recipient would get the message if an account with that name were created later.
+    if (!empty($_POST['body']) && !empty($_POST['msgto']) && ($_POST['msgto'] === 'ALL_USERS' || in_array($_POST['msgto'], $recipients, true))) {
         $subject = filter_html($_POST['subject']);
         $body = filter_html($_POST['body']);
         if ($_POST['msgto'] === "ALL_USERS") {

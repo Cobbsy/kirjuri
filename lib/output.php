@@ -1,21 +1,25 @@
 <?php
 // HTML sanitising and messages shown to the user.
 
-function filter_html($string) // Purify HTML content for raw presentation.
+function filter_html($string) // Purify HTML input; rejects input that purifies to nothing.
 {
     if (empty($string)) {
         return "";
     }
-    else {
-        global $purifier;
-        $out = $purifier->purify($string);
-        if (empty($out)) {
-            message('error', 'Invalid HTML input.');
-            header('Location: '.(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'index.php'));
-            die;
-        }
-        return $out;
+    $out = kirjuri_purify_html($string);
+    if (empty($out)) {
+        message('error', 'Invalid HTML input.');
+        kirjuri_redirect_back('index.php');
+        die;
     }
+    return $out;
+}
+
+
+/** Purified HTML for printing. Unlike filter_html(), never redirects: content that purifies to nothing prints nothing. */
+function kirjuri_purify_html($string) {
+    global $purifier;
+    return empty($string) ? '' : $purifier->purify((string) $string);
 }
 
 
@@ -63,7 +67,7 @@ function kirjuri_render($template, $variables = array()) {
  * and older rows were saved before some of the checks on input.
  */
 function kirjuri_add_twig_filters(\Twig\Environment $twig) {
-    $twig->addFilter(new \Twig\TwigFilter('purify', 'filter_html', array('is_safe' => array('html'))));
+    $twig->addFilter(new \Twig\TwigFilter('purify', 'kirjuri_purify_html', array('is_safe' => array('html'))));
 }
 
 

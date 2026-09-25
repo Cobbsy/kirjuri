@@ -100,6 +100,25 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame(array($ids[1]), $this->server->pdo()->query("SELECT id FROM messages WHERE msgto = '$username'")->fetchAll(\PDO::FETCH_COLUMN));
     }
 
+    public function testMessagesToUnknownRecipientsAreRefused(): void
+    {
+        $admin = $this->admin();
+        $nobody = $this->uniqueName('nobody');
+        $response = $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => $nobody, 'subject' => 'Early', 'body' => '<p>x</p>'));
+        $this->assertSame('messages.php?show=compose', $response->location());
+        $this->assertSame(0, (int) $this->server->pdo()->query("SELECT COUNT(*) FROM messages WHERE msgto = '$nobody'")->fetchColumn());
+    }
+
+    public function testErrorsSendUsersBackOnlyToThisSite(): void
+    {
+        $this->expectLoggedError('CSRF token mismatch');
+        $admin = $this->admin();
+        $admin->setReferer('https://evil.example/phish');
+        $this->assertSame('index.php', $admin->post('submit.php?type=delete_all', array('token' => 'wrong'))->location());
+        $admin->setReferer($this->server->baseUrl . '/messages.php?show=compose');
+        $this->assertSame('messages.php?show=compose', $admin->post('submit.php?type=delete_all', array('token' => 'wrong'))->location());
+    }
+
     public function testComposeSubjectIsPrefilled(): void
     {
         $admin = $this->admin();

@@ -1,6 +1,31 @@
 <?php
 // Session handling, CSRF tokens, access levels and case access groups.
 
+/**
+ * The page the request came from, as a path on this site, or $fallback when the Referer header is
+ * missing or points elsewhere. Redirecting to a raw Referer would send users to any site that links here.
+ */
+function kirjuri_safe_referer($fallback) {
+    $referer = isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '';
+    $parts = parse_url($referer);
+    if ($referer === '' || !is_array($parts) || !isset($parts['host'], $parts['path'])) {
+        return $fallback;
+    }
+    $host = $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : '');
+    $own_host = isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '';
+    // A path starting with // or /\ would be read by browsers as another host.
+    if (strcasecmp($host, $own_host) !== 0 || !preg_match('#^/(?![/\\\\])#', $parts['path'])) {
+        return $fallback;
+    }
+    return $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
+}
+
+
+function kirjuri_redirect_back($fallback) {
+    header('Location: ' . kirjuri_safe_referer($fallback));
+}
+
+
 function kirjuri_keep_request_data_out_of_session() {
     // The bootstrap loads the language strings, users, tools and unread count into $_SESSION on every
     // request, where pages and templates expect them. Drop them before PHP writes the session file:
@@ -110,11 +135,7 @@ function ksess_validate($token) {
     }
     else {
         trigger_error("CSRF token mismatch. Try again.");
-        if (isset($_SERVER['HTTP_REFERER'])) {
-            header('Location: '.$_SERVER['HTTP_REFERER']);
-        } else {
-            header('Location: index.php');
-        }
+        kirjuri_redirect_back('index.php');
         die();
     }
 }
@@ -143,11 +164,7 @@ function csrf_case_validate($token, $case_id) {
     // opening of a case.
     if (empty($token)) {
         trigger_error("Case access token missing. Try again.");
-        if (isset($_SERVER['HTTP_REFERER'])) {
-            header('Location: '.$_SERVER['HTTP_REFERER']);
-        } else {
-            header('Location: index.php');
-        }
+        kirjuri_redirect_back('index.php');
         die();
     }
     if ((is_string($token) && isset($_SESSION['case_token'][$case_id]) && hash_equals($_SESSION['case_token'][$case_id], $token)) || ($_SESSION['user']['access'] === "0")) {
@@ -155,11 +172,7 @@ function csrf_case_validate($token, $case_id) {
     }
     else {
         trigger_error("Case access token mismatch. Try again.");
-        if (isset($_SERVER['HTTP_REFERER'])) {
-            header('Location: '.$_SERVER['HTTP_REFERER']);
-        } else {
-            header('Location: index.php');
-        }
+        kirjuri_redirect_back('index.php');
         die();
     }
 }
@@ -184,11 +197,7 @@ function ksess_verify($required_access_level) {
     } else {
         if ($_SESSION['user']['access'] > $required_access_level) {
             message('Access', $_SESSION['lang']['insufficient_privileges']);
-            if (isset($_SERVER['HTTP_REFERER'])) {
-                header('Location: '.$_SERVER['HTTP_REFERER']);
-            } else {
-                header('Location: index.php');
-            }
+            kirjuri_redirect_back('index.php');
             die;
         } else {
             return true;

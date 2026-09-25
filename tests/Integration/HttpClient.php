@@ -19,6 +19,12 @@ final class HttpClient
             ));
     }
 
+    /** Send this Referer header with the following requests. */
+    public function setReferer(string $url): void
+    {
+        curl_setopt($this->curl, CURLOPT_REFERER, $url);
+    }
+
     public function get(string $path): Response
     {
         return $this->request('GET', $path);
