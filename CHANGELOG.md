@@ -32,6 +32,7 @@ Unreleased
 * - A local login for an unknown username skipped the password hash check and answered faster, revealing which accounts exist. Password hashes made with older or weaker settings are now upgraded at login (PHP 8.4 raised the default bcrypt cost), except for accounts with API access, whose API key is derived from the hash.
 * - Passwords set from the web (new accounts, password changes, the installer's admin password) must be at least 8 characters, as on the command line. New accounts could be created without a password.
 * - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
+* - Every submitted form was kept in the session to refill it after an error, so session files held the plaintext password of each login, failed login, password change and account created by an administrator. Password fields are no longer kept.
 * Bug fixes:
 * - The CSV export turned apostrophes into double quotes, dropped backslashes and replaced semicolons with commas. It now writes values unchanged with proper CSV quoting, and sends a text/csv content type instead of an invalid one.
 * - Messages could be sent to usernames that did not exist; an account created later with that name received them.
@@ -67,6 +68,7 @@ Unreleased
 * - The statistics page ran one query per case per unit; it now uses a few grouped queries.
 * - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
 * - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
+* - Passwords typed in web forms went through the HTML purifier, which stored "&" as "&amp;" and changed or removed < and >. Such passwords did not match the same password set by the installer or bin/kirjuri, and failed against LDAP. Passwords are now used as typed; hashes stored the old way still match and are replaced at the next login (except for accounts with API access, whose key derives from the hash).
 * - The case page, timeline, CSV and KRF exports and attachment uploads cut the case UID to five digits. Cases and devices share UIDs, so once they passed 99999 these pages opened, exported or attached files to the wrong case, or to none.
 * Attachment download links no longer carry the CSRF and case tokens in the URL; a download changes nothing, and the login and case access checks protect it. A unit test keeps tokens out of template URLs.
 * The report template editor can only save templates Kirjuri ships; any other name wrote conf/<name>.local, settings.local included.

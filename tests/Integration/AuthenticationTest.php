@@ -163,4 +163,61 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->assertSame($before, $key());
         $this->assertSame(200, $this->client()->get('api.php?operation=info&key=' . $before)->status);
     }
+
+    public function testPasswordsAreNotKeptInTheSession(): void
+    {
+        // submit.php kept every submitted form in the session to refill it after an error, passwords included.
+        $username = $this->uniqueName('cached');
+        $password = $this->uniqueName('Created-');
+        $this->createUser($username, $password, 1);
+        $user = $this->login($username, $password);
+        $rejected = $this->uniqueName('Rejected-');
+        $user->post('submit.php?type=update_password', array('token' => $this->token($user), 'current_password' => 'wrong-password', 'new_password' => $rejected));
+        $mistyped = $this->uniqueName('Mistyped-');
+        $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => $mistyped, 'auth_type' => 'local'));
+
+        $this->assertNotEmpty($this->server->sessionFiles());
+        foreach ($this->server->sessionFiles() as $session) {
+            foreach (array(KirjuriServer::ADMIN_PASSWORD, $password, $rejected, $mistyped) as $secret) {
+                $this->assertStringNotContainsString($secret, $session);
+            }
+        }
+    }
+
+    public function testPasswordsAreUsedAsTyped(): void
+    {
+        // Web forms ran passwords through the HTML purifier, so "&" was hashed as "&amp;". The same password
+        // set by the installer or bin/kirjuri, or checked against LDAP, did not match.
+        $username = $this->uniqueName('typed');
+        $password = 'Tom&Jerry<3-' . generate_token(4);
+        $this->createUser($username, $password, 1);
+        $stored = $this->server->pdo()->query("SELECT password FROM users WHERE username = '$username'")->fetchColumn();
+        $this->assertTrue(password_verify($password, $stored));
+        $this->login($username, $password);
+
+        $this->assertSame(0, $this->server->cli(array('user:password', $username), $password . "\n")[0]);
+        $this->login($username, $password);
+    }
+
+    public function testHashesOfPurifiedPasswordsStillMatch(): void
+    {
+        $pdo = $this->server->pdo();
+        $password = 'Tom&Jerry-' . generate_token(4);
+        $purified = str_replace('&', '&amp;', $password); // How the web forms used to store it.
+        foreach (array('' => 'upgraded', 'A' => 'kept, as the API key derives from it') as $flags => $expected) {
+            $username = $this->uniqueName('purified');
+            $this->createUser($username, 'password1', 1, $flags);
+            $old = password_hash($purified, PASSWORD_DEFAULT);
+            $pdo->prepare('UPDATE users SET password = :hash WHERE username = :username')->execute(array(':hash' => $old, ':username' => $username));
+
+            $this->login($username, $password);
+            $stored = $pdo->query("SELECT password FROM users WHERE username = '$username'")->fetchColumn();
+            if ($flags === '') {
+                $this->assertTrue(password_verify($password, $stored), "The hash is $expected.");
+            } else {
+                $this->assertSame($old, $stored, "The hash is $expected.");
+            }
+            $this->login($username, $password);
+        }
+    }
 }

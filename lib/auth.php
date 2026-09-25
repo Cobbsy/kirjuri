@@ -25,10 +25,15 @@ function local_authenticate($username, $password) {
     // Unknown usernames are checked against another hash, so the response time does not reveal which
     // accounts exist. A match there logs nobody in, as there is no account.
     $hash = ($user_record !== false) ? (string) $user_record['password'] : kirjuri_timing_hash($kirjuri_database);
-    if (password_verify($password, $hash) && ($user_record !== false)) {
+    $verified = password_verify($password, $hash);
+    // Web forms used to run passwords through the HTML purifier, so a password set there with <, > or &
+    // was hashed in its purified form ("&" as "&amp;"). Those hashes still match, and are replaced below.
+    $purified = kirjuri_purify_html($password);
+    $purified_match = !$verified && $purified !== $password && password_verify($purified, $hash);
+    if (($verified || $purified_match) && ($user_record !== false)) {
         // Hashes made with older or weaker settings are upgraded while the password is at hand. Not for
         // accounts with API access: api_key_for() derives the key from the hash, so it would change.
-        if (password_needs_rehash($hash, PASSWORD_DEFAULT) && strpos((string) $user_record['flags'], 'A') === false) {
+        if (($purified_match || password_needs_rehash($hash, PASSWORD_DEFAULT)) && strpos((string) $user_record['flags'], 'A') === false) {
             kirjuri_set_password($kirjuri_database, $user_record['id'], $user_record['username'], password_hash($password, PASSWORD_DEFAULT));
         }
         kirjuri_set_session_user($user_record);
@@ -196,11 +201,12 @@ function ip_allowed() {
 
 function upgrade_insecure_password($username, $password) {
     $kirjuri_database = connect_database('kirjuri-database');
-    $query = $kirjuri_database->prepare('UPDATE users SET password = :secure_password_hash WHERE username = :username AND password = :legacy_password');
+    $query = $kirjuri_database->prepare('UPDATE users SET password = :secure_password_hash WHERE username = :username AND password IN (:legacy_password, :legacy_purified)');
     $query->execute(array(
             ':secure_password_hash' => password_hash($password, PASSWORD_DEFAULT),
             ':username' => $username,
-            ':legacy_password' => hash('sha256', $password)
+            ':legacy_password' => hash('sha256', $password),
+            ':legacy_purified' => hash('sha256', kirjuri_purify_html($password)), // See local_authenticate().
         ));
     return $query->rowCount();
 }

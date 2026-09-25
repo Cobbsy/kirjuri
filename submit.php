@@ -8,9 +8,14 @@ $dateRange = array(
     'stop' => ($year + 1) . '-01-01 00:00:00'
 );
 
+// Passwords are compared and hashed as typed, and never kept in the session's form cache below.
+$password_fields = array('password', 'current_password', 'new_password');
+
 foreach ($_POST as $key => $value) // Sanitize all POST data
     {
-    if (!is_array($value)) {
+    if (in_array($key, $password_fields, true)) {
+        $value = is_string($value) ? $value : '';
+    } elseif (!is_array($value)) {
         if (isset($value[3])) // Don't bother to sanitize string under 4 characters.
             {
             $value = filter_html($value);
@@ -42,7 +47,7 @@ if ( (isset($_POST['phone_investigator'])) && (empty($_POST['phone_investigator'
 
 
 // Get entires from cache if filling a form fails.
-$_SESSION['post_cache'] = $_POST;
+$_SESSION['post_cache'] = array_diff_key($_POST, array_flip($password_fields));
 $_GET['type'] = isset($_GET['type']) ? $_GET['type'] : '';
 
 // ----- User management
