@@ -18,6 +18,7 @@ Unreleased
 * - The API respects case access groups and can no longer move items between cases or change access groups.
 * - Attachment uploads check the CSRF and case tokens and the case access group.
 * - Failed logins are throttled per username (10 failures in 15 minutes). The old block file was deleted in the same request and did nothing.
+* - The throttle counted each spelling of a username separately, while the database compares usernames without regard to accents, so "ádmin" and "admín" logged in as admin with 10 fresh attempts each. Failures now count against the account.
 * - Session cookies are HttpOnly and SameSite=Lax, and the session ID is regenerated at login.
 * - Admin session handling, the backup, settings and audit viewer no longer accept path or shell metacharacters.
 * - conf/, logs/ and cache/ include .htaccess files denying direct web access on Apache.

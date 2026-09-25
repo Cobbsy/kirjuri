@@ -11,6 +11,18 @@ function kirjuri_username_exists(PDO $db, $username) {
 
 
 /**
+ * The stored spelling of $username, or $username itself when no account matches. The database compares
+ * usernames without regard to case or accents, so "ádmin" finds and signs in as "admin".
+ */
+function kirjuri_account_username(PDO $db, $username) {
+    $query = $db->prepare('SELECT username FROM users WHERE username = :username LIMIT 1');
+    $query->execute(array(':username' => $username));
+    $stored = $query->fetchColumn();
+    return is_string($stored) ? $stored : $username;
+}
+
+
+/**
  * Create an account and return its ID. $account needs username, name, access and password_hash;
  * flags, note (stored in attr_1), ip_access (array with allow and deny lists) and ldap_only are optional.
  */

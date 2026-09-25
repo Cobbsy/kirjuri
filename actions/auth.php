@@ -40,7 +40,9 @@ case 'login':
         die;
     }
 
-    if (login_throttled($_POST['username'])) {
+    // Failures count against the account, whichever spelling of its name reaches it.
+    $throttle_name = kirjuri_account_username($kirjuri_database, $_POST['username']);
+    if (login_throttled($throttle_name)) {
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Login throttled after repeated failures: ' . $_POST['username']);
         header('Location: login.php');
@@ -73,7 +75,7 @@ case 'login':
             header('Location: login.php');
             die;
         } else {
-            login_throttle_clear($_POST['username']);
+            login_throttle_clear($throttle_name);
             ksess_init();
             message('info', $_SESSION['lang']['logged_in_as'] . ' ' . $_SESSION['user']['username']);
             event_log_write('0', 'Auth', 'Login, created session ' . $_SESSION['user']['token']);
@@ -82,7 +84,7 @@ case 'login':
         }
     } elseif ($auth_success === false) {
         $_SESSION['user'] = array();
-        login_throttle_record_failure($_POST['username']);
+        login_throttle_record_failure($throttle_name);
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Invalid login attempt: ' . $_POST['username']);
         header('Location: login.php');

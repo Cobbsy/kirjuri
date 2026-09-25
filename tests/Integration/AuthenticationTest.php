@@ -54,6 +54,20 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->admin();
     }
 
+    public function testSpellingsOfTheSameAccountShareTheThrottle(): void
+    {
+        // The database compares usernames without accents, so "ádmin" signs in as "admin". Each spelling
+        // used to count its own failures, which multiplied the attempts allowed on one account.
+        $username = $this->uniqueName('accent');
+        $this->createUser($username, 'correct-password', 1);
+        for ($i = 0; $i < LOGIN_MAX_FAILURES; $i++) {
+            $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'wrong', 'auth_type' => 'local'));
+        }
+        $variant = 'á' . substr($username, 1);
+        $response = $this->client()->post('submit.php?type=login', array('username' => $variant, 'password' => 'correct-password', 'auth_type' => 'local'));
+        $this->assertSame('login.php', $response->location(), 'Another spelling of a throttled account is throttled too.');
+    }
+
     public function testSuccessfulLoginResetsTheFailureCount(): void
     {
         $username = $this->uniqueName('reset');
