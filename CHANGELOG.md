@@ -67,6 +67,7 @@ Unreleased
 * - The statistics page ran one query per case per unit; it now uses a few grouped queries.
 * - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
 * - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
+* - The case page, timeline, CSV and KRF exports and attachment uploads cut the case UID to five digits. Cases and devices share UIDs, so once they passed 99999 these pages opened, exported or attached files to the wrong case, or to none.
 * Attachment download links no longer carry the CSRF and case tokens in the URL; a download changes nothing, and the login and case access checks protect it. A unit test keeps tokens out of template URLs.
 * The report template editor can only save templates Kirjuri ships; any other name wrote conf/<name>.local, settings.local included.
 * Actions that change data are sent as POST, with no CSRF or case token in the URL, and logout needs the token. The logged in user's password hash is no longer kept in the session.

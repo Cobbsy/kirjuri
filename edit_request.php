@@ -13,7 +13,7 @@ $get_case = isset($_GET['case']) ? $_GET['case'] : '';
 $returntab = isset($_GET['tab']) ? $_GET['tab'] : '';
 $dev_owner = isset($_GET['dev_owner']) ? urldecode($_GET['dev_owner']) : '';
 $filelist = array();
-$case_number = filter_numbers((substr($get_case, 0, 5)));
+$case_number = kirjuri_uid_param($get_case);
 $confCrimes = strip_tags(file_get_contents('conf/crimes_autofill.conf'));
 $case = kirjuri_find_case($kirjuri_database, $case_number);
 if ($case === null) {

@@ -2,7 +2,7 @@
 require_once './include_functions.php';
 ksess_verify(1);
 ksess_validate(isset($_POST['token']) ? $_POST['token'] : '');
-$id = filter_numbers(substr($_POST['case'], 0, 5));
+$id = kirjuri_uid_param(isset($_POST['case']) ? $_POST['case'] : '');
 csrf_case_validate(isset($_POST['ct']) ? $_POST['ct'] : '', $id);
 verify_case_ownership($id);
 unset($_SESSION['failed_uploads']);

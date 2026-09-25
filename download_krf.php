@@ -1,7 +1,7 @@
 <?php
 
 require_once './include_functions.php';
-$case_number = filter_numbers((substr($_GET['case'], 0, 5)));
+$case_number = kirjuri_uid_param(isset($_GET['case']) ? $_GET['case'] : '');
 ksess_verify(2); // View only or higher
 verify_case_ownership($case_number);
 

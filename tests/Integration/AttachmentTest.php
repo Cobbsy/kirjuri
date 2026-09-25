@@ -63,6 +63,20 @@ final class AttachmentTest extends IntegrationTestCase
         $this->assertCount(1, $this->attachments($caseId));
     }
 
+    public function testUploadToACaseWithALongUid(): void
+    {
+        $admin = $this->admin();
+        $uid = $this->renumberCase($this->createCase($admin, $this->uniqueName('Long UID ')));
+        $response = $admin->post('upload.php', array(
+                'case' => (string) $uid,
+                'token' => $this->token($admin),
+                'ct' => $this->caseToken($admin, $uid),
+                'fileToUpload[0]' => $this->file('long.txt', 'long uid'),
+            ), true);
+        $this->assertSame('edit_request.php?case=' . $uid, $response->location());
+        $this->assertSame(array('long.txt'), array_column($this->attachments($uid), 'name'));
+    }
+
     public function testUploadRequiresTheCaseToken(): void
     {
         $this->expectLoggedError('Case access token missing');

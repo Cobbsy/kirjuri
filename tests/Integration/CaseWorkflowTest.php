@@ -13,6 +13,21 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame($first['id'], $first['parent_id'], 'A case is its own parent.');
     }
 
+    public function testCasePagesAcceptUidsLongerThanFiveDigits(): void
+    {
+        // The pages cut the UID to five digits, so case 1000042 opened, exported or showed the timeline of case 10000.
+        $admin = $this->admin();
+        $name = $this->uniqueName('Long UID ');
+        $uid = $this->renumberCase($this->createCase($admin, $name));
+
+        $this->assertStringContainsString($name, $admin->get("edit_request.php?case=$uid")->body);
+        $caseNumber = $this->row($uid)['case_id'] . '/' . date('Y');
+        $this->assertStringContainsString("Case log $caseNumber<", $admin->get("timeline.php?case=$uid")->body);
+        $this->assertStringContainsString($name, $admin->get("download_csv.php?case=$uid")->body);
+        $krf = json_decode((string) gzdecode($admin->get("download_krf.php?case=$uid")->body), true);
+        $this->assertSame($name, $krf['parent']['case_name'] ?? null);
+    }
+
     public function testMissingRequiredFieldsDoNotCreateACase(): void
     {
         $admin = $this->admin();

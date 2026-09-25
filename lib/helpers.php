@@ -167,6 +167,13 @@ function filter_numbers($a)  // Filter out everything but numbers.
 }
 
 
+/** A case or device UID from request input: its digits, or '' without any. UIDs are not limited to five digits. */
+function kirjuri_uid_param($value)
+{
+    return filter_numbers(substr((string) $value, 0, 11));
+}
+
+
 function filter_letters_and_numbers($a) {
     return preg_replace('/[^a-zA-Z0-9_]/', '', (string) $a);
 }

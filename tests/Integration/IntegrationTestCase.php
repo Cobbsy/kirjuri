@@ -204,6 +204,14 @@ abstract class IntegrationTestCase extends TestCase
         return (int) $query->fetchColumn();
     }
 
+    /** Give a case (without devices) a seven digit UID, as long-running installations have, and return it. */
+    protected function renumberCase(int $caseId): int
+    {
+        $uid = 1000000 + $caseId;
+        $this->server->pdo()->prepare('UPDATE exam_requests SET id = :uid, parent_id = :uid WHERE id = :id')->execute(array(':uid' => $uid, ':id' => $caseId));
+        return $uid;
+    }
+
     protected function row(int $id): array
     {
         $query = $this->server->pdo()->prepare('SELECT * FROM exam_requests WHERE id = :id');

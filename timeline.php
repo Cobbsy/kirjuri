@@ -3,7 +3,7 @@
 require_once './include_functions.php';
 ksess_verify(2); // View only or higher
 $get_case = isset($_GET['case']) ? $_GET['case'] : '';
-$case_number = filter_numbers((substr($get_case, 0, 5)));
+$case_number = kirjuri_uid_param($get_case);
 verify_case_ownership($case_number);
 
 $case = kirjuri_find_case($kirjuri_database, $case_number);
