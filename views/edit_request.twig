@@ -268,7 +268,7 @@ $(function() {
                </thead>
              {% for file in attachment_files %}
              <tr>
-               <td><a href="get_file.php?file={{ file.id }}&ct={{ ct }}&token={{ session.user.token }}" target="dlframe">
+               <td><a href="get_file.php?file={{ file.id }}" target="dlframe">
                {% if "image" in file.type %}
                <i class="fa fa-file-image-o"></i>
                {% elseif "audio" in file.type %}

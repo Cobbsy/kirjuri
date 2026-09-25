@@ -118,4 +118,11 @@ final class SourceTest extends TestCase
         $this->assertGreaterThan(300, count(array_unique($used)));
         $this->assertSame(array(), array_values(array_diff(array_unique($used), array_keys($strings))));
     }
+
+    /** CSRF and case tokens are sent in POST bodies only: URLs end up in logs, history and Referer headers. */
+    #[DataProvider('templates')]
+    public function testTemplateLinksCarryNoTokens(string $template): void
+    {
+        $this->assertDoesNotMatchRegularExpression('/[?&](token|ct)=/', file_get_contents(KIRJURI_ROOT . '/views/' . $template));
+    }
 }

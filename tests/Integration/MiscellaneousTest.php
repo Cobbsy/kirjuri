@@ -203,6 +203,19 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testOnlyShippedTemplatesCanBeSaved(): void
+    {
+        $admin = $this->admin();
+        $file = $this->server->dir . '/conf/settings.local';
+        $state = fn () => file_exists($file) ? file_get_contents($file) : null;
+        $before = $state();
+        $admin->post('submit.php?type=save_template&template=settings', array('token' => $this->token($admin), 'templatefile' => '<p>Not settings</p>'));
+        $this->assertSame($before, $state(), 'save_template used to write any conf/<name>.local.');
+
+        $admin->post('submit.php?type=save_template&template=report_notes', array('token' => $this->token($admin), 'templatefile' => '<p>Our template</p>'));
+        $this->assertSame('<p>Our template</p>', file_get_contents($this->server->dir . '/conf/report_notes.local'));
+    }
+
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void
     {
         $admin = $this->admin();

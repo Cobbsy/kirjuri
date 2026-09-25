@@ -25,6 +25,11 @@ case 'save_template':
     ksess_verify(0);
     ksess_validate($_POST['token']);
     $template = filter_letters_and_numbers($_GET['template']);
+    if (!file_exists('conf/' . $template . '.template')) {
+        // Only templates Kirjuri ships; any other name would write conf/<name>.local, settings.local included.
+        header('Location: settings.php');
+        die;
+    }
     $templatefile = filter_html($_POST['templatefile']);
     file_put_contents('conf/' . $template . ".local", $templatefile);
     header('Location: settings.php');

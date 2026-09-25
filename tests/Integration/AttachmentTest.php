@@ -43,7 +43,7 @@ final class AttachmentTest extends IntegrationTestCase
         $files = $this->attachments($caseId);
         $this->assertSame(array('notes.txt', 'empty.txt'), array_column($files, 'name'));
 
-        $download = $admin->get("get_file.php?file={$files[0]['id']}&token=$token&ct=$ct");
+        $download = $admin->get("get_file.php?file={$files[0]['id']}"); // No tokens in the URL.
         $this->assertSame("hello world\n", $download->body);
         $this->assertStringContainsString('filename="notes.txt"', $download->header('Content-Disposition'));
         $this->assertSame('nosniff', $download->header('X-Content-Type-Options'));
@@ -74,5 +74,23 @@ final class AttachmentTest extends IntegrationTestCase
         $user = $this->login($username, 'password1');
         $user->post('upload.php', array('case' => (string) $caseId, 'token' => $this->token($user), 'fileToUpload[0]' => $this->file('x.txt', 'x')), true);
         $this->assertCount(0, $this->attachments($caseId));
+    }
+
+    public function testAttachmentsOfRestrictedCasesCannotBeDownloaded(): void
+    {
+        $this->expectLoggedError('not in access group');
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Secret files '));
+        $admin->post('upload.php', array('case' => (string) $caseId, 'token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+                'fileToUpload[0]' => $this->file('secret.txt', 'classified')), true);
+        $admin->post('submit.php?type=case_access&id=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'access' => array('admin_only' => 'admin_only')));
+        $fileId = $this->attachments($caseId)[0]['id'];
+
+        $username = $this->uniqueName('outsider');
+        $this->createUser($username, 'password1', 1);
+        $response = $this->login($username, 'password1')->get('get_file.php?file=' . $fileId);
+        $this->assertStringNotContainsString('classified', $response->body);
+        $this->assertSame('index.php', $response->location());
+        $this->assertStringNotContainsString('classified', $this->client()->get('get_file.php?file=' . $fileId)->body);
     }
 }

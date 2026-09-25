@@ -66,6 +66,8 @@ Unreleased
 * - The statistics page ran one query per case per unit; it now uses a few grouped queries.
 * - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
 * - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
+* Attachment download links no longer carry the CSRF and case tokens in the URL; a download changes nothing, and the login and case access checks protect it. A unit test keeps tokens out of template URLs.
+* The report template editor can only save templates Kirjuri ships; any other name wrote conf/<name>.local, settings.local included.
 * Actions that change data are sent as POST, with no CSRF or case token in the URL, and logout needs the token. The logged in user's password hash is no longer kept in the session.
 * The API's add operation returns the new case's UID and case number.
 * Settings added in a new release get their default value when conf/settings.local predates them, as the settings file always promised.

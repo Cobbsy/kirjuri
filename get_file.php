@@ -1,7 +1,8 @@
 <?php
 require_once './include_functions.php';
+// A download changes nothing, so it needs no CSRF token; the access checks below protect it. Tokens in
+// the URL would end up in server logs and browser history.
 ksess_verify(1);
-ksess_validate($_GET['token']);
 
 if (!isset($_GET['file'])) {
     die;
@@ -13,7 +14,6 @@ if ($file === null) {
     echo "File not found.";
     die;
 }
-csrf_case_validate(isset($_GET['ct']) ? $_GET['ct'] : '', $file['request_id']);
 verify_case_ownership($file['request_id']);
 event_log_write($file['request_id'], 'File', 'Attachment downloaded: '. $file['name'] . ", sha256: ". $file['hash']);
 
