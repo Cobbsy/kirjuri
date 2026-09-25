@@ -1,6 +1,18 @@
 <?php
 // Authentication: local accounts, LDAP and IP access lists.
 
+/**
+ * A real password hash to check unknown usernames against, so their failed logins take as long as
+ * those of existing accounts: the built-in admin account's, which has current hash settings.
+ */
+function kirjuri_timing_hash(PDO $db) {
+    $query = $db->prepare('SELECT password FROM users WHERE id = 2');
+    $query->execute();
+    $hash = $query->fetchColumn();
+    return is_string($hash) ? $hash : password_hash(generate_token(16), PASSWORD_DEFAULT);
+}
+
+
 function local_authenticate($username, $password) {
     // Authenticate against a local account
     $username = filter_username($username);
@@ -10,7 +22,14 @@ function local_authenticate($username, $password) {
     $user_record = $query->fetch(PDO::FETCH_ASSOC);
 
 
-    if (($user_record !== false) && password_verify($password, $user_record['password'])) {
+    // Unknown usernames are checked against another hash, so the response time does not reveal which
+    // accounts exist. A match there logs nobody in, as there is no account.
+    $hash = ($user_record !== false) ? (string) $user_record['password'] : kirjuri_timing_hash($kirjuri_database);
+    if (password_verify($password, $hash) && ($user_record !== false)) {
+        if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
+            // Hashes made with older or weaker settings are upgraded while the password is at hand.
+            kirjuri_set_password($kirjuri_database, $user_record['id'], $user_record['username'], password_hash($password, PASSWORD_DEFAULT));
+        }
         kirjuri_set_session_user($user_record);
         event_log_write('0', "Auth", "Succesful local authentication for user " . $username);
         return true;

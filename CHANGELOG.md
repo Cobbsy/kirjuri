@@ -29,6 +29,7 @@ Unreleased
 * - Sessions now end after the session_idle_timeout setting (default 12 hours) with no Kirjuri page open. Before, a session lasted until its file was removed.
 * - The CSV export let case values starting with =, +, - or @ run as formulas when opened in a spreadsheet. They are now prefixed with an apostrophe.
 * - Error redirects (bad CSRF or case token, insufficient access, invalid HTML) went to whatever Referer header the request carried, so a link from another site could bounce users back to it. They now only return to pages of the same site.
+* - A local login for an unknown username skipped the password hash check and answered faster, revealing which accounts exist. Password hashes made with older or weaker settings are now upgraded at login (PHP 8.4 raised the default bcrypt cost).
 * - Passwords set from the web (new accounts, password changes, the installer's admin password) must be at least 8 characters, as on the command line. New accounts could be created without a password.
 * - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
 * Bug fixes:

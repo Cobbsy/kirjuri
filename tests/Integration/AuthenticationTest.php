@@ -132,4 +132,19 @@ final class AuthenticationTest extends IntegrationTestCase
         $count = $this->server->pdo()->query("SELECT COUNT(*) FROM tools WHERE product_name = 'Forged tool'")->fetchColumn();
         $this->assertSame('0', $count);
     }
+
+    public function testWeakPasswordHashesAreUpgradedAtLogin(): void
+    {
+        $username = $this->uniqueName('rehash');
+        $this->createUser($username, 'password1', 1);
+        $pdo = $this->server->pdo();
+        $pdo->prepare('UPDATE users SET password = :hash WHERE username = :username')
+            ->execute(array(':hash' => password_hash('password1', PASSWORD_BCRYPT, array('cost' => 4)), ':username' => $username));
+        $stored = fn () => $pdo->query("SELECT password FROM users WHERE username = '$username'")->fetchColumn();
+
+        $this->login($username, 'password1');
+        $this->assertFalse(password_needs_rehash($stored(), PASSWORD_DEFAULT), 'The hash is stored with the current settings.');
+        $this->assertTrue(password_verify('password1', $stored()));
+        $this->login($username, 'password1');
+    }
 }
