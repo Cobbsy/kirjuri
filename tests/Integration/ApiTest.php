@@ -49,6 +49,15 @@ final class ApiTest extends IntegrationTestCase
         $this->assertSame(array((string) $deviceId), array_column($found['devices'], 'id'));
     }
 
+    public function testFindAcceptsTermsWithFullTextOperators(): void
+    {
+        $user = 'zq' . generate_token(6);
+        $caseId = $this->createCase($this->admin(), $this->uniqueName('Api mail '), array('case_suspect' => $user . '@example.com'));
+        $response = $this->client()->post('api.php?operation=find&key=' . $this->apiKey($this->apiUser()), array('find' => $user . '@example.com'));
+        $this->assertSame(200, $response->status);
+        $this->assertContains((string) $caseId, array_column(json_decode($response->body, true)['cases'], 'id'));
+    }
+
     public function testAddCreatesACaseInTheCurrentYear(): void
     {
         $name = $this->uniqueName('Api add ');
