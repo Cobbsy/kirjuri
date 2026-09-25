@@ -204,3 +204,26 @@ function api_key_for($user) {
     // The API key is derived from the username and password hash, so changing the password changes the key.
     return hash('sha1', $user['username'].$user['password']);
 }
+
+
+/**
+ * A value made safe for a spreadsheet cell: text starting with =, +, -, @, a tab or a carriage return
+ * is prefixed with an apostrophe, so Excel and LibreOffice show it instead of running it as a formula.
+ */
+function kirjuri_csv_cell($value) {
+    $value = (string) $value;
+    return ($value !== '' && strpos("=+-@\t\r", $value[0]) !== false) ? "'" . $value : $value;
+}
+
+
+/** Write rows (arrays with the same keys) as a semicolon separated CSV with a header row. */
+function kirjuri_write_csv($handle, array $rows) {
+    fwrite($handle, "sep=;\n"); // Tells Excel which separator to use.
+    if (empty($rows)) {
+        return;
+    }
+    fputcsv($handle, array_map('kirjuri_csv_cell', array_keys($rows[0])), ';', '"', '');
+    foreach ($rows as $row) {
+        fputcsv($handle, array_map('kirjuri_csv_cell', array_values($row)), ';', '"', '');
+    }
+}

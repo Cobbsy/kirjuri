@@ -14,22 +14,8 @@ if (empty($request_items)) {
 
 $filename = 'Kirjuri '.$request_items[0]['case_id'].'-'.date('Y', strtotime($request_items[0]['case_added_date'])).' '.$request_items[0]['case_name'];
 header('Content-Description: File Transfer');
-header('Content-Encoding: UTF-8');
-header('Content-Type: text; charset=utf-8');
+header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="'.str_replace(array('"', "\r", "\n"), '', trim($filename)).'.csv"');
-echo 'sep=;';
-echo "\n";
-foreach (array_keys($request_items[0]) as $key) {
-    echo $key.';';
-}
-echo "\n";
-foreach ($request_items as $result) {
-    foreach ($result as $result) {
-        $item = str_replace("'", '"', $result);
-        $item = str_replace('"', '""', $item);
-        $item = str_replace('\\', '', $item);
-        $item = str_replace(';', ',', $item);
-        echo '"'.$item.'";';
-    }
-    echo "\n";
-}
+$output = fopen('php://output', 'w');
+kirjuri_write_csv($output, $request_items);
+fclose($output);

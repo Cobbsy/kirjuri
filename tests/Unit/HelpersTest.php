@@ -81,6 +81,27 @@ final class HelpersTest extends TestCase
         }
     }
 
+    public function testCsvCellsCannotStartFormulas(): void
+    {
+        foreach (array('=HYPERLINK("http://x")', '+1', '-2+3', '@SUM(A1)', "\t=1", "\r=1") as $value) {
+            $this->assertSame("'" . $value, kirjuri_csv_cell($value));
+        }
+        foreach (array('', 'IMEI 35', "O'Brien", '5', null) as $value) {
+            $this->assertSame((string) $value, kirjuri_csv_cell($value));
+        }
+    }
+
+    public function testCsvKeepsValuesIntact(): void
+    {
+        $handle = fopen('php://memory', 'w+');
+        kirjuri_write_csv($handle, array(array('name' => "O'Brien; C:\\evidence", 'notes' => "said \"hi\"\nnext line", 'formula' => '=1+1')));
+        rewind($handle);
+        $this->assertSame("sep=;\n", fgets($handle));
+        $this->assertSame(array('name', 'notes', 'formula'), fgetcsv($handle, null, ';', '"', ''));
+        $this->assertSame(array("O'Brien; C:\\evidence", "said \"hi\"\nnext line", "'=1+1"), fgetcsv($handle, null, ';', '"', ''));
+        $this->assertFalse(fgetcsv($handle, null, ';', '"', ''));
+    }
+
     public function testGenerateTokenIsRandomHexOfRequestedLength(): void
     {
         foreach (array(4, 15, 16, 64) as $length) {

@@ -196,6 +196,25 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertArrayNotHasKey('case_owner', $krf['parent']);
     }
 
+    public function testCsvExportKeepsValuesAndDefusesFormulas(): void
+    {
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, '=HYPERLINK("http://evil.example","Open")', array('case_suspect' => "O'Brien; C:\\evidence"));
+        $csv = $admin->get('download_csv.php?case=' . $caseId);
+        $this->assertStringStartsWith('text/csv', $csv->header('Content-Type'));
+        $this->assertNull($csv->header('Content-Encoding'));
+
+        $handle = fopen('php://memory', 'w+');
+        fwrite($handle, $csv->body);
+        rewind($handle);
+        fgets($handle); // sep=;
+        $header = fgetcsv($handle, null, ';', '"', '');
+        $case = array_combine($header, fgetcsv($handle, null, ';', '"', ''));
+        // Values used to lose apostrophes, backslashes and semicolons, and formulas ran when opened in Excel.
+        $this->assertSame("'=HYPERLINK(\"http://evil.example\",\"Open\")", $case['case_name']);
+        $this->assertSame("O'Brien; C:\\evidence", $case['case_suspect']);
+    }
+
     public function testCaseWithTheSameFileNumberIsPointedOut(): void
     {
         $admin = $this->admin();
