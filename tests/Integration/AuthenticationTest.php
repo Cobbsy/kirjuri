@@ -147,4 +147,20 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->assertTrue(password_verify('password1', $stored()));
         $this->login($username, 'password1');
     }
+
+    public function testApiKeysSurviveLogin(): void
+    {
+        $username = $this->uniqueName('apikey');
+        $this->createUser($username, 'password1', 1, 'A');
+        $pdo = $this->server->pdo();
+        $pdo->prepare('UPDATE users SET password = :hash WHERE username = :username')
+            ->execute(array(':hash' => password_hash('password1', PASSWORD_BCRYPT, array('cost' => 4)), ':username' => $username));
+        $key = fn () => api_key_for($pdo->query("SELECT * FROM users WHERE username = '$username'")->fetch(\PDO::FETCH_ASSOC));
+        $before = $key();
+
+        $this->login($username, 'password1');
+        // The key is derived from the password hash, so upgrading the hash would break the account's integrations.
+        $this->assertSame($before, $key());
+        $this->assertSame(200, $this->client()->get('api.php?operation=info&key=' . $before)->status);
+    }
 }

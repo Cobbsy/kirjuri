@@ -26,8 +26,9 @@ function local_authenticate($username, $password) {
     // accounts exist. A match there logs nobody in, as there is no account.
     $hash = ($user_record !== false) ? (string) $user_record['password'] : kirjuri_timing_hash($kirjuri_database);
     if (password_verify($password, $hash) && ($user_record !== false)) {
-        if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
-            // Hashes made with older or weaker settings are upgraded while the password is at hand.
+        // Hashes made with older or weaker settings are upgraded while the password is at hand. Not for
+        // accounts with API access: api_key_for() derives the key from the hash, so it would change.
+        if (password_needs_rehash($hash, PASSWORD_DEFAULT) && strpos((string) $user_record['flags'], 'A') === false) {
             kirjuri_set_password($kirjuri_database, $user_record['id'], $user_record['username'], password_hash($password, PASSWORD_DEFAULT));
         }
         kirjuri_set_session_user($user_record);
