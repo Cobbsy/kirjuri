@@ -109,6 +109,19 @@ foreach (array('children', 'files') as $section) {
     }
 }
 
+// Attachments are stored as exported, so their content must match the SHA-256 hash and size the file states.
+if (!empty($case_array['files'])) {
+    foreach ($case_array['files'] as $row) {
+        $content = @gzdecode(base64_decode(isset($row['content']) ? (string) $row['content'] : ''));
+        if ($content === false || !isset($row['hash']) || !hash_equals((string) $row['hash'], hash('sha256', $content))
+            || !isset($row['size']) || (string) $row['size'] !== (string) strlen($content)) {
+            trigger_error('Invalid KRF file: an attachment does not match its hash or size.');
+            header('Location: index.php');
+            die;
+        }
+    }
+}
+
 $input = $case_array['parent'];
 foreach (array('id', 'parent_id', 'case_id', 'is_removed', 'case_added_date', 'case_start_date', 'case_devicecount', 'last_updated') as $key) {
     unset($input[$key]); // Set for the new case below.

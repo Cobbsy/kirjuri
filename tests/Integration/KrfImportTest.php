@@ -113,6 +113,38 @@ final class KrfImportTest extends IntegrationTestCase
         $this->assertSame($before, $this->rowCount());
     }
 
+    public function testAttachmentsMustMatchTheirHashes(): void
+    {
+        // Imported attachments were stored with whatever hash and size the file claimed, so an edited
+        // export showed its forged content under the original SHA-256.
+        $this->expectLoggedError('Invalid KRF file');
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Hashed '));
+        $path = tempnam(sys_get_temp_dir(), 'att');
+        file_put_contents($path, "original evidence\n");
+        $admin->post('upload.php', array(
+                'case' => (string) $caseId,
+                'token' => $this->token($admin),
+                'ct' => $this->caseToken($admin, $caseId),
+                'fileToUpload[0]' => new \CURLFile($path, 'text/plain', 'evidence.txt'),
+            ), true);
+        unlink($path);
+        $krf = json_decode(gzdecode($admin->get('download_krf.php?case=' . $caseId)->body), true);
+        $this->assertCount(1, $krf['files']);
+
+        $newId = (int) substr($this->upload($admin, gzencode(json_encode($krf)))->location(), strlen('edit_request.php?case='));
+        $this->assertSame(hash('sha256', "original evidence\n"), $this->server->pdo()->query("SELECT hash FROM attachments WHERE request_id = $newId")->fetchColumn());
+
+        $before = $this->rowCount();
+        $forged = $krf;
+        $forged['files'][0]['content'] = base64_encode(gzencode("forged evidence\n"));
+        $this->assertSame('index.php', $this->upload($admin, gzencode(json_encode($forged)))->location());
+        $unreadable = $krf;
+        $unreadable['files'][0]['content'] = base64_encode('not compressed');
+        $this->assertSame('index.php', $this->upload($admin, gzencode(json_encode($unreadable)))->location());
+        $this->assertSame($before, $this->rowCount(), 'Nothing is imported from a file with a mismatching attachment.');
+    }
+
     public function testImportRequiresCsrfToken(): void
     {
         $this->expectLoggedError('CSRF token mismatch');
