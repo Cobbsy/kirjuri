@@ -275,11 +275,11 @@
                                         {% set evcolor = evcolors[tool_key] %}
                                         {% for res_key, entry in res_value %}
                                             {
-                                                title: '{{ tool.product_name }}: {{ entry.comment }} ({{ entry.reserved_for }})',
+                                                title: '{{ tool.product_name|e('js') }}: {{ entry.comment|e('js') }} ({{ entry.reserved_for|e('js') }})',
                                                 url: 'tools.php?populate={{ tool.id }}&highlight={{ res_key }}',
-                                                start: '{{ entry.reserve_start }}',
-                                                end: '{{ entry.reserve_end }}',
-                                                color: '{{ evcolor }}'
+                                                start: '{{ entry.reserve_start|e('js') }}',
+                                                end: '{{ entry.reserve_end|e('js') }}',
+                                                color: '{{ evcolor|e('js') }}'
                                             },
                                         {% endfor %}
                                     {% endif %}

@@ -216,6 +216,26 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame('<p>Our template</p>', file_get_contents($this->server->dir . '/conf/report_notes.local'));
     }
 
+    public function testUserValuesCannotBreakPageScripts(): void
+    {
+        $admin = $this->admin();
+        $token = $this->token($admin);
+        $name = $this->uniqueName('Scripted tool ');
+        $admin->post('submit.php?type=add_tool', array('token' => $token, 'product_name' => $name, 'hw_version' => '1', 'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
+        $toolId = $this->server->pdo()->query("SELECT id FROM tools WHERE product_name = '$name'")->fetchColumn();
+        // A newline or a trailing backslash used to end the JavaScript string early and break the calendar for everyone.
+        $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => "Name\\", 'comment' => "Line one\nLine two \\",
+            'reserve_start_date' => '2031-01-01', 'reserve_start_time' => '08:00', 'reserve_end_date' => '2031-01-02', 'reserve_end_time' => '08:00'));
+        $caseId = $this->createCase($admin, $this->uniqueName('Scripted case '));
+
+        // The calendar is on the tools overview; statistics and the timeline are checked as well.
+        foreach (array('tools.php', 'statistics.php', 'timeline.php?case=' . $caseId) as $page) {
+            $response = $admin->get($page);
+            $this->assertSame(200, $response->status, $page);
+            $this->assertInlineScriptsParse($response->body, $page);
+        }
+    }
+
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void
     {
         $admin = $this->admin();

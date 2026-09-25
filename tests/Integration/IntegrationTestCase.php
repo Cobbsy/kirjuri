@@ -126,6 +126,25 @@ abstract class IntegrationTestCase extends TestCase
         return $prefix . generate_token(6);
     }
 
+    /** Fail unless every inline script of the page parses as JavaScript. Needs node; skips without it. */
+    protected function assertInlineScriptsParse(string $html, string $page): void
+    {
+        exec('command -v node', $unused, $status);
+        if ($status !== 0) {
+            $this->markTestSkipped('node is needed to check inline scripts.');
+        }
+        preg_match_all('#<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>#si', $html, $matches);
+        $this->assertNotEmpty($matches[1], $page . ' has no inline scripts.');
+        foreach ($matches[1] as $i => $script) {
+            $file = tempnam(sys_get_temp_dir(), 'js');
+            file_put_contents($file, $script);
+            $output = array();
+            exec('node --check ' . escapeshellarg($file) . ' 2>&1', $output, $code);
+            unlink($file);
+            $this->assertSame(0, $code, $page . ', inline script ' . $i . ":\n" . implode("\n", $output));
+        }
+    }
+
     /** Create an examination request and return its UID. */
     protected function createCase(HttpClient $client, string $name, array $fields = array()): int
     {

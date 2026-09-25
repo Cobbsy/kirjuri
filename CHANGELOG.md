@@ -35,6 +35,7 @@ Unreleased
 * Bug fixes:
 * - The CSV export turned apostrophes into double quotes, dropped backslashes and replaced semicolons with commas. It now writes values unchanged with proper CSV quoting, and sends a text/csv content type instead of an invalid one.
 * - Messages could be sent to usernames that did not exist; an account created later with that name received them.
+* - A tool reservation comment containing a line break broke the tools calendar for every user, as values in page scripts were HTML-escaped but not JavaScript-escaped. The calendar, statistics and timeline scripts now escape them for JavaScript, and a test parses the pages' inline scripts.
 * - A single IP address without a netmask in an account's allow or deny list logged a PHP warning, and an invalid deny list entry showed an undefined message.
 * - The mobile examiner column header on the front page was blank in one sort order, and the case report and statistics used an undefined "device" string. A unit test now checks that every language string in use exists in every language file.
 * - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.
