@@ -61,7 +61,10 @@ foreach (get_users_with_credentials() as $user) {
     }
 }
 
-if ($key_found === false) {
+// The access level each operation needs, as on the pages (0 admin, 1 user, 2 view only, 3 add only).
+$required_access = array('add' => 3, 'get' => 2, 'find' => 2, 'info' => 2, 'update' => 1);
+
+if ($key_found === false || (int) $_SESSION['user']['access'] > $required_access[$operation]) {
     return_with_code('403');
 } else {
     // Get information about a case or device with UID

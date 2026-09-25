@@ -139,6 +139,35 @@ final class ApiTest extends IntegrationTestCase
         $this->assertContains((string) $restricted, array_column($adminInfo['cases'], 'id'));
     }
 
+    public function testAccessLevelsApplyToTheApi(): void
+    {
+        // The API ignored the account's access level: a view-only account could change cases and an
+        // add-only account could read all of them, neither of which the pages allow.
+        $admin = $this->admin();
+        $name = $this->uniqueName('Api level ');
+        $caseId = $this->createCase($admin, $name);
+
+        $viewer = $this->uniqueName('apiviewer');
+        $this->createUser($viewer, 'password1', 2, 'A');
+        $key = $this->apiKey($viewer);
+        $this->assertSame(200, $this->client()->get("api.php?operation=get&id=$caseId&key=$key")->status);
+        $this->assertSame(403, $this->client()->post("api.php?operation=update&id=$caseId&key=$key", array('case_name' => 'Changed'))->status);
+        $this->assertSame($name, $this->row($caseId)['case_name']);
+
+        $adder = $this->uniqueName('apiadder');
+        $this->createUser($adder, 'password1', 3, 'A');
+        $key = $this->apiKey($adder);
+        foreach (array("operation=get&id=$caseId", 'operation=info') as $query) {
+            $response = $this->client()->get("api.php?$query&key=$key");
+            $this->assertSame(403, $response->status, $query);
+            $this->assertStringNotContainsString($name, $response->body);
+        }
+        $this->assertSame(403, $this->client()->post("api.php?operation=find&key=$key", array('find' => $name))->status);
+        $added = $this->client()->post("api.php?operation=add&key=$key", array('case_name' => $this->uniqueName('Api added ')));
+        $this->assertSame(200, $added->status);
+        $this->assertArrayHasKey('case_id', json_decode($added->body, true));
+    }
+
     private function apiKeyForAdmin(): string
     {
         $this->server->pdo()->exec("UPDATE users SET flags = CONCAT(IFNULL(flags, ''), 'A') WHERE username = 'admin' AND (flags IS NULL OR flags NOT LIKE '%A%')");

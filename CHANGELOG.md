@@ -16,6 +16,7 @@ Unreleased
 * - LDAP: an empty password is refused (it caused an unauthenticated bind), and the username is escaped in the search filter.
 * - Password hashes are no longer stored in every session's user list, and API keys are compared in constant time.
 * - The API respects case access groups and can no longer move items between cases or change access groups.
+* - The API ignored the account's access level: with an API key a view-only account could change cases, and an add-only account could read every case. Each operation now needs the level its web page does.
 * - Attachment uploads check the CSRF and case tokens and the case access group.
 * - Failed logins are throttled per username (10 failures in 15 minutes). The old block file was deleted in the same request and did nothing.
 * - The throttle counted each spelling of a username separately, while the database compares usernames without regard to accents, so "ádmin" and "admín" logged in as admin with 10 fresh attempts each. Failures now count against the account.
