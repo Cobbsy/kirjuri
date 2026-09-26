@@ -10,7 +10,7 @@ As always, I can not guarantee the security of this software, and any users will
 
 Kirjuri is a simple php/mysql web application for managing physical forensic evidence items. It is intended to be used as a workflow tool from receiving, booking, note-taking and possibly reporting findings. It simplifies and helps in case management when dealing with a large (or small!) number of devices submitted for forensic analysis. Kirjuri requires PHP 8.1 or newer with the pdo_mysql, mbstring and openssl extensions (and ldap if you use LDAP authentication).
 
-The `conf/`, `logs/` and `cache/` folders hold credentials, audit logs and session data. They ship with `.htaccess` files that deny web access on Apache. On other web servers, deny access to them in the server configuration, for example on nginx: `location ~ ^/(conf|logs|cache)/ { deny all; }`
+The `conf/`, `logs/` and `cache/` folders hold credentials, audit logs and session data, and `attachments/` holds case attachments stored by old versions. They ship with `.htaccess` files that deny web access on Apache. On other web servers, deny access to them in the server configuration, for example on nginx: `location ~ ^/(conf|logs|cache|attachments)/ { deny all; }`
 
 [See the official Kirjuri home page for more details.](https://kurittu.org/2018/06/kirjuri/)
 

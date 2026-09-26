@@ -24,6 +24,7 @@ Unreleased
 * - Session cookies are HttpOnly and SameSite=Lax, and the session ID is regenerated at login.
 * - Admin session handling, the backup, settings and audit viewer no longer accept path or shell metacharacters.
 * - conf/, logs/ and cache/ include .htaccess files denying direct web access on Apache.
+* - Attachments that old versions stored as files in attachments/<case UID>/ were linked from the case page and served by the web server to anyone with the link, with no login or access group check. They are now downloaded through get_file.php with the same checks as other attachments, and attachments/ has a deny-all .htaccess (add it to the nginx rule in the README on other servers).
 * - Notes stored through the API or a KRF import could hold scripts that ran for everyone who opened the case. Notes, messages and the message of the day are now purified as they are printed, which also covers rows already in the database.
 * - user_status.php (the online indicator on the users page) took a folder path from the URL and deleted files older than three days in it. Loading it as an administrator, for example through an image in a message or case note, could delete conf/mysql_credentials.php and reopen the installer. It now only accepts existing usernames.
 * - upload_IMEI.php, which replaces the IMEI list, did not check the CSRF token.

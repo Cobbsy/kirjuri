@@ -77,6 +77,37 @@ final class AttachmentTest extends IntegrationTestCase
         $this->assertSame(array('long.txt'), array_column($this->attachments($uid), 'name'));
     }
 
+    public function testFilesFromOldVersionsNeedTheCaseAccessChecks(): void
+    {
+        // Old versions stored attachments in attachments/<case UID>/, and the case page linked to them
+        // there, where the web server hands them to anyone. get_file.php now serves them.
+        $this->expectLoggedError('not in access group');
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Legacy '));
+        $folder = $this->server->dir . '/attachments/' . $caseId;
+        mkdir($folder, 0777, true);
+        file_put_contents($folder . '/old report.txt', "legacy evidence\n");
+
+        $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        $this->assertStringContainsString('get_file.php?case=' . $caseId . '&name=old%20report.txt', $page);
+        $this->assertStringNotContainsString('href="attachments/', $page);
+        $download = $admin->get('get_file.php?case=' . $caseId . '&name=old+report.txt');
+        $this->assertSame("legacy evidence\n", $download->body);
+        $this->assertStringContainsString('attachment;', $download->header('Content-Disposition'));
+
+        foreach (array('../../conf/mysql_credentials.php', '.htaccess', '..', '') as $name) {
+            $this->assertSame('File not found.', $admin->get('get_file.php?case=' . $caseId . '&name=' . rawurlencode($name))->body, $name);
+        }
+        $this->assertSame('login.php', $this->client()->get('get_file.php?case=' . $caseId . '&name=old+report.txt')->location());
+
+        $admin->post('submit.php?type=case_access&id=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'access' => array('admin_only' => 'admin_only')));
+        $username = $this->uniqueName('legacyuser');
+        $this->createUser($username, 'password1', 1);
+        $response = $this->login($username, 'password1')->get('get_file.php?case=' . $caseId . '&name=old+report.txt');
+        $this->assertStringNotContainsString('legacy evidence', $response->body);
+        $this->assertSame('index.php', $response->location());
+    }
+
     public function testUploadRequiresTheCaseToken(): void
     {
         $this->expectLoggedError('Case access token missing');

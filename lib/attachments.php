@@ -81,3 +81,18 @@ function kirjuri_import_attachment(PDO $db, $case_id, array $row) {
     }
     $query->execute($values);
 }
+
+
+/**
+ * The path of a file that an old Kirjuri version stored in attachments/<case UID>/, or null. Only a
+ * plain file directly in that folder: no other folder, hidden file or symbolic link.
+ */
+function kirjuri_legacy_attachment_path($case_id, $name) {
+    $case_id = filter_numbers($case_id);
+    $name = (string) $name;
+    if ($case_id === '' || $name === '' || $name !== basename($name) || $name[0] === '.') {
+        return null;
+    }
+    $path = 'attachments/' . $case_id . '/' . $name;
+    return (is_file($path) && !is_link($path)) ? $path : null;
+}

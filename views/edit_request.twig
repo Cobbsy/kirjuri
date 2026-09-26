@@ -306,7 +306,7 @@ $(function() {
              {% for file in filelist %}
              <tr>
               <td>
-                <i class="fa fa-file-o"></i> <a href="attachments/{{ caserow.0.id }}/{{ file.filename }}" target="_BLANK">attachments/{{ caserow.0.id }}/{{ file.filename }}</a>
+                <i class="fa fa-file-o"></i> <a href="get_file.php?case={{ caserow.0.id }}&name={{ file.filename|url_encode }}">attachments/{{ caserow.0.id }}/{{ file.filename }}</a>
               </td>
             </tr>
             {% endfor %}
