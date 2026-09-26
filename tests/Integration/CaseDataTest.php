@@ -65,6 +65,25 @@ final class CaseDataTest extends IntegrationTestCase
         $this->assertSame(1, $this->deviceCount($to));
     }
 
+    public function testMediaMovedWithoutTheirHostAreDetached(): void
+    {
+        // A medium kept pointing at its host in the old case, so the new case did not list it.
+        $admin = $this->admin();
+        $from = $this->createCase($admin, $this->uniqueName('From '));
+        $to = $this->createCase($admin, $this->uniqueName('To '));
+        $host = $this->addDevice($admin, $from, $this->uniqueName('Host'));
+        $model = $this->uniqueName('Card');
+        $card = $this->addDevice($admin, $from, $model);
+        $admin->post('submit.php?type=device_attach&uid=' . $card . '&returnid=' . $from,
+            array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $from), 'isanta' => (string) $host));
+        $this->assertSame((string) $host, $this->row($card)['device_host_id']);
+
+        $this->saveDeviceMemo($admin, $from, $card, array('new_parent_id' => (string) $to));
+        $this->assertSame((string) $to, $this->row($card)['parent_id']);
+        $this->assertSame('0', $this->row($card)['device_host_id']);
+        $this->assertStringContainsString($model, $admin->get('edit_request.php?case=' . $to)->body);
+    }
+
     public function testDevicesCanNotBeMovedIntoOtherPeoplesCasesOrOntoDevices(): void
     {
         $this->expectLoggedError('out-of-bounds POST request');

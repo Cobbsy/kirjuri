@@ -116,6 +116,9 @@ function kirjuri_update_device_memo(PDO $db, $case_id, $device_id, array $fields
 function kirjuri_move_device(PDO $db, $from_case, $device_id, $to_case) {
     $db->prepare('UPDATE exam_requests SET parent_id = :to WHERE (id = :id OR device_host_id = :id) AND parent_id = :from AND id != parent_id')
         ->execute(array(':to' => $to_case, ':id' => $device_id, ':from' => $from_case));
+    // Its own host stays in the old case, so a medium moved on its own is detached. Its media go with it.
+    $db->prepare('UPDATE exam_requests SET device_host_id = "0" WHERE id = :id AND parent_id = :to')
+        ->execute(array(':id' => $device_id, ':to' => $to_case));
     kirjuri_update_device_count($db, $from_case);
     kirjuri_update_device_count($db, $to_case);
     kirjuri_touch_case($db, $to_case);
