@@ -5,6 +5,7 @@
 */
 
 define('LOGIN_MAX_FAILURES', 10); // Failed logins allowed per username...
+define('LOGIN_MAX_FAILURES_PER_IP', 50); // ...and from one IP address, whichever usernames were tried...
 define('LOGIN_FAILURE_WINDOW', 900); // ...within this many seconds before further attempts are refused.
 
 function array_trim($array) {
@@ -42,9 +43,24 @@ function login_throttle_state($username) {
 }
 
 
-function login_throttled($username) {
+function login_throttled($username, $max_failures = LOGIN_MAX_FAILURES) {
     $state = login_throttle_state($username);
-    return $state['failures'] >= LOGIN_MAX_FAILURES;
+    return $state['failures'] >= $max_failures;
+}
+
+
+/**
+ * The throttle key for failed logins from an IP address. Usernames can not contain ":", so it never
+ * names an account. The per-address count is not cleared by a successful login, which would let one
+ * valid account reset it between guesses at others.
+ */
+function login_throttle_ip_key($ip) {
+    return 'ip:' . $ip;
+}
+
+
+function login_ip_throttled($ip) {
+    return login_throttled(login_throttle_ip_key($ip), LOGIN_MAX_FAILURES_PER_IP);
 }
 
 

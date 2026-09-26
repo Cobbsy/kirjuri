@@ -43,6 +43,7 @@ php bin/kirjuri user:list
 php bin/kirjuri user:create <username> <name> <access 0-3> [--api]   # password from stdin
 php bin/kirjuri user:password <username>    # reset a password (e.g. a locked out admin) from stdin
 php bin/kirjuri user:unlock <username>      # clear the failed login counter
+php bin/kirjuri user:unlock --ip <address>  # clear the failed login counter of an IP address
 php bin/kirjuri errors [--id <id>] [--last <n>]
 php bin/kirjuri log [--case <uid>] [--last <n>]
 php bin/kirjuri audit:show <audit file>     # decrypt an audit log entry

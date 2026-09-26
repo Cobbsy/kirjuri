@@ -19,7 +19,7 @@ function cli_commands() {
         'user:list' => array('cli_user_list', 'List user accounts'),
         'user:create' => array('cli_user_create', 'user:create <username> <name> <access 0-3> [--api]; reads the password from stdin'),
         'user:password' => array('cli_user_password', 'user:password <username>; reads the new password from stdin and unlocks the account'),
-        'user:unlock' => array('cli_user_unlock', 'user:unlock <username>; clear the failed login counter'),
+        'user:unlock' => array('cli_user_unlock', 'user:unlock <username> | --ip <address>; clear the failed login counter of an account or an IP address'),
         'cache:clear' => array('cli_cache_clear', 'Delete compiled templates and other caches (sessions are kept)'),
         'errors' => array('cli_errors', 'errors [--id <request id>] [--last <n>]; show logs/error.log'),
         'log' => array('cli_log', 'log [--last <n>] [--case <uid>]; show the event log'),
@@ -66,7 +66,7 @@ function cli_positional($args) {
     $positional = array();
     for ($i = 0; $i < count($args); $i++) {
         if (substr($args[$i], 0, 2) === '--') {
-            if (in_array($args[$i], array('--id', '--last', '--case'), true)) {
+            if (in_array($args[$i], array('--id', '--last', '--case', '--ip'), true)) {
                 $i++;
             }
             continue;
@@ -323,8 +323,19 @@ function cli_user_password($args) {
 
 function cli_user_unlock($args) {
     $positional = cli_positional($args);
-    if (count($positional) !== 1) {
-        cli_err('Usage: php bin/kirjuri user:unlock <username>');
+    $ip = cli_option($args, '--ip');
+    if ($ip !== null && count($positional) === 0) {
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            cli_err('Not an IP address: ' . $ip);
+            return 1;
+        }
+        login_throttle_clear(login_throttle_ip_key($ip));
+        event_log_write('0', 'Auth', 'Login throttle cleared from the command line for ' . $ip);
+        cli_out('Cleared failed logins from ' . $ip . '.');
+        return 0;
+    }
+    if (count($positional) !== 1 || $ip !== null) {
+        cli_err('Usage: php bin/kirjuri user:unlock <username> | --ip <address>');
         return 1;
     }
     login_throttle_clear(filter_username($positional[0]));

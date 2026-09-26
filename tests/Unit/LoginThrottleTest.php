@@ -68,4 +68,18 @@ final class LoginThrottleTest extends TestCase
         $this->assertStringNotContainsString('..', login_throttle_file('../../etc/passwd'));
         $this->assertMatchesRegularExpression('#^cache/login_throttle/[0-9a-f]{64}\.json$#', login_throttle_file('../../etc/passwd'));
     }
+
+    public function testAddressesHaveTheirOwnLimit(): void
+    {
+        $key = login_throttle_ip_key('192.0.2.7');
+        for ($i = 1; $i < LOGIN_MAX_FAILURES_PER_IP; $i++) {
+            login_throttle_record_failure($key);
+        }
+        $this->assertTrue(login_throttled($key), 'Over the per-username limit, which does not apply to addresses.');
+        $this->assertFalse(login_ip_throttled('192.0.2.7'));
+        login_throttle_record_failure($key);
+        $this->assertTrue(login_ip_throttled('192.0.2.7'));
+        $this->assertFalse(login_ip_throttled('192.0.2.8'));
+        $this->assertNotSame(login_throttle_file($key), login_throttle_file(filter_username($key)), 'No username names an address.');
+    }
 }

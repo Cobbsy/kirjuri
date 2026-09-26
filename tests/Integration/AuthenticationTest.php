@@ -68,6 +68,21 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->assertSame('login.php', $response->location(), 'Another spelling of a throttled account is throttled too.');
     }
 
+    public function testFailuresFromOneAddressAreLimitedAcrossAccounts(): void
+    {
+        // Trying a few passwords on each of many accounts stayed under the per-account limit.
+        $username = $this->uniqueName('sprayed');
+        $this->createUser($username, 'correct-password', 1);
+        for ($i = 0; $i < LOGIN_MAX_FAILURES_PER_IP; $i++) {
+            $this->client()->post('submit.php?type=login', array('username' => 'spray' . $i, 'password' => 'wrong', 'auth_type' => 'local'));
+        }
+        $response = $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'correct-password', 'auth_type' => 'local'));
+        $this->assertSame('login.php', $response->location(), 'Logins from the address are refused.');
+        // A successful login does not reset the address's count; bin/kirjuri or the end of the window does.
+        $this->assertSame(0, $this->server->cli(array('user:unlock', '--ip', '127.0.0.1'))[0]);
+        $this->login($username, 'correct-password');
+    }
+
     public function testSuccessfulLoginResetsTheFailureCount(): void
     {
         $username = $this->uniqueName('reset');

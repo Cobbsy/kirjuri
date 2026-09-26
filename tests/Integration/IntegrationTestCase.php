@@ -18,6 +18,8 @@ abstract class IntegrationTestCase extends TestCase
             $this->markTestSkipped('Set KIRJURI_TEST_DB_HOST (and KIRJURI_TEST_DB_USER / KIRJURI_TEST_DB_PASSWORD) to run the integration tests.');
         }
         $this->server = KirjuriServer::get();
+        // Every test logs in from 127.0.0.1, so each starts with a fresh failed login count for that address.
+        @unlink($this->server->dir . '/cache/login_throttle/' . hash('sha256', login_throttle_ip_key('127.0.0.1')) . '.json');
         $this->eventLogStart = count($this->server->eventLog());
         $this->serverLogStart = count($this->server->serverLog());
         $this->errorLogStart = count($this->server->errorLog());

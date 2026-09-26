@@ -40,11 +40,18 @@ case 'login':
         die;
     }
 
-    // Failures count against the account, whichever spelling of its name reaches it.
+    // Failures count against the account, whichever spelling of its name reaches it, and against the
+    // address they come from, so that trying a few passwords on each of many accounts is limited too.
     $throttle_name = kirjuri_account_username($kirjuri_database, $_POST['username']);
     if (login_throttled($throttle_name)) {
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Login throttled after repeated failures: ' . $_POST['username']);
+        header('Location: login.php');
+        die;
+    }
+    if (login_ip_throttled($_SERVER['REMOTE_ADDR'])) {
+        message('error', $_SESSION['lang']['invalid_credentials']);
+        event_log_write('0', 'Auth', 'Login throttled after repeated failures from ' . $_SERVER['REMOTE_ADDR'] . ': ' . $_POST['username']);
         header('Location: login.php');
         die;
     }
@@ -85,6 +92,7 @@ case 'login':
     } elseif ($auth_success === false) {
         $_SESSION['user'] = array();
         login_throttle_record_failure($throttle_name);
+        login_throttle_record_failure(login_throttle_ip_key($_SERVER['REMOTE_ADDR']));
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Invalid login attempt: ' . $_POST['username']);
         header('Location: login.php');
