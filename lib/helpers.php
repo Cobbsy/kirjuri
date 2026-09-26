@@ -169,6 +169,24 @@ function delete_directory($dir) {
 }
 
 
+/**
+ * Delete compiled templates and other caches from cache/ and return how many entries went. Dotfiles
+ * (.htaccess), session folders (user_*) and the login throttle stay: clearing a cache must neither log
+ * everyone out nor forget failed logins.
+ */
+function kirjuri_clear_cache() {
+    $removed = 0;
+    foreach (scandir('cache') as $entry) {
+        if ($entry[0] === '.' || substr($entry, 0, 5) === 'user_' || $entry === 'login_throttle') {
+            continue;
+        }
+        delete_directory('cache/' . $entry);
+        $removed++;
+    }
+    return $removed;
+}
+
+
 /** End every session of $username by removing its session files, which ksess_verify() checks on each request. */
 function kirjuri_end_user_sessions($username) {
     $username = filter_username($username);

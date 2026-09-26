@@ -347,15 +347,7 @@ function cli_user_unlock($args) {
 
 
 function cli_cache_clear($args) {
-    $removed = 0;
-    foreach (scandir('cache') as $entry) {
-        // Keep dotfiles (.gitignore, .htaccess), session markers and the login throttle.
-        if ($entry[0] === '.' || substr($entry, 0, 5) === 'user_' || $entry === 'login_throttle') {
-            continue;
-        }
-        delete_directory('cache/' . $entry);
-        $removed++;
-    }
+    $removed = kirjuri_clear_cache();
     cli_out('Removed ' . $removed . ' cache entr' . ($removed === 1 ? 'y' : 'ies') . '.');
     return 0;
 }

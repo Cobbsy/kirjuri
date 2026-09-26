@@ -134,6 +134,21 @@ final class AuthenticationTest extends IntegrationTestCase
         }
     }
 
+    public function testClearingTheCacheKeepsTheThrottle(): void
+    {
+        // The settings page's cache clearing deleted the failure counts, unlike bin/kirjuri cache:clear.
+        $username = $this->uniqueName('cached');
+        $this->createUser($username, 'correct-password', 1);
+        for ($i = 0; $i < LOGIN_MAX_FAILURES; $i++) {
+            $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'wrong', 'auth_type' => 'local'));
+        }
+        $admin = $this->admin();
+        $admin->post('submit.php?type=clear_cache', array('token' => $this->token($admin)));
+        $this->assertSame(200, $admin->get('index.php')->status, 'Sessions are kept too.');
+        $response = $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'correct-password', 'auth_type' => 'local'));
+        $this->assertSame('login.php', $response->location());
+    }
+
     public function testSuccessfulLoginResetsTheFailureCount(): void
     {
         $username = $this->uniqueName('reset');

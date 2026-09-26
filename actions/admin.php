@@ -12,11 +12,7 @@ switch ($action) {
 case 'clear_cache':
     ksess_verify(0);
     ksess_validate(posted_token());
-    foreach (scandir('cache') as $cache_subdir) {
-        if (($cache_subdir[0] !== ".") && (substr($cache_subdir, 0, 4) !== "user")) {
-            delete_directory('cache/' . $cache_subdir);
-        }
-    }
+    kirjuri_clear_cache(); // As bin/kirjuri cache:clear: sessions and the login throttle stay.
     event_log_write('0', 'Admin', 'Template cache cleared.');
     header('Location: login.php');
     die;
