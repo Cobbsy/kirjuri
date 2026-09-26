@@ -15,14 +15,15 @@ function connect_database($database) {
 function kirjuri_open_database(array $config) {
     $server = empty($config['mysql_server']) ? 'localhost' : $config['mysql_server'];
     // One statement per query: multi-statement mode would let an SQL injection add statements of its own.
-    $db = new PDO('mysql:host=' . $server . ';dbname=' . $config['mysql_database'], $config['mysql_username'], $config['mysql_password'],
+    $db = new PDO('mysql:host=' . $server . ';dbname=' . $config['mysql_database'] . ';charset=utf8mb4', $config['mysql_username'], $config['mysql_password'],
         array(PDO::MYSQL_ATTR_MULTI_STATEMENTS => false));
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $db->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
     // PHP 8.1 started returning integer columns as ints. Kirjuri compares them as strings
     // (e.g. access === "0"), so keep fetching everything as strings.
     $db->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, true);
-    $db->exec('SET NAMES utf8');
+    // utf8mb4: MySQL's "utf8" has no room for characters outside the Basic Multilingual Plane, such as emoji.
+    $db->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
     return $db;
 }
 

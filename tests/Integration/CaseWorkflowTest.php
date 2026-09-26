@@ -28,6 +28,25 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame($name, $krf['parent']['case_name'] ?? null);
     }
 
+    public function testEmojiAndOtherFourByteCharactersAreSaved(): void
+    {
+        // MySQL's "utf8" holds three bytes a character, so saving an emoji failed with an error page.
+        $admin = $this->admin();
+        $name = $this->uniqueName('Phone 📱 ');
+        $caseId = $this->createCase($admin, $name, array('case_crime' => 'Fraud 🔒', 'case_suspect' => 'Doe 𝔍ohn'));
+        $model = $this->uniqueName('Pixel 😀 ');
+        $deviceId = $this->addDevice($admin, $caseId, $model);
+        $case = $this->row($caseId);
+        $this->assertSame(array($name, 'Fraud 🔒', 'Doe 𝔍ohn'), array($case['case_name'], $case['case_crime'], $case['case_suspect']));
+        $this->assertSame($model, $this->row($deviceId)['device_model']);
+        $this->assertStringContainsString($name, $admin->get('edit_request.php?case=' . $caseId)->body);
+
+        $tool = $this->uniqueName('Imager 💾 ');
+        $admin->post('submit.php?type=add_tool', array('token' => $this->token($admin), 'product_name' => $tool, 'hw_version' => '1',
+            'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
+        $this->assertSame('1', $this->server->pdo()->query('SELECT COUNT(*) FROM tools WHERE product_name = ' . $this->server->pdo()->quote($tool))->fetchColumn());
+    }
+
     public function testMissingRequiredFieldsDoNotCreateACase(): void
     {
         $admin = $this->admin();

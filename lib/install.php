@@ -52,7 +52,7 @@ function kirjuri_create_database(PDO $server, $name) {
     if ((int) $exists->fetchColumn() > 0) {
         return false;
     }
-    $server->exec('CREATE DATABASE `' . $name . '`');
+    $server->exec('CREATE DATABASE `' . $name . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
     return true;
 }
 

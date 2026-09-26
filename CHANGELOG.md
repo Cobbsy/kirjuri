@@ -75,6 +75,7 @@ Unreleased
 * - The statistics page ran one query per case per unit; it now uses a few grouped queries.
 * - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
 * - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
+* - Saving an emoji or another character outside the Basic Multilingual Plane (common in text pasted from phones) failed with an error page, as MySQL's "utf8" holds only three bytes a character. Tables and the connection now use utf8mb4, converted by a migration.
 * - Passwords typed in web forms went through the HTML purifier, which stored "&" as "&amp;" and changed or removed < and >. Such passwords did not match the same password set by the installer or bin/kirjuri, and failed against LDAP. Passwords are now used as typed; hashes stored the old way still match and are replaced at the next login (except for accounts with API access, whose key derives from the hash).
 * - The case page, timeline, CSV and KRF exports and attachment uploads cut the case UID to five digits. Cases and devices share UIDs, so once they passed 99999 these pages opened, exported or attached files to the wrong case, or to none.
 * Attachment download links no longer carry the CSRF and case tokens in the URL; a download changes nothing, and the login and case access checks protect it. A unit test keeps tokens out of template URLs.

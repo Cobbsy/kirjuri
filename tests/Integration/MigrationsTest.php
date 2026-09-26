@@ -68,6 +68,7 @@ final class MigrationsTest extends IntegrationTestCase
 
         foreach (array('users', 'tools', 'messages', 'exam_requests', 'attachments', 'schema_migrations') as $table) {
             $this->assertTrue(kirjuri_table_exists($db, $table), $table);
+            $this->assertSame('utf8mb4_unicode_ci', kirjuri_table_collation($db, $table), $table);
         }
         $this->assertTrue(kirjuri_column_exists($db, 'exam_requests', 'case_owner'));
         $this->assertTrue(kirjuri_index_exists($db, 'exam_requests', 'idx_parent_id'));
@@ -84,6 +85,8 @@ final class MigrationsTest extends IntegrationTestCase
         $this->assertTrue(kirjuri_column_exists($db, 'exam_requests', 'case_owner'));
         $this->assertTrue(kirjuri_table_exists($db, 'attachments'));
         $this->assertTrue(kirjuri_index_exists($db, 'exam_requests', 'idx_case_added_date'));
+        $collations = $db->query("SELECT DISTINCT collation_name FROM information_schema.columns WHERE table_schema = DATABASE() AND collation_name IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN);
+        $this->assertSame(array('utf8mb4_unicode_ci'), $collations, 'Every text column holds utf8mb4.');
         $row = $db->query('SELECT case_name, case_suspect, case_owner, case_devicecount FROM exam_requests WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
         $this->assertSame(array('case_name' => 'Legacy case', 'case_suspect' => 'Legacy suspect', 'case_owner' => null, 'case_devicecount' => '1'), $row,
             'Data is kept, and the stale device count of 7 is corrected to the one device not removed.');

@@ -30,6 +30,10 @@ function kirjuri_migrations() {
             'description' => 'Recalculate device counts, which the front page no longer corrects on every view',
             'up' => 'kirjuri_migration_004_recount_devices',
         ),
+        '005_utf8mb4' => array(
+            'description' => 'Store text as utf8mb4, so that emoji and other characters outside the Basic Multilingual Plane can be saved',
+            'up' => 'kirjuri_migration_005_utf8mb4',
+        ),
     );
 }
 
@@ -187,6 +191,19 @@ function kirjuri_migration_004_recount_devices(PDO $db) {
 }
 
 
+function kirjuri_migration_005_utf8mb4(PDO $db) {
+    // Indexed text columns are short enough for utf8mb4's four bytes a character: the message indexes
+    // cover 191 characters (764 bytes) and schema_migrations.id is VARCHAR(191).
+    $db->exec('ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    // One collation everywhere, whatever the server's default was when a table was created.
+    foreach (array('users', 'tools', 'messages', 'event_log', 'exam_requests', 'attachments', 'schema_migrations') as $table) {
+        if (kirjuri_table_exists($db, $table) && kirjuri_table_collation($db, $table) !== 'utf8mb4_unicode_ci') {
+            $db->exec('ALTER TABLE ' . $table . ' CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+        }
+    }
+}
+
+
 function kirjuri_table_exists(PDO $db, $table) {
     $query = $db->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table');
     $query->execute(array(':table' => $table));
@@ -198,6 +215,13 @@ function kirjuri_column_exists(PDO $db, $table, $column) {
     $query = $db->prepare('SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column');
     $query->execute(array(':table' => $table, ':column' => $column));
     return (int) $query->fetchColumn() > 0;
+}
+
+
+function kirjuri_table_collation(PDO $db, $table) {
+    $query = $db->prepare('SELECT table_collation FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table');
+    $query->execute(array(':table' => $table));
+    return (string) $query->fetchColumn();
 }
 
 

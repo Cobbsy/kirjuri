@@ -56,7 +56,7 @@ final class KirjuriServer
 
     public function pdo(): PDO
     {
-        $pdo = new PDO('mysql:host=' . getenv('KIRJURI_TEST_DB_HOST') . ';dbname=' . $this->database . ';charset=utf8',
+        $pdo = new PDO('mysql:host=' . getenv('KIRJURI_TEST_DB_HOST') . ';dbname=' . $this->database . ';charset=utf8mb4',
             $this->dbUser(), $this->dbPassword());
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, true);
