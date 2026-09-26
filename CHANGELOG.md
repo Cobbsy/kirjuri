@@ -1,6 +1,108 @@
 CHANGELOG
 ------------
 
+Unreleased
+
+* Kirjuri now runs on PHP 8.1 and newer (tested on PHP 8.4 with MariaDB 10.11). It no longer runs on PHP 7.
+* Added a test suite in tests/ (PHPUnit unit tests and HTTP integration tests against a real database), run by GitHub Actions. See the README.
+* Added bin/kirjuri, a command line tool: doctor (environment and configuration checks), migrate, user management and password resets, error and event log viewers, audit log decryption and cache clearing. See the README.
+* Database changes are now versioned migrations (lib/migrations.php), applied automatically after an upgrade. Rerunning install.php is no longer needed. New indexes speed up case, device, attachment and message lookups.
+* Errors are logged to logs/error.log with a stack trace and a request ID, which is shown on the error page and sent in the X-Request-Id header. Database errors are no longer shown to visitors.
+* Restructured the code: shared functions moved from include_functions.php into lib/, and submit.php's actions into actions/. PHPStan (level 5) runs in CI.
+* Security fixes:
+* - import_krf.php required no login and built SQL from unchecked keys in the uploaded file. It now requires a login and a CSRF token, and every key is validated before anything is written.
+* - A KRF import checked device and attachment rows against the columns of both tables together, so a device row with an attachment column passed the check and the import failed after creating the case. Each row is now checked against its own table.
+* - A KRF import stored each attachment with the SHA-256 hash and size the file stated, so an edited export showed altered content under the original hash. A file whose attachments do not match their hash and size is now refused before anything is imported.
+* - print_sticker.php, request.php and progress_bar_static.php showed case data without a login.
+* - Adding a case, changing device status/location and message actions now check the logged in user.
+* - LDAP: an empty password is refused (it caused an unauthenticated bind), and the username is escaped in the search filter.
+* - Password hashes are no longer stored in every session's user list, and API keys are compared in constant time.
+* - The API respects case access groups and can no longer move items between cases or change access groups. Its listings look up every access group with one query rather than one per case and device.
+* - The API's update skipped id, parent_id and case_owner only in lower case. MySQL column names ignore case, so PARENT_ID moved a device into another case and Case_Owner changed a case's access group. Column names are now lower-cased first.
+* - The API ignored the account's access level: with an API key a view-only account could change cases, and an add-only account could read every case. Each operation now needs the level its web page does.
+* - Attachment uploads check the CSRF and case tokens and the case access group.
+* - Failed logins are throttled per username (10 failures in 15 minutes). The old block file was deleted in the same request and did nothing.
+* - The throttle counted each spelling of a username separately, while the database compares usernames without regard to accents, so "ádmin" and "admín" logged in as admin with 10 fresh attempts each. Failures now count against the account.
+* - Clearing the cache on the settings page deleted the failed login counts, giving an attacker fresh attempts; `bin/kirjuri cache:clear` kept them. Both now share one function that keeps them.
+* - Logins sent at the same time got past the throttle: the count was checked before the password and written after it, without a lock, so parallel attempts were all checked and overwrote each other's counts. Each attempt is now counted under a lock before the password is checked, and given back when it succeeds.
+* - Failed logins are also limited per IP address: 50 in 15 minutes, whichever usernames were tried, so that trying a few passwords on each of many accounts is limited too. A successful login does not reset the count. `php bin/kirjuri user:unlock --ip <address>` clears it. The limit is the login_max_failures_per_ip setting; set it to 0 behind a reverse proxy, where every user has the proxy's address and one person's failures would lock out everyone.
+* - Session cookies are HttpOnly and SameSite=Lax, and the session ID is regenerated at login.
+* - Admin session handling, the backup, settings and audit viewer no longer accept path or shell metacharacters.
+* - conf/, logs/ and cache/ include .htaccess files denying direct web access on Apache.
+* - Attachments that old versions stored as files in attachments/<case UID>/ were linked from the case page and served by the web server to anyone with the link, with no login or access group check. They are now downloaded through get_file.php with the same checks as other attachments, and attachments/ has a deny-all .htaccess (add it to the nginx rule in the README on other servers).
+* - Notes stored through the API or a KRF import could hold scripts that ran for everyone who opened the case. Notes, messages and the message of the day are now purified as they are printed, which also covers rows already in the database.
+* - user_status.php (the online indicator on the users page) took a folder path from the URL and deleted files older than three days in it. Loading it as an administrator, for example through an image in a message or case note, could delete conf/mysql_credentials.php and reopen the installer. It now only accepts existing usernames.
+* - upload_IMEI.php, which replaces the IMEI list, did not check the CSRF token.
+* - An IP allow or deny list entry ending in a slash ("10.0.0.1/") was accepted and matched every address, and an empty first entry switched the allow list off. Entries are now validated in one place, and ip_in_range() refuses an empty netmask.
+* - Changes to an account (access level, inactive flag, IP lists) took effect only at its next login, so a demoted or deactivated user kept their access until they logged out. Open sessions now follow the account on every request, and end when it is removed, made inactive or its IP lists exclude the address.
+* - Sessions now end after the session_idle_timeout setting (default 12 hours) with no Kirjuri page open. Before, a session lasted until its file was removed.
+* - Changing a password, by the user, by an administrator or with `bin/kirjuri user:password`, left the account's other sessions logged in, so whoever knew the old password stayed in. A password change now ends all of the account's sessions.
+* - The CSV export let case values starting with =, +, - or @ run as formulas when opened in a spreadsheet. They are now prefixed with an apostrophe.
+* - Error redirects (bad CSRF or case token, insufficient access, invalid HTML) went to whatever Referer header the request carried, so a link from another site could bounce users back to it. They now only return to pages of the same site.
+* - A local login for an unknown username skipped the password hash check and answered faster, revealing which accounts exist. Password hashes made with older or weaker settings are now upgraded at login (PHP 8.4 raised the default bcrypt cost), except for accounts with API access, whose API key is derived from the hash.
+* - Passwords set from the web (new accounts, password changes, the installer's admin password) must be at least 8 characters, as on the command line. New accounts could be created without a password.
+* - Pages send X-Frame-Options, a frame-ancestors policy, X-Content-Type-Options and Referrer-Policy, so other sites can not frame Kirjuri for clickjacking.
+* - Every submitted form was kept in the session to refill it after an error, so session files held the plaintext password of each login, failed login, password change and account created by an administrator. Password fields are no longer kept.
+* Bug fixes:
+* - The CSV export turned apostrophes into double quotes, dropped backslashes and replaced semicolons with commas. It now writes values unchanged with proper CSV quoting, and sends a text/csv content type instead of an invalid one.
+* - Messages could be sent to usernames that did not exist; an account created later with that name received them.
+* - A tool reservation comment containing a line break broke the tools calendar for every user, as values in page scripts were HTML-escaped but not JavaScript-escaped. The calendar, statistics and timeline scripts now escape them for JavaScript, and a test parses the pages' inline scripts.
+* - A single IP address without a netmask in an account's allow or deny list logged a PHP warning, and an invalid deny list entry showed an undefined message.
+* - The mobile examiner column header on the front page was blank in one sort order, and the case report and statistics used an undefined "device" string. A unit test now checks that every language string in use exists in every language file.
+* - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.
+* - Installer: on PHP 8.1+ an existing database aborted the install halfway and left a credentials file behind, which blocked rerunning it.
+* - PHP 8.1 returns integer columns as ints, which broke every access level check (admins were not treated as admins and add-only users saw the case list).
+* - api.php crashed after every add/update (undefined logline()) and used a two digit year for its date range.
+* - Deleting a user never protected the built-in accounts, and reported success when nothing was deleted.
+* - Uploading an empty attachment crashed with a division by zero, and upload errors were not reported.
+* - The login form's auth type check was never evaluated because of a misplaced parenthesis.
+* - The message subject prefill always showed "1".
+* - The case timeline page loaded jQuery from a path that does not exist.
+* - log.php could not redirect unauthenticated users, and the language editor was open to all access levels.
+* - delete_directory() followed symbolic links and deleted their targets' contents.
+* - Logging in without a User-Agent header, editing a user without ticking every flag and force logging out without a Referer header logged PHP warnings.
+* - Twig deprecation notices from index.twig were shown to users as error messages.
+* - Tool reservations with missing dates were saved, as the empty-field check tested strings that always contained a space.
+* - Importing a KRF file when no cases existed yet that year raised a PHP deprecation shown to the user.
+* - upload.php passed its 16MB limit to file_get_contents() as the include path flag. The max_attachment_size check before it is what enforces the limit.
+* - Removed demo PHP scripts bundled with the vis and FullCalendar libraries, which could be requested without logging in.
+* - Two cases created at the same moment could get the same case number. Case creation (web form, API and KRF import) now shares one locked function.
+* - The front page recounted and rewrote every case's device count on every view. Counts are now kept up to date where devices change; a migration corrects existing counts once.
+* - Moving a device to another case from its memo did not check access to the target case, or that the target was a case at all, and left both device counts wrong.
+* - A medium moved to another case on its own kept pointing at its host in the old case, so the new case did not list it. It is now detached when moved.
+* - A new device could name a device of another case, restricted ones included, as its host. Its memo then showed that device, and that device's memo listed the new one. Hosts must now be in the same case, and memos leave out hosts and media of other cases, which also covers rows stored that way before.
+* - A KRF import kept host UIDs that were not in the file, linking devices to whatever device has that UID here, and remapped hosts one UID at a time, so a file from another installation could attach media to the wrong device or to itself. Hosts are now remapped in one step and unknown ones dropped.
+* - Imported cases showed 0 devices until the front page was opened.
+* - The device form lost its input after a validation error.
+* - A user's "modified at" note used the month where the minutes belong.
+* - The front page showed the crime and suspect of cases restricted to users whose names contain the viewer's name (bob saw cases restricted to bobby).
+* - verify_case_ownership() checked the access group of the row it was given, so a device UID was checked against the device's empty group instead of its case's.
+* - The case page never showed its warning about other requests with the same case file number.
+* - The statistics page ran one query per case per unit; it now uses a few grouped queries. Units still match as the database compares them, ignoring letter case and trailing spaces.
+* - A case with no status (an old row, or a KRF file that left it empty) made the statistics page log a PHP warning.
+* - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
+* - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
+* - Saving an emoji or another character outside the Basic Multilingual Plane (common in text pasted from phones) failed with an error page, as MySQL's "utf8" holds only three bytes a character. Tables and the connection now use utf8mb4, converted by a migration.
+* - Passwords typed in web forms went through the HTML purifier, which stored "&" as "&amp;" and changed or removed < and >. Such passwords did not match the same password set by the installer or bin/kirjuri, and failed against LDAP. Passwords are now used as typed; hashes stored the old way still match and are replaced at the next login (except for accounts with API access, whose key derives from the hash).
+* - The case page, timeline, CSV and KRF exports and attachment uploads cut the case UID to five digits. Cases and devices share UIDs, so once they passed 99999 these pages opened, exported or attached files to the wrong case, or to none.
+* Attachment download links no longer carry the CSRF and case tokens in the URL; a download changes nothing, and the login and case access checks protect it. A unit test keeps tokens out of template URLs.
+* The report template editor can only save templates Kirjuri ships; any other name wrote conf/<name>.local, settings.local included.
+* Actions that change data are sent as POST, with no CSRF or case token in the URL, and logout needs the token. The logged in user's password hash is no longer kept in the session.
+* The API's add operation returns the new case's UID and case number.
+* Settings added in a new release get their default value when conf/settings.local predates them, as the settings file always promised.
+* Added a Docker setup (docker compose up) that installs itself, and `php bin/kirjuri install` for installing without a browser.
+* Added deny rules for .git/, tests/, docker/ and build files (composer.json, Dockerfile, docker-compose.yml), so a git checkout in the web root does not expose the repository.
+* Database connections no longer allow several SQL statements in one query.
+* exam_requests moved from MyISAM to InnoDB (migration 006), which gives it crash recovery and transactions. Searches now find words of three letters and common words such as "who", which MyISAM left out. Search terms are rewritten into full text syntax InnoDB accepts: an e-mail address or an IMEI written with dashes is searched as a phrase, + and - before a term and * after a word keep their meaning, and other operators (~ < > and parentheses) are ignored. The API's device search also covers device descriptions.
+* All SQL moved into lib/ (a unit test keeps it there). The messages, tools, users, API, settings and installer pages, the unread counter and the bootstrap now call lib functions; the installer uses PDO and no longer needs the mysqli extension.
+* Updated the following dependencies:
+* - twig/twig (v2.4.6 => v3.29.0)
+* - ezyang/htmlpurifier (v4.10.0 => v4.19.1)
+* - picqer/php-barcode-generator (v0.2.2 => v2.4.2)
+* - tinymce/tinymce (4.7.9 => 7.9.3). TinyMCE 7 is licensed under GPLv2+.
+* - twbs/bootstrap (v3.3.7 => v3.4.1)
+* - jQuery (3.1.1 => 3.7.1) and jQuery UI (1.12.1 => 1.13.3)
+
 2018-03 Version 0.9.2
 
 * A few fixes as requested and notified by the users of Kirjuri.

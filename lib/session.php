@@ -1,0 +1,221 @@
+<?php
+// Session handling, CSRF tokens, access levels and case access groups.
+
+/**
+ * The page the request came from, as a path on this site, or $fallback when the Referer header is
+ * missing or points elsewhere. Redirecting to a raw Referer would send users to any site that links here.
+ */
+function kirjuri_safe_referer($fallback) {
+    $referer = isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '';
+    $parts = parse_url($referer);
+    if ($referer === '' || !is_array($parts) || !isset($parts['host'], $parts['path'])) {
+        return $fallback;
+    }
+    $host = $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : '');
+    $own_host = isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '';
+    // A path starting with // or /\ would be read by browsers as another host.
+    if (strcasecmp($host, $own_host) !== 0 || !preg_match('#^/(?![/\\\\])#', $parts['path'])) {
+        return $fallback;
+    }
+    return $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
+}
+
+
+function kirjuri_redirect_back($fallback) {
+    header('Location: ' . kirjuri_safe_referer($fallback));
+}
+
+
+function kirjuri_keep_request_data_out_of_session() {
+    // The bootstrap loads the language strings, users, tools and unread count into $_SESSION on every
+    // request, where pages and templates expect them. Drop them before PHP writes the session file:
+    // they were 90% of its size, and the user list put every user's record in everyone's session.
+    // Shutdown functions run before the session is written.
+    register_shutdown_function(function () {
+        if (session_status() === PHP_SESSION_ACTIVE) { // ksess_destroy() nulls $_SESSION, but also ends the session.
+            unset($_SESSION['lang'], $_SESSION['all_users'], $_SESSION['all_tools'], $_SESSION['unread']);
+        }
+    });
+}
+
+
+function kirjuri_set_session_user($user_record) {
+    // Log a user in. The password hash stays out of the session: sessions are stored on disk
+    // and shown to templates. Use kirjuri_session_user_credentials() when the hash is needed.
+    unset($user_record['password']);
+    $_SESSION['user'] = $user_record;
+}
+
+
+function kirjuri_session_user_credentials() {
+    // The logged in user's database record, including the password hash.
+    global $kirjuri_database;
+    $query = $kirjuri_database->prepare('SELECT * FROM users WHERE id = :id');
+    $query->execute(array(':id' => $_SESSION['user']['id']));
+    return $query->fetch(PDO::FETCH_ASSOC);
+}
+
+
+function kirjuri_session_file() {
+    // The file that keeps the logged in user's session valid; removing it logs the session out.
+    return 'cache/user_' . $_SESSION['user']['username'] . '/session_' . $_SESSION['user']['token'] . '.txt';
+}
+
+
+/**
+ * Check a logged in session against the account as it is now, on every request. Changes to an account
+ * (access level, flags, IP lists) apply to its open sessions straight away, and the session ends when
+ * the account is removed or inactive, the IP address is no longer allowed, or the session has been
+ * idle longer than the session_idle_timeout setting (minutes; open pages keep it alive by polling).
+ * The session ends by removing its file, which ksess_verify() then treats as logged out.
+ */
+function kirjuri_check_session(array $users) {
+    global $prefs;
+    if (!isset($_SESSION['user']['username'], $_SESSION['user']['token'], $_SESSION['user']['id'])) {
+        return;
+    }
+    $file = kirjuri_session_file();
+    if (!file_exists($file)) {
+        return;
+    }
+    $idle_limit = isset($prefs['settings']['session_idle_timeout']) ? (int) $prefs['settings']['session_idle_timeout'] : 0;
+    $record = null;
+    foreach ($users as $user) {
+        if ((string) $user['id'] === (string) $_SESSION['user']['id'] && $user['username'] === $_SESSION['user']['username']) {
+            $record = $user;
+        }
+    }
+    if ($idle_limit > 0 && (time() - filemtime($file)) > $idle_limit * 60) {
+        $reason = 'idle for over ' . $idle_limit . ' minutes';
+    } elseif ($record === null) {
+        $reason = 'account removed';
+    } elseif (strpos((string) $record['flags'], 'I') !== false) {
+        $reason = 'account inactive';
+    } else {
+        $_SESSION['user'] = array('token' => $_SESSION['user']['token']) + $record;
+        $reason = ip_allowed() ? null : 'IP address ' . $_SERVER['REMOTE_ADDR'] . ' not allowed';
+    }
+    if ($reason === null) {
+        touch($file);
+        return;
+    }
+    unlink($file);
+    event_log_write('0', 'Auth', 'Ended session ' . $_SESSION['user']['token'] . ' of ' . $_SESSION['user']['username'] . ': ' . $reason . '.');
+}
+
+
+function ksess_init() {
+    // Initialize a session token.
+    session_regenerate_id(true); // Prevent session fixation.
+    $_SESSION['user']['token'] = generate_token(16); // Set session token
+    if (!file_exists('cache/user_' . $_SESSION['user']['username'])) {
+        mkdir('cache/user_' . $_SESSION['user']['username']);
+    }
+    file_put_contents('cache/user_' . $_SESSION['user']['username'] . '/session_' . $_SESSION['user']['token'] . '.txt', $_SESSION['user']['username'] . ' is logged in at ' . $_SERVER['REMOTE_ADDR'] . ', user agent ' . (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '-') . '. Request timestamp ' . gmdate("Y-m-d\TH:i:s\Z", $_SERVER['REQUEST_TIME']) . ". Remove this file to force logout.\r\n");
+}
+
+
+function posted_token() {
+    // The CSRF token of a POST request. Tokens are never read from URLs, where they would end up
+    // in logs, browser history and Referer headers.
+    return isset($_POST['token']) ? $_POST['token'] : '';
+}
+
+
+function posted_case_token() {
+    // The case access token of a POST request.
+    return isset($_POST['ct']) ? $_POST['ct'] : '';
+}
+
+
+function ksess_validate($token) {
+    // Validate a session token against token stored on user session.
+    if (is_string($token) && isset($_SESSION['user']['token']) && hash_equals($_SESSION['user']['token'], $token)) {
+        return true;
+    }
+    else {
+        trigger_error("CSRF token mismatch. Try again.");
+        kirjuri_redirect_back('index.php');
+        die();
+    }
+}
+
+
+function ksess_destroy() {
+    // Destroy a session file.
+    if (isset($_SESSION['user']['username'])) {
+        if (file_exists('cache/user_' . $_SESSION['user']['username'] . '/session_' . $_SESSION['user']['token'] . '.txt')) {
+            unlink('cache/user_' . $_SESSION['user']['username'] . '/session_' . $_SESSION['user']['token'] . '.txt');
+        }
+    }
+    if (!isset($_SESSION['user']['token'])) {
+        $_SESSION['user']['token'] = "Not set.";
+    }
+    event_log_write('0', "Auth", "Destroyed session " . $_SESSION['user']['token']);
+    $_SESSION = null;
+    session_destroy();
+    header('Location: login.php');
+    die;
+}
+
+
+function csrf_case_validate($token, $case_id) {
+    // Validate a case access token. A case access token is generated on succesful
+    // opening of a case.
+    if (empty($token)) {
+        trigger_error("Case access token missing. Try again.");
+        kirjuri_redirect_back('index.php');
+        die();
+    }
+    if ((is_string($token) && isset($_SESSION['case_token'][$case_id]) && hash_equals($_SESSION['case_token'][$case_id], $token)) || ($_SESSION['user']['access'] === "0")) {
+        return true;
+    }
+    else {
+        trigger_error("Case access token mismatch. Try again.");
+        kirjuri_redirect_back('index.php');
+        die();
+    }
+}
+
+
+function ksess_verify($required_access_level) {
+    // Check user access level before rendering page. User details are stored in a session variable.
+    if (!isset($_SESSION['user']['username'], $_SESSION['user']['token'])) {
+        ksess_destroy();
+    }
+    if (!file_exists('cache/user_' . $_SESSION['user']['username'] . "/session_" . $_SESSION['user']['token'] . ".txt" )) {
+        // Drop session if session file has been removed.
+        $_SESSION = array();
+        session_destroy();
+        header('Location: login.php');
+        die;
+    }
+    if ((empty($_SESSION['user']) && $_SERVER['PHP_SELF'] !== '/api.php')) {
+        // Check if user variable is set.
+        header('Location: login.php');
+        die;
+    } else {
+        if ($_SESSION['user']['access'] > $required_access_level) {
+            message('Access', $_SESSION['lang']['insufficient_privileges']);
+            kirjuri_redirect_back('index.php');
+            die;
+        } else {
+            return true;
+        }
+    }
+}
+
+
+function verify_case_ownership($id) {
+    // Stop the request unless the user may open the case that $id (a case or device UID) belongs to.
+    global $kirjuri_database;
+    if (kirjuri_user_can_access_case($_SESSION['user'], kirjuri_case_owner_of($kirjuri_database, $id))) {
+        return true;
+    }
+    else {
+        event_log_write($id, 'Error', 'User initiated out-of-bounds POST request to case where not in access group.');
+        message('error', $_SESSION['lang']['not_in_access_group']);
+        header('Location: index.php');
+        die;
+    }
+}

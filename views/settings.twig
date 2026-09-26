@@ -52,7 +52,7 @@
       </div>
 
     <div class="panel-footer">
-      <button id="user_save_button" type="submit" class="btn btn-success">{{ lang.change_password }}</button> <a class="btn btn-danger" href="submit.php?type=force_logout&user={{session.user.username|url_encode}}&token={{session.user.token}}">{{ lang.log_out_all_sessions }}</a>
+      <button id="user_save_button" type="submit" class="btn btn-success">{{ lang.change_password }}</button> <a class="btn btn-danger" href="submit.php?type=force_logout&user={{session.user.username|url_encode}}" data-post>{{ lang.log_out_all_sessions }}</a>
       {% if session.user.access == "0" %}<a class="btn btn-default" href="backup.php" target="_BLANK"><i class="fa fa-download"></i> Back up database...</a>{% endif %}
     </div>
   </div>
@@ -132,7 +132,7 @@
       {% endfor %}
     </div>
     <div class="panel-footer">
-      <button id="user_save_button" type="submit" class="btn btn-success">{{ lang.save }}</button> <a class="btn btn-warning" hreF="submit.php?type=reset_default_settings&token={{ session.user.token }}">{{ lang.reset_default_settings }}</a>
+      <button id="user_save_button" type="submit" class="btn btn-success">{{ lang.save }}</button> <a class="btn btn-warning" href="submit.php?type=reset_default_settings" data-post>{{ lang.reset_default_settings }}</a>
     </div>
   </div>
 </form>

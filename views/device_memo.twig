@@ -170,7 +170,7 @@ if (e.keyCode == 13) {
 <input type="checkbox" name="device_contains_evidence" value="1" {% if entry.device_contains_evidence == "1" %}checked{% endif %}> {{ lang.contains_evidence }}
 <input type="hidden" name="device_include_in_report" value="0">
 &nbsp;&nbsp;&nbsp;<input name="device_include_in_report" value="1" type="checkbox" {% if entry.device_include_in_report == "1" %}checked{% endif %}> {{ lang.show_examination_notes_in_report }}</div>
-<div class="col-md-6 text-right"><a type="button" class="btn btn-xs btn-danger" href="submit.php?type=set_removed&uid={{ entry.id }}&returnid={{ entry.parent_id }}&token={{session.user.token}}&ct={{ct}}" onclick="return confirm('Really remove device{% if entry.device_is_host == "1"%} and attached media{% endif %}?')">
+<div class="col-md-6 text-right"><a type="button" class="btn btn-xs btn-danger" href="submit.php?type=set_removed&uid={{ entry.id }}&returnid={{ entry.parent_id }}" data-post data-ct="{{ ct }}" onclick="return confirm('Really remove device{% if entry.device_is_host == "1"%} and attached media{% endif %}?')">
 <span class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span> {{ lang.remove_device }} {% if entry.device_is_host == "1"%}{{ lang.and_associated_devices }}{% endif %}</a>{% endif %}</div>
 </td>
 </tr>
@@ -280,7 +280,7 @@ if (e.keyCode == 13) {
 <div class="col-sm-5">
 <select style="text-align:left;" class="btn btn-default" name="used_tool" id="used_tool">
 <option selected value="">{{ lang.add_a_tool|capitalize }}...</option>
-{% for tool in session.all_tools if "I" not in tool.flags %}
+{% for tool in session.all_tools|filter(tool => "I" not in tool.flags) %}
 <option value="* {{ tool.product_name }} {% if tool.sw_version %}{{ tool.sw_version }}{% endif %}{% if tool.hw_version %},
 {{ lang.hardware_version }} {{ tool.hw_version }}{% endif %}{% if tool.serialno %} [{{ lang.serial_no}}: {{tool.serialno}}]{% endif %}">{{ tool.product_name }}
 {% if tool.sw_version %}{{ tool.sw_version }}{% endif %}{% if tool.hw_version %}, {{ lang.hw_version }}: {{ tool.hw_version }}{% endif %}

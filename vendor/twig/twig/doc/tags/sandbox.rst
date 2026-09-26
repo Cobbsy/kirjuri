@@ -1,13 +1,19 @@
 ``sandbox``
 ===========
 
+.. warning::
+
+    The ``sandbox`` tag is deprecated as of Twig 3.15.
+    Use the ``Twig\Sandbox\Sandbox`` class instead (see the
+    :doc:`sandbox<../sandbox>` chapter).
+
 The ``sandbox`` tag can be used to enable the sandboxing mode for an included
 template, when sandboxing is not enabled globally for the Twig environment:
 
-.. code-block:: jinja
+.. code-block:: twig
 
     {% sandbox %}
-        {% include 'user.html' %}
+        {% include 'user.html.twig' %}
     {% endsandbox %}
 
 .. warning::
@@ -21,7 +27,7 @@ template, when sandboxing is not enabled globally for the Twig environment:
     cannot be used to sandbox a section of a template. The following example
     won't work:
 
-    .. code-block:: jinja
+    .. code-block:: twig
 
         {% sandbox %}
             {% for i in 1..2 %}

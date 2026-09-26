@@ -8,7 +8,12 @@ if ($_SESSION['user']['access'] !== "0") {
     die;
 }
 $active_session_found = false;
-$username = urldecode($_GET['user']);
+$username = isset($_GET['user']) ? (string) $_GET['user'] : '';
+// Only an existing account: the name becomes part of a folder path whose old files are deleted below.
+if (!in_array($username, array_column($_SESSION['all_users'], 'username'), true)) {
+    echo '<i title="passive" style="color:gray;" class="fa fa-circle-o"></i>';
+    die;
+}
 $user_dir = 'cache/user_'.$username;
 if (file_exists('cache/user_'.$username)) {
     $session_dir = scandir('cache/user_'.$username);

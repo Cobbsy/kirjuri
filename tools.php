@@ -49,12 +49,9 @@ while ($i < 100) {
 }
 
 $_SESSION['message_set'] = false;
-echo $twig->render('tools.twig', array(
+echo kirjuri_render('tools.twig', array(
         'evcolors' => array_unique($evcolors),
         'highlight' => $highlight,
-        'session' => $_SESSION,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
         'fields' => $fields,
         'tool_reservations' => $tool_reservations
     ));

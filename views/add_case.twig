@@ -45,6 +45,7 @@
         <h1 class="page-header">{{ lang.add_an_examination_request }}
             <span class="pull-right">
                 <form class="form-inline" action="import_krf.php" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="token" value="{{session.user.token}}">
                     <div class="form-group">
                         <input class="btn btn-xs btn-default" type="file" name="fileToUpload[]" id="fileToUpload">
                     </div>

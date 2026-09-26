@@ -1,22 +1,20 @@
 {% extends 'base.twig' %}
 {% macro bytesToSize(bytes) %}
-{% spaceless %}
-    {% set kilobyte = 1024 %}
-    {% set megabyte = kilobyte * 1024 %}
-    {% set gigabyte = megabyte * 1024 %}
-    {% set terabyte = gigabyte * 1024 %}
-    {% if bytes < kilobyte %}
+    {%- set kilobyte = 1024 -%}
+    {%- set megabyte = kilobyte * 1024 -%}
+    {%- set gigabyte = megabyte * 1024 -%}
+    {%- set terabyte = gigabyte * 1024 -%}
+    {%- if bytes < kilobyte -%}
         {{ bytes ~ ' B' }}
-    {% elseif bytes < megabyte %}
+    {%- elseif bytes < megabyte -%}
         {{ (bytes / kilobyte)|number_format(2, '.') ~ ' KB' }}
-    {% elseif bytes < gigabyte %}
+    {%- elseif bytes < gigabyte -%}
         {{ (bytes / megabyte)|number_format(2, '.') ~ ' MB' }}
-    {% elseif bytes < terabyte %}
+    {%- elseif bytes < terabyte -%}
         {{ (bytes / gigabyte)|number_format(2, '.') ~ ' GB' }}
-    {% else %}
+    {%- else -%}
         {{ (bytes / terabyte)|number_format(2, '.') ~ ' TB' }}
-    {% endif %}
-{% endspaceless %}
+    {%- endif -%}
 {% endmacro %}
 {% import _self as filesize_calc %}
 {% block title %}
@@ -270,7 +268,7 @@ $(function() {
                </thead>
              {% for file in attachment_files %}
              <tr>
-               <td><a href="get_file.php?file={{ file.id }}&ct={{ ct }}&token={{ session.user.token }}" target="dlframe">
+               <td><a href="get_file.php?file={{ file.id }}" target="dlframe">
                {% if "image" in file.type %}
                <i class="fa fa-file-image-o"></i>
                {% elseif "audio" in file.type %}
@@ -298,7 +296,7 @@ $(function() {
                <td style="width:1px;white-space:nowrap;"><span class="pull-right">
                  {{filesize_calc.bytesToSize(file.size)}}
                  {% if (settings.allow_attachments == "1") and (caserow.0.case_status == "2") %}
-                 <a href="submit.php?type=remove_attachment&file={{ file.id }}&token={{ session.user.token }}&ct={{ ct }}" onclick="return confirm('{{lang.file_remove_confirm}}')"><i class="fa fa-remove" style="color:red;"></i></span></a>
+                 <a href="submit.php?type=remove_attachment&file={{ file.id }}" data-post data-ct="{{ ct }}" onclick="return confirm('{{lang.file_remove_confirm}}')"><i class="fa fa-remove" style="color:red;"></i></span></a>
                  {% endif %}
                </td>
                {% endfor%}
@@ -308,7 +306,7 @@ $(function() {
              {% for file in filelist %}
              <tr>
               <td>
-                <i class="fa fa-file-o"></i> <a href="attachments/{{ caserow.0.id }}/{{ file.filename }}" target="_BLANK">attachments/{{ caserow.0.id }}/{{ file.filename }}</a>
+                <i class="fa fa-file-o"></i> <a href="get_file.php?case={{ caserow.0.id }}&name={{ file.filename|url_encode }}">attachments/{{ caserow.0.id }}/{{ file.filename }}</a>
               </td>
             </tr>
             {% endfor %}
@@ -402,12 +400,12 @@ $(function() {
         <hr>
         {% if caserow.0.report_notes %}
         <h3>{{ lang.examination_report }}</h3>
-        {{ caserow.0.report_notes|raw }}
+        {{ caserow.0.report_notes|purify }}
         <hr>
         {% endif %}
         {% if caserow.0.examiners_notes %}
         <h3>{{ lang.examiners_private_notes }}</h3>
-        {{ caserow.0.examiners_notes|raw }}
+        {{ caserow.0.examiners_notes|purify }}
         <hr>
         {% endif %}
 
@@ -669,10 +667,10 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
         </small>
       </h4>
       {% set check = "0" %}
-      {% for test in mediarow if test.device_host_id == entry.id and test.is_removed == "0" %}
+      {% for test in mediarow|filter(test => test.device_host_id == entry.id and test.is_removed == "0") %}
       {% set check = "1" %}
       {% else %}
-      {% for media in media_objs if (entry.device_type == media) and (check != "1") %}
+      {% for media in media_objs|filter(media => entry.device_type == media and check != "1") %}
       <form class="form form-inline" role="form" method="post" action="submit.php?type=device_attach&uid={{ entry.id }}&returnid={{ entry.parent_id }}">
         <input type="hidden" name="token" value="{{session.user.token}}">
         <input type="hidden" name="ct" value="{{ct}}">
@@ -780,7 +778,7 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
         {% endif %}
         </small>
       </h4>
-      <a href="submit.php?type=device_detach&uid={{ entry.id }}&returnid={{ entry.parent_id }}&token={{session.user.token}}" onclick="return confirm('{{ lang.remove_association_warning }}')"><i class="fa fa-unlink"></i> {{ lang.remove_association }}</a>
+      <a href="submit.php?type=device_detach&uid={{ entry.id }}&returnid={{ entry.parent_id }}" data-post onclick="return confirm('{{ lang.remove_association_warning }}')"><i class="fa fa-unlink"></i> {{ lang.remove_association }}</a>
     </td>
     <td style="vertical-align:middle;{% if entry.device_contains_evidence %}background:linear-gradient(to right, #e1f0d6 , #ffffff);{% endif %}">
       {% if hosting_dev_owner != entry.device_owner %}<span style="color:darkred;"><i class="fa fa-user"></i> {{ entry.device_owner }} {{ lang.different_owner }}</span><br>{% endif %}
@@ -892,39 +890,39 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_manuf">{{ lang.sort_label_brand }}</label>
-            <input type="text" class="form-control" id="device_manuf" name="device_manuf" placeholder="{{ lang.sort_label_brand }}" value="{% if session.cache is defined %}{{ session_cache.device_manuf }}{% endif %}">
+            <input type="text" class="form-control" id="device_manuf" name="device_manuf" placeholder="{{ lang.sort_label_brand }}" value="{% if session_cache %}{{ session_cache.device_manuf }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_model">{{ lang.sort_label_model }}</label>
-            <input type="text" class="form-control" id="device_model" name="device_model" placeholder="{{ lang.sort_label_model }}" value="{% if session.cache is defined %}{{ session_cache.device_model }}{% endif %}">
+            <input type="text" class="form-control" id="device_model" name="device_model" placeholder="{{ lang.sort_label_model }}" value="{% if session_cache %}{{ session_cache.device_model }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_size_in_gb">{{ lang.size_in_gb_long }}</label>
-            <input type="text" class="form-control" id="device_size_in_gb" name="device_size_in_gb" placeholder="{{ lang.size_in_gb_long }}" value="{% if session.cache is defined %}{{ session_cache.device_size_in_gb }}{% endif %}" onKeyPress="return numbersonly(this, event)">
+            <input type="text" class="form-control" id="device_size_in_gb" name="device_size_in_gb" placeholder="{{ lang.size_in_gb_long }}" value="{% if session_cache %}{{ session_cache.device_size_in_gb }}{% endif %}" onKeyPress="return numbersonly(this, event)">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_owner">{{ lang.sort_label_owner }}</label>
-            <input type="text" class="form-control" id="device_owner" name="device_owner" placeholder="{{ lang.sort_label_owner }}" value="{{ entry.device_owner }}" value="{% if session.cache is defined %}{{ session_cache.device_owner }}{% endif %}">
+            <input type="text" class="form-control" id="device_owner" name="device_owner" placeholder="{{ lang.sort_label_owner }}" value="{{ entry.device_owner }}" value="{% if session_cache %}{{ session_cache.device_owner }}{% endif %}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_os" name="device_os" placeholder="{{ lang.operating_system_long }}" value="{% if session.cache is defined %}{{ session_cache.device_os }}{% endif %}">
+            <input type="text" class="form-control" id="device_os" name="device_os" placeholder="{{ lang.operating_system_long }}" value="{% if session_cache %}{{ session_cache.device_os }}{% endif %}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_time_deviation" name="device_time_deviation" placeholder="{{ lang.time_deviation }}" value="{% if session.cache is defined %}{{ session_cache.device_time_deviation }}{% endif %}">
+            <input type="text" class="form-control" id="device_time_deviation" name="device_time_deviation" placeholder="{{ lang.time_deviation }}" value="{% if session_cache %}{{ session_cache.device_time_deviation }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="case_request_description">Kuvaus</label>
-            <input type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.device_description }}" value="{% if session.cache is defined %}{{ session_cache.case_request_description }}{% endif %}">
+            <input type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.device_description }}" value="{% if session_cache %}{{ session_cache.case_request_description }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_identifier">{{ lang.device_identifier }}</label>
-            <input type="text" class="form-control" id="device_identifier" name="device_identifier" placeholder="{{ lang.device_identifier }}" value="{% if session.cache is defined %}{{ session_cache.device_identifier }}{% endif %}">
+            <input type="text" class="form-control" id="device_identifier" name="device_identifier" placeholder="{{ lang.device_identifier }}" value="{% if session_cache %}{{ session_cache.device_identifier }}{% endif %}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_item_number" name="device_item_number" placeholder="{{ lang.device_item_number }}" value="{% if session.cache is defined %}{{ session_cache.device_item_number }}{% endif %}" onKeyPress="return numbersonly(this, event)" value="{{ entry.device_item_number }}">
+            <input type="text" class="form-control" id="device_item_number" name="device_item_number" placeholder="{{ lang.device_item_number }}" value="{% if session_cache %}{{ session_cache.device_item_number }}{% endif %}" onKeyPress="return numbersonly(this, event)" value="{{ entry.device_item_number }}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_document" name="device_document" placeholder="{{ lang.device_document }}" value="{% if session.cache is defined %}{{ session_cache.device_document }}{% endif %}">
+            <input type="text" class="form-control" id="device_document" name="device_document" placeholder="{{ lang.device_document }}" value="{% if session_cache %}{{ session_cache.device_document }}{% endif %}">
           </div>
           <div class="form-group">
             <input type="hidden" name="parent_id" value="{{ caserow.0.id }}">
@@ -989,39 +987,39 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_manuf">{{ lang.sort_label_brand }}</label>
-            <input type="text" class="form-control" id="device_manuf" name="device_manuf" placeholder="{{ lang.sort_label_brand }}" value="{% if session.cache is defined %}{{ session_cache.device_manuf }}{% endif %}">
+            <input type="text" class="form-control" id="device_manuf" name="device_manuf" placeholder="{{ lang.sort_label_brand }}" value="{% if session_cache %}{{ session_cache.device_manuf }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_model">{{ lang.sort_label_model }}</label>
-            <input type="text" class="form-control" id="device_model" name="device_model" placeholder="{{ lang.sort_label_model }}" value="{% if session.cache is defined %}{{ session_cache.device_model }}{% endif %}">
+            <input type="text" class="form-control" id="device_model" name="device_model" placeholder="{{ lang.sort_label_model }}" value="{% if session_cache %}{{ session_cache.device_model }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_size_in_gb">{{ lang.size_in_gb_long }}</label>
-            <input type="text" class="form-control" id="device_size_in_gb" name="device_size_in_gb" placeholder="{{ lang.size_in_gb_long }}" value="{% if session.cache is defined %}{{ session_cache.device_size_in_gb }}{% endif %}" onKeyPress="return numbersonly(this, event)">
+            <input type="text" class="form-control" id="device_size_in_gb" name="device_size_in_gb" placeholder="{{ lang.size_in_gb_long }}" value="{% if session_cache %}{{ session_cache.device_size_in_gb }}{% endif %}" onKeyPress="return numbersonly(this, event)">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_identifier">{{ lang.sort_label_owner }}</label>
             <input type="text" class="form-control" id="device_owner" name="device_owner" placeholder="{{ lang.sort_label_owner }}" value="{{ caserow.0.case_suspect }}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_os" name="device_os" placeholder="{{ lang.operating_system_long }}" value="{% if session.cache is defined %}{{ session_cache.device_os }}{% endif %}">
+            <input type="text" class="form-control" id="device_os" name="device_os" placeholder="{{ lang.operating_system_long }}" value="{% if session_cache %}{{ session_cache.device_os }}{% endif %}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_time_deviation" name="device_time_deviation" placeholder="{{ lang.time_deviation }}" value="{% if session.cache is defined %}{{ session_cache.device_time_deviation }}{% endif %}">
+            <input type="text" class="form-control" id="device_time_deviation" name="device_time_deviation" placeholder="{{ lang.time_deviation }}" value="{% if session_cache %}{{ session_cache.device_time_deviation }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="case_request_description">{{ lang.description }}</label>
-            <input type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.device_description }}" value="{% if session.cache is defined %}{{ session_cache.case_request_description }}{% endif %}">
+            <input type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.device_description }}" value="{% if session_cache %}{{ session_cache.case_request_description }}{% endif %}">
           </div>
           <div class="form-group">
             <label class="sr-only" for="device_identifier">{{ lang.device_identifier }}</label>
-            <input type="text" class="form-control" id="device_identifier" name="device_identifier" placeholder="{{ lang.device_identifier_serial }}" value="{% if session.cache is defined %}{{ session_cache.device_identifier }}{% endif %}">
+            <input type="text" class="form-control" id="device_identifier" name="device_identifier" placeholder="{{ lang.device_identifier_serial }}" value="{% if session_cache %}{{ session_cache.device_identifier }}{% endif %}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_item_number" name="device_item_number" placeholder="{{ lang.device_item_number }}" onKeyPress="return numbersonly(this, event)" value="{% if session.cache is defined %}{{ session_cache.device_item_number }}{% endif %}">
+            <input type="text" class="form-control" id="device_item_number" name="device_item_number" placeholder="{{ lang.device_item_number }}" onKeyPress="return numbersonly(this, event)" value="{% if session_cache %}{{ session_cache.device_item_number }}{% endif %}">
           </div>
           <div class="form-group">
-            <input type="text" class="form-control" id="device_document" name="device_document" placeholder="{{ lang.device_document }}" value="{% if session.cache is defined %}{{ session_cache.device_document }}{% endif %}">
+            <input type="text" class="form-control" id="device_document" name="device_document" placeholder="{{ lang.device_document }}" value="{% if session_cache %}{{ session_cache.device_document }}{% endif %}">
           </div>
           <div class="form-group">
             <input type="hidden" name="parent_id" value="{{ caserow.0.id }}">
@@ -1085,7 +1083,7 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
   <h3 id="report_notes" class="panel-title">{{ lang.examination_report }}</h3>
   </div>
   <div class="panel-body">
-  {{ caserow.0.report_notes|raw }}
+  {{ caserow.0.report_notes|purify }}
   </div>
   </div>
   {% endif %}
@@ -1111,7 +1109,7 @@ box-shadow: 2px 20px 47px -17px rgba(0,0,0,0.36);border: {% if dev_owner and (en
   <h3 id="report_notes" class="panel-title">{{ lang.examiners_private_notes }}</h3>
   </div>
   <div class="panel-body">
-  {{ caserow.0.examiners_notes|raw }}
+  {{ caserow.0.examiners_notes|purify }}
   </div>
   </div>
   {% endif %}
