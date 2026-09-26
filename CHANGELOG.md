@@ -11,6 +11,7 @@ Unreleased
 * Restructured the code: shared functions moved from include_functions.php into lib/, and submit.php's actions into actions/. PHPStan (level 5) runs in CI.
 * Security fixes:
 * - import_krf.php required no login and built SQL from unchecked keys in the uploaded file. It now requires a login and a CSRF token, and every key is validated before anything is written.
+* - A KRF import checked device and attachment rows against the columns of both tables together, so a device row with an attachment column passed the check and the import failed after creating the case. Each row is now checked against its own table.
 * - A KRF import stored each attachment with the SHA-256 hash and size the file stated, so an edited export showed altered content under the original hash. A file whose attachments do not match their hash and size is now refused before anything is imported.
 * - print_sticker.php, request.php and progress_bar_static.php showed case data without a login.
 * - Adding a case, changing device status/location and message actions now check the logged in user.

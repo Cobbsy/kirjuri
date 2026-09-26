@@ -117,6 +117,20 @@ final class KrfImportTest extends IntegrationTestCase
         $this->assertGreaterThan(0, (int) $this->server->pdo()->query('SELECT COUNT(*) FROM users')->fetchColumn());
     }
 
+    public function testColumnsOfTheOtherTableAreRejectedBeforeAnythingIsWritten(): void
+    {
+        // The check accepted any column of either table, so the insert failed after the case was created.
+        $admin = $this->admin();
+        $krf = $this->exportCase($admin, $this->uniqueName('Mixed '));
+        $before = $this->rowCount();
+        foreach (array(array('children', 0, 'hash'), array('files', 0, 'device_type')) as [$section, $row, $column]) {
+            $mixed = $krf;
+            $mixed[$section][$row] = array($column => 'x') + (isset($krf[$section][$row]) ? $krf[$section][$row] : array());
+            $this->assertStringContainsString('KEY INTEGRITY CHECK FAILURE', $this->upload($admin, gzencode(json_encode($mixed)))->body, $column);
+            $this->assertSame($before, $this->rowCount(), $column);
+        }
+    }
+
     public function testInjectedColumnNameInParentIsRejected(): void
     {
         $admin = $this->admin();
