@@ -24,22 +24,34 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
     $count_total = $db->query('SELECT COUNT(id) FROM exam_requests WHERE is_removed != "1" AND id = parent_id')->fetchColumn();
 
     // Device count and data size per investigating unit, for the cases of the year. Devices are
-    // counted by the case they belong to, whenever they were added.
-    $query = $db->prepare('SELECT c.case_investigator_unit AS unit, COUNT(d.id) AS devices, SUM(d.device_size_in_gb) AS size
-        FROM exam_requests c
-        JOIN exam_requests d ON d.parent_id = c.id AND d.id != c.id AND d.is_removed != "1"
-        WHERE c.is_removed != "1" AND c.id = c.parent_id AND c.case_added_date BETWEEN :start AND :stop
-        GROUP BY c.case_investigator_unit');
-    $query->execute($range);
+    // counted by the case they belong to, whenever they were added. Units are matched in SQL, as
+    // before, so that letter case and trailing spaces do not matter.
+    $units = array_values($units);
     $by_unit = array();
-    foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $by_unit[$row['unit']] = $row;
+    if (!empty($units)) {
+        $match = '';
+        $params = $range;
+        foreach ($units as $i => $unit) {
+            $match .= ' WHEN c.case_investigator_unit = :unit' . $i . ' THEN ' . $i;
+            $params[':unit' . $i] = $unit;
+        }
+        $query = $db->prepare('SELECT CASE' . $match . ' END AS unit, COUNT(d.id) AS devices, SUM(d.device_size_in_gb) AS size
+            FROM exam_requests c
+            JOIN exam_requests d ON d.parent_id = c.id AND d.id != c.id AND d.is_removed != "1"
+            WHERE c.is_removed != "1" AND c.id = c.parent_id AND c.case_added_date BETWEEN :start AND :stop
+            GROUP BY 1');
+        $query->execute($params);
+        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if ($row['unit'] !== null) {
+                $by_unit[(int) $row['unit']] = $row;
+            }
+        }
     }
     $device_data_by_unit = array();
     $device_count_by_unit = array();
-    foreach ($units as $unit) {
-        $device_data_by_unit[$unit] = isset($by_unit[$unit]) ? (int) $by_unit[$unit]['size'] : 0;
-        $device_count_by_unit[$unit] = isset($by_unit[$unit]) ? (int) $by_unit[$unit]['devices'] : 0;
+    foreach ($units as $i => $unit) {
+        $device_data_by_unit[$unit] = isset($by_unit[$i]) ? (int) $by_unit[$i]['size'] : 0;
+        $device_count_by_unit[$unit] = isset($by_unit[$i]) ? (int) $by_unit[$i]['devices'] : 0;
     }
 
     $sizes = array_filter(array_column($all_devices, 'device_size_in_gb'), function ($size) {

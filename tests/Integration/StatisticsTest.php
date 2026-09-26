@@ -31,4 +31,19 @@ final class StatisticsTest extends IntegrationTestCase
         $this->assertNull(kirjuri_statistics($db, 1999, $units));
         $this->assertSame('index.php', $admin->get('statistics.php?year=1999')->location());
     }
+
+    public function testUnitsMatchAsTheDatabaseComparesThem(): void
+    {
+        // Units used to be compared in SQL, which ignores letter case and trailing spaces; grouping and
+        // then looking them up in PHP counted "uNIT 1" as no unit at all.
+        $db = $this->server->pdo();
+        $units = array('Unit 1', 'Unit 2', 'Unit 3');
+        $before = kirjuri_statistics($db, date('Y'), $units);
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Stats case '), array('case_investigator_unit' => 'uNIT 1'));
+        $this->addDevice($admin, $caseId, $this->uniqueName('D'), array('device_size_in_gb' => '7'));
+        $after = kirjuri_statistics($db, date('Y'), $units);
+        $this->assertSame(($before['device_count_by_unit']['Unit 1'] ?? 0) + 1, $after['device_count_by_unit']['Unit 1']);
+        $this->assertSame(($before['device_data_by_unit']['Unit 1'] ?? 0) + 7, $after['device_data_by_unit']['Unit 1']);
+    }
 }
