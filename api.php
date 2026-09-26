@@ -137,12 +137,15 @@ if ($key_found === false || (int) $_SESSION['user']['access'] > $required_access
     }
 }
 
-// Leave out cases and devices the API user has no access to.
-foreach (array('cases', 'devices') as $section) {
-    if (isset($output[$section])) {
-        $output[$section] = array_values(array_filter($output[$section], function ($row) {
-            return api_case_access($row['id']);
-        }));
+// Leave out cases and devices the API user has no access to, looking up every access group at once.
+if (isset($output['cases']) || isset($output['devices'])) {
+    $owners = kirjuri_case_owners($kirjuri_database);
+    foreach (array('cases', 'devices') as $section) {
+        if (isset($output[$section])) {
+            $output[$section] = array_values(array_filter($output[$section], function ($row) use ($owners) {
+                return kirjuri_user_can_access_case($_SESSION['user'], isset($owners[$row['id']]) ? $owners[$row['id']] : null);
+            }));
+        }
     }
 }
 

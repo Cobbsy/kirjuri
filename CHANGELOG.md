@@ -17,7 +17,7 @@ Unreleased
 * - Adding a case, changing device status/location and message actions now check the logged in user.
 * - LDAP: an empty password is refused (it caused an unauthenticated bind), and the username is escaped in the search filter.
 * - Password hashes are no longer stored in every session's user list, and API keys are compared in constant time.
-* - The API respects case access groups and can no longer move items between cases or change access groups.
+* - The API respects case access groups and can no longer move items between cases or change access groups. Its listings look up every access group with one query rather than one per case and device.
 * - The API's update skipped id, parent_id and case_owner only in lower case. MySQL column names ignore case, so PARENT_ID moved a device into another case and Case_Owner changed a case's access group. Column names are now lower-cased first.
 * - The API ignored the account's access level: with an API key a view-only account could change cases, and an add-only account could read every case. Each operation now needs the level its web page does.
 * - Attachment uploads check the CSRF and case tokens and the case access group.

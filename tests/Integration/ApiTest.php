@@ -203,6 +203,25 @@ final class ApiTest extends IntegrationTestCase
         $this->assertArrayHasKey('case_id', json_decode($added->body, true));
     }
 
+    public function testListingsCheckAccessWithoutAQueryPerRow(): void
+    {
+        // The access filter looked up each returned case and device's access group with its own query.
+        $pdo = $this->server->pdo();
+        $insert = $pdo->prepare('INSERT INTO exam_requests (parent_id, case_id, case_name, is_removed, case_added_date) VALUES (0, 0, :name, 0, NOW())');
+        for ($i = 0; $i < 50; $i++) {
+            $insert->execute(array(':name' => $this->uniqueName('Bulk ')));
+        }
+        $pdo->exec('UPDATE exam_requests SET parent_id = id WHERE parent_id = 0');
+        $key = $this->apiKey($this->apiUser());
+        $selects = fn () => (int) $pdo->query("SHOW GLOBAL STATUS LIKE 'Com_select'")->fetch(\PDO::FETCH_NUM)[1];
+
+        $before = $selects();
+        $info = json_decode($this->client()->get("api.php?operation=info&key=$key")->body, true);
+        $used = $selects() - $before;
+        $this->assertGreaterThanOrEqual(50, count($info['cases']));
+        $this->assertLessThan(20, $used, "operation=info ran $used SELECT statements.");
+    }
+
     private function apiKeyForAdmin(): string
     {
         $this->server->pdo()->exec("UPDATE users SET flags = CONCAT(IFNULL(flags, ''), 'A') WHERE username = 'admin' AND (flags IS NULL OR flags NOT LIKE '%A%')");

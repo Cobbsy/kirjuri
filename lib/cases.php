@@ -112,6 +112,16 @@ function kirjuri_case_owner_of(PDO $db, $uid) {
 }
 
 
+/** kirjuri_case_owner_of() for every case and device at once: UID => access group of its case. */
+function kirjuri_case_owners(PDO $db) {
+    $owners = array();
+    foreach ($db->query('SELECT d.id, c.case_owner FROM exam_requests d JOIN exam_requests c ON c.id = d.parent_id')->fetchAll(PDO::FETCH_NUM) as $row) {
+        $owners[$row[0]] = (string) $row[1];
+    }
+    return $owners;
+}
+
+
 /** A case by UID, or null. Removed cases are included unless $include_removed is false. */
 function kirjuri_find_case(PDO $db, $id, $include_removed = true) {
     $query = $db->prepare('SELECT * FROM exam_requests WHERE id = :id AND parent_id = :id' . ($include_removed ? '' : ' AND is_removed != "1"'));
