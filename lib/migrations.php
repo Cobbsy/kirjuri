@@ -34,6 +34,10 @@ function kirjuri_migrations() {
             'description' => 'Store text as utf8mb4, so that emoji and other characters outside the Basic Multilingual Plane can be saved',
             'up' => 'kirjuri_migration_005_utf8mb4',
         ),
+        '006_exam_requests_innodb' => array(
+            'description' => 'Move exam_requests from MyISAM to InnoDB, with full text indexes for case and device searches',
+            'up' => 'kirjuri_migration_006_exam_requests_innodb',
+        ),
     );
 }
 
@@ -204,6 +208,37 @@ function kirjuri_migration_005_utf8mb4(PDO $db) {
 }
 
 
+function kirjuri_migration_006_exam_requests_innodb(PDO $db) {
+    // InnoDB gives exam_requests crash recovery and transactions. Its full text search only runs over the
+    // exact column list of an index, at most 16 columns, so the MyISAM index "tapaus" becomes one index
+    // for case fields and one for device fields (kirjuri_fulltext_columns() lists the same columns).
+    // They are built without a stopword list, so that words such as "who" or "com" remain searchable.
+    $indexes = array(
+        'ft_cases' => 'case_name, case_suspect, case_file_number, case_investigator, forensic_investigator, phone_investigator,
+            case_investigation_lead, case_investigator_unit, case_crime, case_requested_action, case_request_description,
+            report_notes, examiners_notes',
+        'ft_devices' => 'case_request_description, report_notes, examiners_notes, device_manuf, device_model, device_identifier, device_owner',
+    );
+    if (kirjuri_index_exists($db, 'exam_requests', 'tapaus')) {
+        $db->exec('DROP INDEX tapaus ON exam_requests');
+    }
+    if (strcasecmp(kirjuri_table_engine($db, 'exam_requests'), 'InnoDB') !== 0) {
+        $db->exec('ALTER TABLE exam_requests ENGINE=InnoDB ROW_FORMAT=DYNAMIC');
+    }
+    $stopwords = $db->query('SELECT @@SESSION.innodb_ft_enable_stopword')->fetchColumn();
+    $db->exec('SET SESSION innodb_ft_enable_stopword = OFF');
+    try {
+        foreach ($indexes as $name => $columns) {
+            if (!kirjuri_index_exists($db, 'exam_requests', $name)) {
+                $db->exec('ALTER TABLE exam_requests ADD FULLTEXT INDEX ' . $name . ' (' . $columns . ')');
+            }
+        }
+    } finally {
+        $db->exec('SET SESSION innodb_ft_enable_stopword = ' . ((int) $stopwords === 1 ? 'ON' : 'OFF'));
+    }
+}
+
+
 function kirjuri_table_exists(PDO $db, $table) {
     $query = $db->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table');
     $query->execute(array(':table' => $table));
@@ -215,6 +250,13 @@ function kirjuri_column_exists(PDO $db, $table, $column) {
     $query = $db->prepare('SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column');
     $query->execute(array(':table' => $table, ':column' => $column));
     return (int) $query->fetchColumn() > 0;
+}
+
+
+function kirjuri_table_engine(PDO $db, $table) {
+    $query = $db->prepare('SELECT engine FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table');
+    $query->execute(array(':table' => $table));
+    return (string) $query->fetchColumn();
 }
 
 

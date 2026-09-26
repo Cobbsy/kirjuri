@@ -47,7 +47,7 @@ final class MigrationsTest extends IntegrationTestCase
             is_removed int(1), case_devicecount int(16),
             case_investigator text, forensic_investigator text, phone_investigator text, case_investigation_lead text,
             case_investigator_unit text, case_crime text, case_requested_action text, case_request_description text,
-            report_notes mediumtext, device_manuf text, device_model text, device_identifier text, device_owner text,
+            report_notes mediumtext, examiners_notes text, device_manuf text, device_model text, device_identifier text, device_owner text,
             FULLTEXT KEY tapaus (case_name, case_suspect, case_file_number, case_investigator, forensic_investigator,
             phone_investigator, case_investigation_lead, case_investigator_unit, case_crime, case_requested_action,
             case_request_description, report_notes, device_manuf, device_model, device_identifier, device_owner)
@@ -72,7 +72,10 @@ final class MigrationsTest extends IntegrationTestCase
         }
         $this->assertTrue(kirjuri_column_exists($db, 'exam_requests', 'case_owner'));
         $this->assertTrue(kirjuri_index_exists($db, 'exam_requests', 'idx_parent_id'));
-        $this->assertTrue(kirjuri_index_exists($db, 'exam_requests', 'tapaus'));
+        $this->assertSame('InnoDB', kirjuri_table_engine($db, 'exam_requests'));
+        $this->assertTrue(kirjuri_index_exists($db, 'exam_requests', 'ft_cases'));
+        $this->assertTrue(kirjuri_index_exists($db, 'exam_requests', 'ft_devices'));
+        $this->assertFalse(kirjuri_index_exists($db, 'exam_requests', 'tapaus'));
     }
 
     public function testLegacyDatabaseIsUpgradedWithoutLosingData(): void
@@ -90,10 +93,12 @@ final class MigrationsTest extends IntegrationTestCase
         $row = $db->query('SELECT case_name, case_suspect, case_owner, case_devicecount FROM exam_requests WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
         $this->assertSame(array('case_name' => 'Legacy case', 'case_suspect' => 'Legacy suspect', 'case_owner' => null, 'case_devicecount' => '1'), $row,
             'Data is kept, and the stale device count of 7 is corrected to the one device not removed.');
-        $this->assertSame('1', $db->query("SELECT COUNT(*) FROM exam_requests WHERE MATCH (case_name, case_suspect, case_file_number,
-            case_investigator, forensic_investigator, phone_investigator, case_investigation_lead, case_investigator_unit, case_crime,
-            case_requested_action, case_request_description, report_notes, device_manuf, device_model, device_identifier, device_owner)
-            AGAINST ('Legacy' IN BOOLEAN MODE)")->fetchColumn(), 'The search index still works.');
+        $this->assertSame('InnoDB', kirjuri_table_engine($db, 'exam_requests'));
+        $search = $db->prepare('SELECT id FROM exam_requests WHERE ' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices'));
+        foreach (array('Legacy' => array('1'), 'Kept' => array('2'), 'who' => array()) as $term => $ids) {
+            $search->execute(array(':cases' => $term, ':devices' => $term));
+            $this->assertSame($ids, $search->fetchAll(PDO::FETCH_COLUMN), "The search indexes find \"$term\".");
+        }
     }
 
     public function testDatabaseThatAlreadyHasSomeChangesIsUpgraded(): void

@@ -247,14 +247,72 @@ function kirjuri_list_cases(PDO $db, $year, $sort, $ascending, $status) {
 }
 
 
+/**
+ * The columns of exam_requests' full text indexes (see migration 006): 'cases' for case fields and notes,
+ * 'devices' for device fields, notes and descriptions. InnoDB only searches a column list that is exactly
+ * that of an index, and an index holds at most 16 columns.
+ */
+function kirjuri_fulltext_columns($index) {
+    $indexes = array(
+        'cases' => array('case_name', 'case_suspect', 'case_file_number', 'case_investigator', 'forensic_investigator', 'phone_investigator',
+            'case_investigation_lead', 'case_investigator_unit', 'case_crime', 'case_requested_action', 'case_request_description',
+            'report_notes', 'examiners_notes'),
+        'devices' => array('case_request_description', 'report_notes', 'examiners_notes', 'device_manuf', 'device_model',
+            'device_identifier', 'device_owner'),
+    );
+    return $indexes[$index];
+}
+
+
+/** A boolean mode MATCH over one of kirjuri_fulltext_columns() against $placeholder, which binds kirjuri_fulltext_query(). */
+function kirjuri_fulltext_match($index, $placeholder) {
+    return 'MATCH (' . implode(', ', kirjuri_fulltext_columns($index)) . ') AGAINST (' . $placeholder . ' IN BOOLEAN MODE)';
+}
+
+
+/**
+ * A search as typed, rewritten as boolean mode full text syntax that InnoDB accepts. InnoDB answers a stray
+ * operator ("@", "<>", a lone "+" or "-") with a syntax error. Each term keeps a leading + or - and a
+ * trailing * (on a single word); a term or quoted phrase that punctuation splits into several words, such
+ * as an e-mail address or an IMEI written with dashes, becomes a phrase of those words. Other operators
+ * (~ < > and parentheses) are left out.
+ */
+function kirjuri_fulltext_query($search) {
+    preg_match_all('/([+-]?)"([^"]*)"?|\S+/u', (string) $search, $matches, PREG_SET_ORDER);
+    $terms = array();
+    foreach ($matches as $match) {
+        if (isset($match[2])) { // A quoted phrase.
+            $prefix = $match[1];
+            $text = $match[2];
+            $wildcard = false;
+        } else {
+            $token = $match[0];
+            $prefix = ($token[0] === '+' || $token[0] === '-') ? $token[0] : '';
+            $text = $token;
+            $wildcard = (substr(rtrim($token, '"'), -1) === '*');
+        }
+        preg_match_all("/[\\p{L}\\p{N}_]+(?:'[\\p{L}\\p{N}_]+)*/u", $text, $found);
+        $words = $found[0];
+        if (empty($words)) {
+            continue;
+        }
+        if (count($words) === 1 && !isset($match[2])) {
+            $terms[] = $prefix . $words[0] . ($wildcard ? '*' : '');
+        } else {
+            $terms[] = $prefix . '"' . implode(' ', $words) . '"';
+        }
+    }
+    return implode(' ', $terms);
+}
+
+
 /** Full text search over the cases and devices added in $year. */
 function kirjuri_search_cases(PDO $db, $term, $year, $sort, $ascending, $status) {
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"' . kirjuri_case_status_filter($status) . ' AND MATCH (case_name, case_suspect,
-        case_file_number, case_investigator, forensic_investigator, phone_investigator, case_investigation_lead, case_investigator_unit,
-        case_crime, case_requested_action, case_request_description, report_notes, examiners_notes, device_manuf, device_model,
-        device_identifier, device_owner) AGAINST (:term IN BOOLEAN MODE) AND case_added_date BETWEEN :start AND :stop
-        ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
-    $query->execute(array(':term' => $term) + kirjuri_year_range($year));
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"' . kirjuri_case_status_filter($status)
+        . ' AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
+        AND case_added_date BETWEEN :start AND :stop ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
+    $term = kirjuri_fulltext_query($term);
+    $query->execute(array(':cases' => $term, ':devices' => $term) + kirjuri_year_range($year));
     return $query->fetchAll(PDO::FETCH_ASSOC);
 }
 

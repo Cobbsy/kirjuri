@@ -86,6 +86,7 @@ Unreleased
 * Added a Docker setup (docker compose up) that installs itself, and `php bin/kirjuri install` for installing without a browser.
 * Added deny rules for .git/, tests/, docker/ and build files (composer.json, Dockerfile, docker-compose.yml), so a git checkout in the web root does not expose the repository.
 * Database connections no longer allow several SQL statements in one query.
+* exam_requests moved from MyISAM to InnoDB (migration 006), which gives it crash recovery and transactions. Searches now find words of three letters and common words such as "who", which MyISAM left out. Search terms are rewritten into full text syntax InnoDB accepts: an e-mail address or an IMEI written with dashes is searched as a phrase, + and - before a term and * after a word keep their meaning, and other operators (~ < > and parentheses) are ignored. The API's device search also covers device descriptions.
 * All SQL moved into lib/ (a unit test keeps it there). The messages, tools, users, API, settings and installer pages, the unread counter and the bootstrap now call lib functions; the installer uses PDO and no longer needs the mysqli extension.
 * Updated the following dependencies:
 * - twig/twig (v2.4.6 => v3.29.0)

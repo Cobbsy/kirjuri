@@ -275,8 +275,7 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $admin = $this->admin();
         $user = 'zq' . generate_token(6);
         $caseId = $this->createCase($admin, 'Mailbox ' . $user, array('case_suspect' => $user . '@example.com'));
-        // exam_requests is MyISAM, whose full text parser accepts these. InnoDB's rejects them as syntax
-        // errors, so this guards a future change of storage engine.
+        // InnoDB's full text parser rejects these as syntax errors; kirjuri_fulltext_query() rewrites them.
         $response = $admin->get('index.php?search=' . urlencode($user . '@example.com'));
         $this->assertSame(200, $response->status);
         $this->assertStringContainsString('edit_request.php?case=' . $caseId, $response->body);

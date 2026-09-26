@@ -12,34 +12,13 @@ function kirjuri_api_get(PDO $db, $id) {
 
 /** Cases and devices added between $date_range['start'] and ['stop'] matching a boolean full text search. */
 function kirjuri_api_find(PDO $db, $search_term, array $date_range) {
-    $params = array(':search_term' => $search_term, ':dateStart' => $date_range['start'], ':dateStop' => $date_range['stop']);
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = parent_id AND is_removed = "0" AND MATCH (
-        case_name,
-        case_suspect,
-        case_file_number,
-        case_investigator,
-        forensic_investigator,
-        phone_investigator,
-        case_investigation_lead,
-        case_investigator_unit,
-        case_crime,
-        case_requested_action,
-        case_request_description,
-        report_notes,
-        examiners_notes)
-        AGAINST
-        (:search_term IN BOOLEAN MODE) AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
+    $params = array(':search_term' => kirjuri_fulltext_query($search_term), ':dateStart' => $date_range['start'], ':dateStop' => $date_range['stop']);
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = parent_id AND is_removed = "0" AND ' . kirjuri_fulltext_match('cases', ':search_term')
+        . ' AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
     $query->execute($params);
     $found = array('cases' => $query->fetchAll(PDO::FETCH_ASSOC));
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE id != parent_id AND is_removed = "0" AND MATCH (
-        report_notes,
-        examiners_notes,
-        device_manuf,
-        device_model,
-        device_identifier,
-        device_owner)
-        AGAINST
-        (:search_term IN BOOLEAN MODE) AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE id != parent_id AND is_removed = "0" AND ' . kirjuri_fulltext_match('devices', ':search_term')
+        . ' AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
     $query->execute($params);
     $found['devices'] = $query->fetchAll(PDO::FETCH_ASSOC);
     return $found;

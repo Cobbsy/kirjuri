@@ -49,6 +49,23 @@ final class ApiTest extends IntegrationTestCase
         $this->assertSame(array((string) $deviceId), array_column($found['devices'], 'id'));
     }
 
+    public function testFindMatchesIdentifiersShortWordsAndStopwords(): void
+    {
+        // exam_requests is InnoDB, with full text indexes built without stopwords and a three letter minimum;
+        // MyISAM skipped words under four letters and common words, and read the dashes of an IMEI as operators.
+        $admin = $this->admin();
+        $imei = '35-' . random_int(100000, 999999) . '-' . random_int(100000, 999999) . '-7';
+        $crime = 'Who ' . strtolower(generate_token(3));
+        $caseId = $this->createCase($admin, $this->uniqueName('Api words '), array('case_crime' => $crime));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('M'), array('device_identifier' => 'IMEI ' . $imei));
+        $key = $this->apiKey($this->apiUser());
+
+        $found = json_decode($this->client()->post('api.php?operation=find&key=' . $key, array('find' => $imei))->body, true);
+        $this->assertSame(array((string) $deviceId), array_column($found['devices'], 'id'));
+        $found = json_decode($this->client()->post('api.php?operation=find&key=' . $key, array('find' => '+' . str_replace(' ', ' +', $crime)))->body, true);
+        $this->assertSame(array((string) $caseId), array_column($found['cases'], 'id'));
+    }
+
     public function testFindAcceptsTermsWithFullTextOperators(): void
     {
         $user = 'zq' . generate_token(6);
