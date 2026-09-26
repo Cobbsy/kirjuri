@@ -63,6 +63,8 @@ Unreleased
 * - Two cases created at the same moment could get the same case number. Case creation (web form, API and KRF import) now shares one locked function.
 * - The front page recounted and rewrote every case's device count on every view. Counts are now kept up to date where devices change; a migration corrects existing counts once.
 * - Moving a device to another case from its memo did not check access to the target case, or that the target was a case at all, and left both device counts wrong.
+* - A new device could name a device of another case, restricted ones included, as its host. Its memo then showed that device, and that device's memo listed the new one. Hosts must now be in the same case, and memos leave out hosts and media of other cases, which also covers rows stored that way before.
+* - A KRF import kept host UIDs that were not in the file, linking devices to whatever device has that UID here, and remapped hosts one UID at a time, so a file from another installation could attach media to the wrong device or to itself. Hosts are now remapped in one step and unknown ones dropped.
 * - Imported cases showed 0 devices until the front page was opened.
 * - The device form lost its input after a validation error.
 * - A user's "modified at" note used the month where the minutes belong.

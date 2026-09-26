@@ -50,6 +50,31 @@ final class DeviceAccessTest extends IntegrationTestCase
         $this->assertSame((string) $this->restrictedCase, $row['parent_id'], 'The device must not be moved into the attacker\'s case.');
     }
 
+    public function testNewDevicesCanNotBeAttachedToADeviceOfAnotherCase(): void
+    {
+        // The host UID of a new device was stored unchecked. Its memo then showed the other case's
+        // device, and that device's memo listed the new one as its media.
+        $theirs = $this->row($this->restrictedDevice)['device_model'];
+        $model = $this->uniqueName('Planted');
+        $this->user->post('submit.php?type=device', $this->ownTokens() + array(
+                'parent_id' => (string) $this->ownCase, 'device_host_id' => (string) $this->restrictedDevice,
+                'device_type' => 'Memory card', 'device_manuf' => 'Acme', 'device_model' => $model, 'device_identifier' => '',
+                'device_location' => 'Locker', 'device_item_number' => '1', 'device_document' => '', 'device_time_deviation' => '',
+                'device_os' => '', 'device_size_in_gb' => '1', 'device_owner' => '', 'case_request_description' => '',
+                'device_action' => '1', 'is_removed' => '0',
+            ));
+        $query = $this->server->pdo()->prepare('SELECT id FROM exam_requests WHERE device_host_id = :host');
+        $query->execute(array(':host' => $this->restrictedDevice));
+        $this->assertSame(array(), $query->fetchAll(\PDO::FETCH_COLUMN));
+        $this->assertSame(1, (int) $this->row($this->ownCase)['case_devicecount'], 'No device was added.');
+
+        // Rows stored that way before, or by an import, are not shown across cases either.
+        $this->server->pdo()->exec('UPDATE exam_requests SET device_host_id = ' . $this->restrictedDevice . ' WHERE id = ' . $this->ownDevice);
+        $this->assertStringNotContainsString($theirs, $this->user->get('device_memo.php?uid=' . $this->ownDevice)->body);
+        $mine = $this->row($this->ownDevice)['device_model'];
+        $this->assertStringNotContainsString($mine, $this->admin()->get('device_memo.php?uid=' . $this->restrictedDevice)->body);
+    }
+
     public function testDetachAndAttachStayWithinTheCase(): void
     {
         $this->server->pdo()->exec('UPDATE exam_requests SET device_host_id = 42 WHERE id = ' . $this->restrictedDevice);

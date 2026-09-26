@@ -122,10 +122,10 @@ function kirjuri_move_device(PDO $db, $from_case, $device_id, $to_case) {
 }
 
 
-/** Media attached to a device. */
-function kirjuri_attached_media(PDO $db, $device_id) {
-    $query = $db->prepare('SELECT id, device_type, device_manuf, device_model, device_host_id FROM exam_requests WHERE is_removed != "1" AND device_host_id = :id');
-    $query->execute(array(':id' => $device_id));
+/** Media of case $case_id attached to a device. */
+function kirjuri_attached_media(PDO $db, $case_id, $device_id) {
+    $query = $db->prepare('SELECT id, device_type, device_manuf, device_model, device_host_id FROM exam_requests WHERE is_removed != "1" AND device_host_id = :id AND parent_id = :case');
+    $query->execute(array(':id' => $device_id, ':case' => $case_id));
     return $query->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -165,10 +165,21 @@ function kirjuri_import_device(PDO $db, $case_id, array $row) {
 }
 
 
-/** After an import, point attached media at the new UIDs of their host devices. $new_ids maps old UIDs to new. */
+/**
+ * After an import, point attached media at the new UIDs of their host devices. $new_ids maps old UIDs to
+ * new. One statement maps every row, so a new UID that equals another old one is not mapped twice. A host
+ * that was not in the file is dropped, as its UID would name some other device here.
+ */
 function kirjuri_remap_device_hosts(PDO $db, $case_id, array $new_ids) {
-    $query = $db->prepare('UPDATE exam_requests SET device_host_id = :new_id WHERE device_host_id = :old_id AND parent_id = :case');
+    $cases = '';
+    $params = array(':case' => $case_id);
+    $i = 0;
     foreach ($new_ids as $old_id => $new_id) {
-        $query->execute(array(':new_id' => $new_id, ':old_id' => $old_id, ':case' => $case_id));
+        $cases .= ' WHEN :old' . $i . ' THEN :new' . $i;
+        $params[':old' . $i] = (string) $old_id;
+        $params[':new' . $i] = (string) $new_id;
+        $i++;
     }
+    $db->prepare('UPDATE exam_requests SET device_host_id = ' . ($cases === '' ? '"0"' : 'CASE device_host_id' . $cases . ' ELSE "0" END')
+        . ' WHERE parent_id = :case AND id != parent_id AND device_host_id != "0"')->execute($params);
 }

@@ -168,6 +168,13 @@ case 'device':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
+    $_POST['device_host_id'] = filter_numbers(isset($_POST['device_host_id']) ? $_POST['device_host_id'] : '0');
+    if ($_POST['device_host_id'] !== '0' && kirjuri_case_device($kirjuri_database, $id, $_POST['device_host_id']) === null) {
+        // Media can only be attached to a device of the same case.
+        message('error', $_SESSION['lang']['missing_form_field']);
+        header('Location: edit_request.php?case=' . $id . '&tab=devices');
+        die;
+    }
     if ($_POST['device_host_id'] === '0') {
         // If new device is an associated media, it is not a host by itself
         $device_is_host = '1';

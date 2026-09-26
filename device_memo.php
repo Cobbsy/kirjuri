@@ -12,8 +12,9 @@ $mediarow = array($device);
 $casefetch = $device;
 verify_case_ownership($casefetch['parent_id']);
 
-$connectedmediarow = kirjuri_attached_media($kirjuri_database, $device['id']);
-$host = kirjuri_find_device($kirjuri_database, $device['device_host_id']);
+// Hosts and media of other cases are left out: older versions and KRF imports could link devices across cases.
+$connectedmediarow = kirjuri_attached_media($kirjuri_database, $device['parent_id'], $device['id']);
+$host = kirjuri_case_device($kirjuri_database, $device['parent_id'], $device['device_host_id']);
 $hostdevice = ($host === null) ? array() : array($host);
 
 if (empty($_SESSION['case_token'][ $casefetch['parent_id'] ])) {

@@ -65,6 +65,31 @@ final class KrfImportTest extends IntegrationTestCase
         }
     }
 
+    public function testDeviceHostsAreMappedOnceAndStayInTheCase(): void
+    {
+        $admin = $this->admin();
+        $krf = $this->exportCase($admin, $this->uniqueName('Remap '));
+        $other = $this->addDevice($admin, $this->createCase($admin, $this->uniqueName('Other ')), $this->uniqueName('Elsewhere'));
+        $pdo = $this->server->pdo();
+        $next = (int) $pdo->query('SELECT MAX(id) FROM exam_requests')->fetchColumn() + 1000;
+        $pdo->exec("ALTER TABLE exam_requests AUTO_INCREMENT = $next"); // The case gets $next, its devices the UIDs after it.
+
+        // The card's old UID is the host's new one. Mapping one UID at a time moved the card onto itself.
+        $template = $krf['children'][0];
+        $host = array('id' => '1', 'device_host_id' => '0', 'device_model' => 'Host') + $template;
+        $card = array('id' => (string) ($next + 1), 'device_host_id' => '1', 'device_model' => 'Card') + $template;
+        // A host that is not in the file names a device of some other case on this installation.
+        $stray = array('id' => '7', 'device_host_id' => (string) $other, 'device_model' => 'Stray') + $template;
+        $krf['children'] = array($host, $card, $stray);
+
+        $newId = (int) substr($this->upload($admin, gzencode(json_encode($krf)))->location(), strlen('edit_request.php?case='));
+        $this->assertSame($next, $newId);
+        $hosts = $pdo->query("SELECT device_model, id, device_host_id FROM exam_requests WHERE parent_id = $newId AND id != $newId")->fetchAll(\PDO::FETCH_UNIQUE);
+        $this->assertSame('0', $hosts['Host']['device_host_id']);
+        $this->assertSame($hosts['Host']['id'], $hosts['Card']['device_host_id']);
+        $this->assertSame('0', $hosts['Stray']['device_host_id']);
+    }
+
     public function testNotesThatPurifyToNothingStillLetTheCaseOpen(): void
     {
         $admin = $this->admin();
