@@ -39,7 +39,7 @@ function kirjuri_api_info(PDO $db) {
 
 /**
  * Set the columns in $fields (column => value) on the case or device with UID $id. Column names are
- * reduced to letters, digits and underscores; unknown ones make the query fail. id, parent_id and
+ * reduced to lower case letters, digits and underscores; unknown ones make the query fail. id, parent_id and
  * case_owner are skipped, as moving items between cases or changing access groups is not allowed
  * through the API. Report and examiner's notes are appended to as a new paragraph, not replaced.
  */
@@ -48,7 +48,7 @@ function kirjuri_api_update_item(PDO $db, $id, array $fields) {
     $params = array(':id' => $id);
     $i = 0;
     foreach ($fields as $column => $value) {
-        $column = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $column);
+        $column = strtolower(preg_replace('/[^a-zA-Z0-9_]/', '', (string) $column)); // MySQL column names ignore case.
         if (in_array($column, array('', 'id', 'parent_id', 'case_owner'), true)) {
             continue;
         }

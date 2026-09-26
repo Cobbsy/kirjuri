@@ -111,6 +111,24 @@ final class ApiTest extends IntegrationTestCase
         $this->assertNull($row['case_owner']);
     }
 
+    public function testProtectedColumnsCannotBeReachedInAnotherLetterCase(): void
+    {
+        // Column names are case-insensitive in MySQL, but the skip list compared them exactly.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Api case '));
+        $otherCase = $this->createCase($admin, $this->uniqueName('Api target '));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('M'));
+        $key = $this->apiKey($this->apiUser());
+
+        $this->client()->post("api.php?operation=update&id=$deviceId&key=$key", array('PARENT_ID' => (string) $otherCase, 'Case_Owner' => 'nobody', 'device_model' => 'Renamed'));
+        $row = $this->row($deviceId);
+        $this->assertSame('Renamed', $row['device_model']);
+        $this->assertSame((string) $caseId, $row['parent_id']);
+        $this->assertNull($row['case_owner']);
+        $this->client()->post("api.php?operation=update&id=$caseId&key=$key", array('Case_Owner' => 'admin'));
+        $this->assertNull($this->row($caseId)['case_owner']);
+    }
+
     public function testNotesFromTheApiCannotRunScripts(): void
     {
         $admin = $this->admin();
