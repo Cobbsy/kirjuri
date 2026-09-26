@@ -113,6 +113,27 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->login($username, 'correct-password');
     }
 
+    public function testTheAddressLimitCanBeTurnedOff(): void
+    {
+        // Behind a reverse proxy every user has the proxy's address, so one person's failures would lock out everyone.
+        $admin = $this->admin();
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $this->assertSame((string) LOGIN_MAX_FAILURES_PER_IP, $defaults['settings']['login_max_failures_per_ip']);
+        $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
+            'settings' => array('login_max_failures_per_ip' => '0') + $defaults['settings'],
+            'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+        try {
+            $username = $this->uniqueName('proxied');
+            $this->createUser($username, 'correct-password', 1);
+            for ($i = 0; $i <= LOGIN_MAX_FAILURES_PER_IP; $i++) {
+                $this->client()->post('submit.php?type=login', array('username' => 'other' . $i, 'password' => 'wrong', 'auth_type' => 'local'));
+            }
+            $this->login($username, 'correct-password');
+        } finally {
+            $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
+        }
+    }
+
     public function testSuccessfulLoginResetsTheFailureCount(): void
     {
         $username = $this->uniqueName('reset');

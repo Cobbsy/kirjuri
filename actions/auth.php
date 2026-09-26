@@ -44,14 +44,15 @@ case 'login':
     // address they come from, so that trying a few passwords on each of many accounts is limited too.
     // Each attempt is counted before the password is checked and given back unless it fails.
     $throttle_name = kirjuri_account_username($kirjuri_database, $_POST['username']);
-    $throttle_ip = login_throttle_ip_key($_SERVER['REMOTE_ADDR']);
+    $ip_limit = isset($prefs['settings']['login_max_failures_per_ip']) ? (int) $prefs['settings']['login_max_failures_per_ip'] : LOGIN_MAX_FAILURES_PER_IP;
+    $throttle_ip = ($ip_limit > 0) ? login_throttle_ip_key($_SERVER['REMOTE_ADDR']) : null; // 0 turns the address limit off.
     if (!login_throttle_attempt($throttle_name, LOGIN_MAX_FAILURES)) {
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Login throttled after repeated failures: ' . $_POST['username']);
         header('Location: login.php');
         die;
     }
-    if (!login_throttle_attempt($throttle_ip, LOGIN_MAX_FAILURES_PER_IP)) {
+    if ($throttle_ip !== null && !login_throttle_attempt($throttle_ip, $ip_limit)) {
         login_throttle_release($throttle_name);
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Login throttled after repeated failures from ' . $_SERVER['REMOTE_ADDR'] . ': ' . $_POST['username']);

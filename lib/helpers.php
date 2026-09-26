@@ -5,7 +5,7 @@
 */
 
 define('LOGIN_MAX_FAILURES', 10); // Failed logins allowed per username...
-define('LOGIN_MAX_FAILURES_PER_IP', 50); // ...and from one IP address, whichever usernames were tried...
+define('LOGIN_MAX_FAILURES_PER_IP', 50); // ...and from one IP address, whichever usernames were tried (setting login_max_failures_per_ip)...
 define('LOGIN_FAILURE_WINDOW', 900); // ...within this many seconds before further attempts are refused.
 
 function array_trim($array) {
@@ -107,8 +107,11 @@ function login_throttle_attempt($key, $max_failures) {
 }
 
 
-/** Give back an attempt taken with login_throttle_attempt() that did not fail. */
+/** Give back an attempt taken with login_throttle_attempt() that did not fail. A null key does nothing. */
 function login_throttle_release($key) {
+    if ($key === null) {
+        return;
+    }
     login_throttle_update($key, function ($state) {
         return ($state['failures'] > 0) ? array('failures' => $state['failures'] - 1, 'last_failure' => $state['last_failure']) : null;
     });
