@@ -54,6 +54,36 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->admin();
     }
 
+    public function testParallelAttemptsDoNotGetPastTheThrottle(): void
+    {
+        // The count was checked before the password and written after it, without a lock, so attempts
+        // sent at the same time were all checked and counted over each other.
+        $username = $this->uniqueName('parallel');
+        $this->createUser($username, 'correct-password', 1);
+        $multi = curl_multi_init();
+        $handles = array();
+        for ($i = 0; $i < 3 * LOGIN_MAX_FAILURES; $i++) {
+            $handle = curl_init($this->server->baseUrl . '/submit.php?type=login');
+            curl_setopt_array($handle, array(CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POSTFIELDS => http_build_query(array('username' => $username, 'password' => 'wrong', 'auth_type' => 'local'))));
+            curl_multi_add_handle($multi, $handle);
+            $handles[] = $handle;
+        }
+        do {
+            curl_multi_exec($multi, $running);
+            curl_multi_select($multi);
+        } while ($running > 0);
+        foreach ($handles as $handle) {
+            curl_multi_remove_handle($multi, $handle);
+        }
+        curl_multi_close($multi);
+
+        $checked = array_filter($this->server->eventLog(), fn ($line) => strpos($line, 'Invalid login attempt: ' . $username) !== false);
+        $this->assertCount(LOGIN_MAX_FAILURES, $checked, 'Only as many passwords are checked as the throttle allows.');
+        $response = $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'correct-password', 'auth_type' => 'local'));
+        $this->assertSame('login.php', $response->location());
+    }
+
     public function testSpellingsOfTheSameAccountShareTheThrottle(): void
     {
         // The database compares usernames without accents, so "ádmin" signs in as "admin". Each spelling

@@ -76,10 +76,20 @@ final class LoginThrottleTest extends TestCase
             login_throttle_record_failure($key);
         }
         $this->assertTrue(login_throttled($key), 'Over the per-username limit, which does not apply to addresses.');
-        $this->assertFalse(login_ip_throttled('192.0.2.7'));
-        login_throttle_record_failure($key);
-        $this->assertTrue(login_ip_throttled('192.0.2.7'));
-        $this->assertFalse(login_ip_throttled('192.0.2.8'));
+        $this->assertTrue(login_throttle_attempt($key, LOGIN_MAX_FAILURES_PER_IP));
+        $this->assertFalse(login_throttle_attempt($key, LOGIN_MAX_FAILURES_PER_IP));
+        $this->assertTrue(login_throttle_attempt(login_throttle_ip_key('192.0.2.8'), LOGIN_MAX_FAILURES_PER_IP));
         $this->assertNotSame(login_throttle_file($key), login_throttle_file(filter_username($key)), 'No username names an address.');
+    }
+
+    public function testAttemptsAreCountedUntilGivenBack(): void
+    {
+        for ($i = 0; $i < LOGIN_MAX_FAILURES; $i++) {
+            $this->assertTrue(login_throttle_attempt('bob', LOGIN_MAX_FAILURES));
+        }
+        $this->assertFalse(login_throttle_attempt('bob', LOGIN_MAX_FAILURES), 'Refused attempts are not counted.');
+        $this->assertSame(LOGIN_MAX_FAILURES, login_throttle_state('bob')['failures']);
+        login_throttle_release('bob');
+        $this->assertTrue(login_throttle_attempt('bob', LOGIN_MAX_FAILURES), 'A successful attempt gives its place back.');
     }
 }

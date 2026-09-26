@@ -26,8 +26,8 @@ function filter_username($username) {
 
 
 function login_throttle_file($username) {
-    if (!file_exists('cache/login_throttle')) {
-        mkdir('cache/login_throttle');
+    if (!is_dir('cache/login_throttle')) {
+        @mkdir('cache/login_throttle'); // A parallel request may create it first.
     }
     return 'cache/login_throttle/' . hash('sha256', strtolower($username)) . '.json';
 }
@@ -51,24 +51,67 @@ function login_throttled($username, $max_failures = LOGIN_MAX_FAILURES) {
 
 /**
  * The throttle key for failed logins from an IP address. Usernames can not contain ":", so it never
- * names an account. The per-address count is not cleared by a successful login, which would let one
- * valid account reset it between guesses at others.
+ * names an account. A successful login gives back its own attempt but does not clear the address's
+ * earlier failures, which would let one valid account reset them between guesses at others.
  */
 function login_throttle_ip_key($ip) {
     return 'ip:' . $ip;
 }
 
 
-function login_ip_throttled($ip) {
-    return login_throttled(login_throttle_ip_key($ip), LOGIN_MAX_FAILURES_PER_IP);
+/**
+ * Change the state of $key under an exclusive lock, so that parallel requests do not count over each
+ * other. $change gets the current state and returns the new one, or null to keep it.
+ */
+function login_throttle_update($key, callable $change) {
+    $handle = fopen(login_throttle_file($key), 'c+');
+    flock($handle, LOCK_EX);
+    $state = json_decode((string) stream_get_contents($handle), true);
+    if (!is_array($state) || !isset($state['failures'], $state['last_failure']) || (time() - $state['last_failure']) > LOGIN_FAILURE_WINDOW) {
+        $state = array('failures' => 0, 'last_failure' => 0);
+    }
+    $new = $change($state);
+    if ($new !== null) {
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode($new));
+        fflush($handle);
+    }
+    flock($handle, LOCK_UN);
+    fclose($handle);
 }
 
 
 function login_throttle_record_failure($username) {
-    $state = login_throttle_state($username);
-    $state['failures']++;
-    $state['last_failure'] = time();
-    file_put_contents(login_throttle_file($username), json_encode($state), LOCK_EX);
+    login_throttle_update($username, function ($state) {
+        return array('failures' => $state['failures'] + 1, 'last_failure' => time());
+    });
+}
+
+
+/**
+ * Take a login attempt for $key: it is counted as a failure before the password is checked, so that
+ * attempts sent at the same time can not all pass the check before any of them is counted. Returns
+ * false, counting nothing, once $max_failures are counted. login_throttle_release() gives an attempt back.
+ */
+function login_throttle_attempt($key, $max_failures) {
+    $allowed = false;
+    login_throttle_update($key, function ($state) use ($max_failures, &$allowed) {
+        if ($state['failures'] >= $max_failures) {
+            return null;
+        }
+        $allowed = true;
+        return array('failures' => $state['failures'] + 1, 'last_failure' => time());
+    });
+    return $allowed;
+}
+
+
+/** Give back an attempt taken with login_throttle_attempt() that did not fail. */
+function login_throttle_release($key) {
+    login_throttle_update($key, function ($state) {
+        return ($state['failures'] > 0) ? array('failures' => $state['failures'] - 1, 'last_failure' => $state['last_failure']) : null;
+    });
 }
 
 

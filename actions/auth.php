@@ -42,14 +42,17 @@ case 'login':
 
     // Failures count against the account, whichever spelling of its name reaches it, and against the
     // address they come from, so that trying a few passwords on each of many accounts is limited too.
+    // Each attempt is counted before the password is checked and given back unless it fails.
     $throttle_name = kirjuri_account_username($kirjuri_database, $_POST['username']);
-    if (login_throttled($throttle_name)) {
+    $throttle_ip = login_throttle_ip_key($_SERVER['REMOTE_ADDR']);
+    if (!login_throttle_attempt($throttle_name, LOGIN_MAX_FAILURES)) {
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Login throttled after repeated failures: ' . $_POST['username']);
         header('Location: login.php');
         die;
     }
-    if (login_ip_throttled($_SERVER['REMOTE_ADDR'])) {
+    if (!login_throttle_attempt($throttle_ip, LOGIN_MAX_FAILURES_PER_IP)) {
+        login_throttle_release($throttle_name);
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Login throttled after repeated failures from ' . $_SERVER['REMOTE_ADDR'] . ': ' . $_POST['username']);
         header('Location: login.php');
@@ -69,13 +72,17 @@ case 'login':
     }
     // Authenticate function sets $_SESSION['user'] on success.
     if ( ($auth_success === true) && (isset($_SESSION['user'])) ) {
+        // The password was right, so the attempt is given back whatever else stops the login.
+        login_throttle_release($throttle_ip);
         if (strpos($_SESSION['user']['flags'], 'I') !== false) {
+            login_throttle_release($throttle_name);
             $_SESSION['user'] = array();
             message('error', $_SESSION['lang']['account_inactive']);
             event_log_write('0', 'Auth', 'Login attempt with inactivated account: ' . $_POST['username']);
             header('Location: login.php');
             die;
         } elseif (ip_allowed() === false) {
+            login_throttle_release($throttle_name);
             $_SESSION['user'] = array();
             message('error', $_SERVER['REMOTE_ADDR'] . ": " . $_SESSION['lang']['ip_address_restricted']);
             event_log_write('0', 'Auth', 'Login attempt from restricted IP address '.$_SERVER['REMOTE_ADDR'].': ' . $_POST['username']);
@@ -90,14 +97,14 @@ case 'login':
             die;
         }
     } elseif ($auth_success === false) {
-        $_SESSION['user'] = array();
-        login_throttle_record_failure($throttle_name);
-        login_throttle_record_failure(login_throttle_ip_key($_SERVER['REMOTE_ADDR']));
+        $_SESSION['user'] = array(); // The attempt was counted as a failure above.
         message('error', $_SESSION['lang']['invalid_credentials']);
         event_log_write('0', 'Auth', 'Invalid login attempt: ' . $_POST['username']);
         header('Location: login.php');
         die;
     } else {
+        login_throttle_release($throttle_name);
+        login_throttle_release($throttle_ip);
         $_SESSION['user'] = array();
         header('Location: login.php');
         die;

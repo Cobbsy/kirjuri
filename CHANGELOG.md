@@ -22,6 +22,7 @@ Unreleased
 * - Attachment uploads check the CSRF and case tokens and the case access group.
 * - Failed logins are throttled per username (10 failures in 15 minutes). The old block file was deleted in the same request and did nothing.
 * - The throttle counted each spelling of a username separately, while the database compares usernames without regard to accents, so "ádmin" and "admín" logged in as admin with 10 fresh attempts each. Failures now count against the account.
+* - Logins sent at the same time got past the throttle: the count was checked before the password and written after it, without a lock, so parallel attempts were all checked and overwrote each other's counts. Each attempt is now counted under a lock before the password is checked, and given back when it succeeds.
 * - Failed logins are also limited per IP address: 50 in 15 minutes, whichever usernames were tried, so that trying a few passwords on each of many accounts is limited too. A successful login does not reset the count. `php bin/kirjuri user:unlock --ip <address>` clears it. Behind a reverse proxy every user shares the proxy's address.
 * - Session cookies are HttpOnly and SameSite=Lax, and the session ID is regenerated at login.
 * - Admin session handling, the backup, settings and audit viewer no longer accept path or shell metacharacters.
