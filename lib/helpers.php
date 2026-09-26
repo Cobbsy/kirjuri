@@ -166,6 +166,15 @@ function delete_directory($dir) {
 }
 
 
+/** End every session of $username by removing its session files, which ksess_verify() checks on each request. */
+function kirjuri_end_user_sessions($username) {
+    $username = filter_username($username);
+    if ($username !== '' && file_exists('cache/user_' . $username)) {
+        delete_directory('cache/user_' . $username);
+    }
+}
+
+
 /** Minimum length of passwords set in Kirjuri, on the web and from the command line. */
 const KIRJURI_MIN_PASSWORD_LENGTH = 8;
 

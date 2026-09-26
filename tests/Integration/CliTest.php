@@ -96,7 +96,7 @@ final class CliTest extends IntegrationTestCase
         $username = $this->uniqueName('cliuser');
         [$status, $out, $err] = $this->server->cli(array('user:create', $username, 'Cli User', '1', '--api'), "first-password\n");
         $this->assertSame(0, $status, $err);
-        $this->login($username, 'first-password');
+        $session = $this->login($username, 'first-password');
         $this->assertSame('A', $this->server->pdo()->query("SELECT flags FROM users WHERE username = '$username'")->fetchColumn());
 
         [$status] = $this->server->cli(array('user:create', $username, 'Again', '1'), "other-password\n");
@@ -107,6 +107,7 @@ final class CliTest extends IntegrationTestCase
         $this->assertStringContainsString('at least 8 characters', $err);
 
         $this->assertSame(0, $this->server->cli(array('user:password', $username), "second-password\n")[0]);
+        $this->assertSame('login.php', $session->get('index.php')->location(), 'A password reset ends the account\'s sessions, as on the web.');
         $this->login($username, 'second-password');
 
         [$status, $out] = $this->server->cli(array('user:list'));

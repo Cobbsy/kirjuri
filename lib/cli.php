@@ -315,8 +315,9 @@ function cli_user_password($args) {
     $query = $db->prepare('UPDATE users SET password = :password WHERE id = :id');
     $query->execute(array(':password' => password_hash($password, PASSWORD_DEFAULT), ':id' => $user['id']));
     login_throttle_clear($user['username']);
+    kirjuri_end_user_sessions($user['username']); // As on the web: whoever knew the old password is logged out.
     event_log_write('0', 'Update', 'Password changed from the command line for user ' . $user['username'] . '.');
-    cli_out('Password changed for "' . $user['username'] . '". Their API key has changed too.');
+    cli_out('Password changed for "' . $user['username'] . '". Their sessions have ended and their API key has changed.');
     return 0;
 }
 
