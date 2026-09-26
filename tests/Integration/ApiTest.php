@@ -207,7 +207,7 @@ final class ApiTest extends IntegrationTestCase
     {
         // The access filter looked up each returned case and device's access group with its own query.
         $pdo = $this->server->pdo();
-        $insert = $pdo->prepare('INSERT INTO exam_requests (parent_id, case_id, case_name, is_removed, case_added_date) VALUES (0, 0, :name, 0, NOW())');
+        $insert = $pdo->prepare('INSERT INTO exam_requests (parent_id, case_id, case_name, case_status, is_removed, case_added_date) VALUES (0, 0, :name, "3", 0, NOW())');
         for ($i = 0; $i < 50; $i++) {
             $insert->execute(array(':name' => $this->uniqueName('Bulk ')));
         }

@@ -79,6 +79,7 @@ Unreleased
 * - verify_case_ownership() checked the access group of the row it was given, so a device UID was checked against the device's empty group instead of its case's.
 * - The case page never showed its warning about other requests with the same case file number.
 * - The statistics page ran one query per case per unit; it now uses a few grouped queries. Units still match as the database compares them, ignoring letter case and trailing spaces.
+* - A case with no status (an old row, or a KRF file that left it empty) made the statistics page log a PHP warning.
 * - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
 * - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
 * - Saving an emoji or another character outside the Basic Multilingual Plane (common in text pasted from phones) failed with an error page, as MySQL's "utf8" holds only three bytes a character. Tables and the connection now use utf8mb4, converted by a migration.

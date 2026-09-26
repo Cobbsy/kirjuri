@@ -46,4 +46,13 @@ final class StatisticsTest extends IntegrationTestCase
         $this->assertSame(($before['device_count_by_unit']['Unit 1'] ?? 0) + 1, $after['device_count_by_unit']['Unit 1']);
         $this->assertSame(($before['device_data_by_unit']['Unit 1'] ?? 0) + 7, $after['device_data_by_unit']['Unit 1']);
     }
+
+    public function testCasesWithoutAStatusAreCountedWithoutWarnings(): void
+    {
+        $pdo = $this->server->pdo();
+        $pdo->exec("INSERT INTO exam_requests (parent_id, case_id, case_name, is_removed, case_added_date) VALUES (0, 0, 'No status', 0, NOW())");
+        $pdo->exec('UPDATE exam_requests SET parent_id = id WHERE parent_id = 0');
+        $this->assertNotNull(kirjuri_statistics($pdo, date('Y'), array('Unit 1')));
+        $this->assertSame(200, $this->admin()->get('statistics.php')->status);
+    }
 }

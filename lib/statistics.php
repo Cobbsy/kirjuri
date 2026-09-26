@@ -20,7 +20,14 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
     $all_devices = $query->fetchAll(PDO::FETCH_ASSOC);
 
     // Case counts by status come from the rows already loaded, rather than a query each.
-    $statuses = array_count_values(array_column($all_cases, 'case_status'));
+    // Counted by hand: array_count_values() warns about a case without a status (an old row, or a
+    // KRF file that left it empty).
+    $statuses = array('1' => 0, '2' => 0, '3' => 0);
+    foreach (array_column($all_cases, 'case_status') as $status) {
+        if (isset($statuses[(string) $status])) {
+            $statuses[(string) $status]++;
+        }
+    }
     $count_total = $db->query('SELECT COUNT(id) FROM exam_requests WHERE is_removed != "1" AND id = parent_id')->fetchColumn();
 
     // Device count and data size per investigating unit, for the cases of the year. Devices are
@@ -62,9 +69,9 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
         'all_devices' => $all_devices,
         'device_count' => count($all_devices),
         'count_total' => $count_total,
-        'count_new' => isset($statuses['1']) ? $statuses['1'] : 0,
-        'count_open' => isset($statuses['2']) ? $statuses['2'] : 0,
-        'count_finished' => isset($statuses['3']) ? $statuses['3'] : 0,
+        'count_new' => $statuses['1'],
+        'count_open' => $statuses['2'],
+        'count_finished' => $statuses['3'],
         'count_alldevs' => count($all_devices),
         'count_phones' => count(array_filter($all_cases, function ($case) {
             return $case['case_contains_mob_dev'] === '1';
