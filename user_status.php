@@ -3,7 +3,8 @@ require_once './include_functions.php';
 
 $_SESSION['user']['access'] = isset($_SESSION['user']['access']) ? $_SESSION['user']['access'] : '';
 
-if ($_SESSION['user']['access'] !== "0") {
+// An ended session keeps its PHP session data; its session file is what says it is still logged in.
+if ($_SESSION['user']['access'] !== "0" || !isset($_SESSION['user']['username'], $_SESSION['user']['token']) || !file_exists(kirjuri_session_file())) {
     http_response_code(403);
     die;
 }

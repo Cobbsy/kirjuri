@@ -196,6 +196,17 @@ final class AccessControlTest extends IntegrationTestCase
         $this->login($username, 'password2');
     }
 
+    public function testUserStatusNeedsALiveSession(): void
+    {
+        // It trusted the access level kept in the PHP session, which outlives an ended Kirjuri session.
+        $username = $this->uniqueName('ended');
+        $this->saveUser($this->admin(), $username, array('access' => 'A', 'password' => 'password1')); // The form sends admin as "A".
+        $client = $this->login($username, 'password1');
+        $this->assertSame(200, $client->get('user_status.php?user=admin')->status);
+        delete_directory($this->server->dir . '/cache/user_' . $username);
+        $this->assertSame(403, $client->get('user_status.php?user=admin')->status);
+    }
+
     public function testUserStatusStaysInsideTheSessionFolders(): void
     {
         $admin = $this->admin(); // Creates cache/user_admin, the start of the path below.
