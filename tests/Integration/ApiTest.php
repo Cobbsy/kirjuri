@@ -222,6 +222,19 @@ final class ApiTest extends IntegrationTestCase
         $this->assertLessThan(20, $used, "operation=info ran $used SELECT statements.");
     }
 
+    public function testIpListsApplyToTheApi(): void
+    {
+        // A key worked from any address, although the account's IP lists apply to its web sessions.
+        $username = $this->apiUser();
+        $key = $this->apiKey($username);
+        $this->assertSame(200, $this->client()->get("api.php?operation=info&key=$key")->status);
+        $this->server->pdo()->prepare('UPDATE users SET attr_2 = :lists WHERE username = :username')
+            ->execute(array(':lists' => '{"allow":["10.0.0.0/8"],"deny":[""]}', ':username' => $username));
+        $response = $this->client()->get("api.php?operation=info&key=$key");
+        $this->assertSame(403, $response->status);
+        $this->assertSame('', trim($response->body));
+    }
+
     private function apiKeyForAdmin(): string
     {
         $this->server->pdo()->exec("UPDATE users SET flags = CONCAT(IFNULL(flags, ''), 'A') WHERE username = 'admin' AND (flags IS NULL OR flags NOT LIKE '%A%')");

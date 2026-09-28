@@ -19,6 +19,7 @@ Unreleased
 * - Password hashes are no longer stored in every session's user list, and API keys are compared in constant time.
 * - The API respects case access groups and can no longer move items between cases or change access groups. Its listings look up every access group with one query rather than one per case and device.
 * - The API's update skipped id, parent_id and case_owner only in lower case. MySQL column names ignore case, so PARENT_ID moved a device into another case and Case_Owner changed a case's access group. Column names are now lower-cased first.
+* - The API ignored IP allow and deny lists: a key worked from any address. The account's and the global lists now apply as they do to web sessions.
 * - The API ignored the account's access level: with an API key a view-only account could change cases, and an add-only account could read every case. Each operation now needs the level its web page does.
 * - Attachment uploads check the CSRF and case tokens and the case access group.
 * - Failed logins are throttled per username (10 failures in 15 minutes). The old block file was deleted in the same request and did nothing.
