@@ -2,58 +2,68 @@
 {% block title %}
 <title>{{ lang.log_in }} - {{ settings.title_text }}</title>
 {% endblock title %}
+{% block bodytag %}
+<body class="app login-page">
+{% endblock bodytag %}
+{% block logo %}
+{% endblock logo %}
+{% block navi %}
+{% endblock navi %}
 {% block content %}
-<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-  <h1 class="page-header">{{ lang.log_in }}</h1>
-  {% if settings.motd %}
-  <div class="panel panel-danger">
-    <div class="panel-body">
-      <i class="fa fa-warning"></i> {{ settings.motd|purify }}
-    </div>
-  </div>
-  {% endif %}
-
-  <form class="form-horizontal" role="form" method="post" action="submit.php?type=login">
-    <input type="hidden" name="token" value="{{session.user.token}}">
-    <div class="form-group">
-      <label for="username" class="col-sm-1 control-label">{{ lang.username }}</label>
-      <div class="col-sm-4">
-        <input type="text" class="form-control" id="username" name="username">
+<main class="login-shell">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-mark" aria-hidden="true"><i class="fa fa-search"></i></span>
+      <div>
+        <div class="login-brand-name">Kirjuri</div>
+        <div class="login-brand-sub">{% if settings.title_text and settings.title_text != "Kirjuri" %}{{ settings.title_text }} &middot; {% endif %}{{ settings.release }}</div>
       </div>
     </div>
+    <h1 class="h3">{{ lang.log_in }}</h1>
 
-    <div class="form-group">
-      <label for="password" class="col-sm-1 control-label">{{ lang.password }} </label>
-      <div class="col-sm-4">
-        <input type="password" class="form-control" id="password" name="password"maxlength="64">
-      </div>
+    {% if session.message.type == "error" %}
+    <div class="alert alert-danger" role="alert"><i class="fa fa-warning" aria-hidden="true"></i> {{ session.message.content }}</div>
+    {% elseif session.message.type == "info" %}
+    <div class="alert alert-success" role="status"><i class="fa fa-check-circle" aria-hidden="true"></i> {{ session.message.content }}</div>
+    {% endif %}
+
+    {% if settings.motd %}
+    <div class="alert alert-warning">
+      <i class="fa fa-warning" aria-hidden="true"></i> {{ settings.motd|purify }}
     </div>
-    {% if settings.enable_ldap_authentication == "1" %}
-    <div class="form-group">
-      <label for="account_type" class="col-sm-1 control-label"></label>
-      <div class="col-sm-4">
-        <select style="text-align:left;" class="btn btn-default" name="auth_type" id="auth_type">
+    {% endif %}
+
+    <form role="form" method="post" action="submit.php?type=login">
+      <input type="hidden" name="token" value="{{session.user.token}}">
+      <div class="form-group">
+        <label for="username" class="control-label">{{ lang.username }}</label>
+        <input type="text" class="form-control" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="control-label">{{ lang.password }}</label>
+        <input type="password" class="form-control" id="password" name="password" maxlength="64" autocomplete="current-password">
+      </div>
+      {% if settings.enable_ldap_authentication == "1" %}
+      <div class="form-group">
+        <select class="form-control" name="auth_type" id="auth_type" aria-label="Domain / Local">
           <option value="ldap" selected>Domain</option>
           <option value="local">Local</option>
         </select>
       </div>
-    </div>
-    {% else %}
-    <input type="hidden" name="auth_type" value="local">
-    {% endif %}
+      {% else %}
+      <input type="hidden" name="auth_type" value="local">
+      {% endif %}
 
-    <div class="form-group">
-      <label for="password" class="col-sm-1 control-label"></label>
-      <div class="col-sm-4">
-        <button type="submit" class="btn btn-success" id="request_save_button"><i class="fa fa-sign-in"></i> {{ lang.log_in }}</button>
-        {% for user in session.all_users %}
-          {% if (user.id == 1) and ("I" not in user.flags) %}
-          <a href="submit.php?type=anon_login" class="btn btn-default">{{ lang.anon_login_button }}</a>
-          {% endif %}
-        {% endfor %}
-      </div>
-    </div>
-  <!-- <a href="https://github.com/AnttiKurittu/Kirjuri" target="_BLANK">Kirjuri</a> release <b>{{ settings.release }}</b> -->
-  </form>
-</div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="request_save_button"><i class="fa fa-sign-in"></i> {{ lang.log_in }}</button>
+      {% for user in session.all_users %}
+        {% if (user.id == 1) and ("I" not in user.flags) %}
+        <a href="submit.php?type=anon_login" class="btn btn-default btn-block">{{ lang.anon_login_button }}</a>
+        {% endif %}
+      {% endfor %}
+    </form>
+  </div>
+</main>
 {% endblock %}
+{% block layout_end %}
+{% endblock layout_end %}

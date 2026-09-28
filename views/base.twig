@@ -17,6 +17,7 @@
     <link href="views/css/dashboard.css" rel="stylesheet">
     <link rel="stylesheet" href="views/font-awesome-4.6.3/css/font-awesome.min.css">
     <link href="views/jquery-ui/jquery-ui.css" rel="stylesheet" type="text/css">
+    <link href="views/css/kirjuri.css" rel="stylesheet">
     <style type="text/css" media="print">
       div.page {
       page-break-after: always;
@@ -24,12 +25,6 @@
       }
       div.avoidbreak {
       page-break-inside: avoid;
-      }
-    </style>
-    <style>
-    label {
-      display: inline-block;
-      width: 5em;
       }
     </style>
     <meta name="csrf-token" content="{{ session.user.token }}">
@@ -48,8 +43,16 @@
       });
 
       $(document).ready(function() {
-        $("#alert-success").fadeOut({{ settings.fadeout }});
+        $("#alert-success").delay(Number("{{ settings.fadeout|e('js') }}") || 20000).fadeOut(400);
         $("#unreadcounter").load("unreadcounter.php");
+        $(".sidebar-toggle").on("click", function() {
+          var sidebar = $(this).closest(".sidebar").toggleClass("nav-open");
+          $(this).attr("aria-expanded", sidebar.hasClass("nav-open") ? "true" : "false");
+        });
+        $(".sidebar-nav a[data-toggle='tab']").on("click", function() {
+          $(".sidebar").removeClass("nav-open");
+          $(".sidebar-toggle").attr("aria-expanded", "false");
+        });
       });
 <!--      $(function() {$(document).tooltip();});  -->
 
@@ -85,13 +88,10 @@
       setInterval('autoRefresh_div()', 20000); // Refresh the unread counter
     </script>
 
-
-    <title id="html-title">
-    </title>
     {% block reroute %} {% endblock %}
   </head>
   {% block bodytag %}
-  <body style="background-image: url('views/img/bg/grey.png');">
+  <body class="app">
     {% endblock bodytag %}
     {% block upperframe %}
     {% endblock upperframe %}
@@ -99,84 +99,78 @@
     <div class="container-fluid">
       <div class="row">
         <div class="col-sm-3 col-md-2 sidebar">
-          <h3>Kirjuri {{ settings.release }}</h3>
-          <hr>
+          <div class="sidebar-brand">
+            <a class="brand" href="index.php"><span class="brand-mark" aria-hidden="true"><i class="fa fa-search"></i></span><span>Kirjuri <span class="brand-release">{{ settings.release }}</span></span></a>
+            <button type="button" class="sidebar-toggle" aria-controls="sidebar-nav" aria-expanded="false"><i class="fa fa-bars" aria-hidden="true"></i> {{ lang.menu }}</button>
+          </div>
           {% endblock logo %}
           {% block navi %}
+          <nav class="sidebar-nav" id="sidebar-nav">
 
           {% if session.user %}
+          <ul class="nav nav-sidebar">
           {% if session.user.access <= 2 %}
-          <ul class="nav nav-sidebar">
-            <li{% if "index.php" in settings.self %} class="active"{% endif %}><a href='index.php?year={{ dateStart|date("Y") }}'><i class="fa fa-home"></i> {{ lang.front_page }} {{ dateStart|date("Y") }}<span class="sr-only">(current)</span></a></li>
-          </ul>
-
+            <li{% if "index.php" in settings.self %} class="active"{% endif %}><a href='index.php?year={{ dateStart|date("Y") }}'{% if "index.php" in settings.self %} aria-current="page"{% endif %}><i class="fa fa-home"></i> {{ lang.front_page }} {{ dateStart|date("Y") }}</a></li>
           {% endif %}
+          </ul>
           {% if ("edit_request.php" in settings.self) %}
-          <ul class="nav nav-sidebar">
-            <li role="presentation"{% if not returntab %} class="active"{% endif %}><a href="#tab-exam-request" aria-controls="tab-exam-request" role="tab" data-toggle="tab">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date("Y") }} {{ caserow.0.case_name }}</a></li>
-            <li role="presentation"{% if returntab == "devices" %} class="active"{% endif %}><a href="#tab-devices" aria-controls="tab-devices" role="tab" data-toggle="tab">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.case_devicecount >= "1" %}<b>{% endif %}{{ lang.devices_and_medias }} {% if caserow.0.case_devicecount >= "1" %}</b><span class="badge pull-right">{{ caserow.0.case_devicecount }}</span>{% endif %}</a></li>
-            <li role="presentation"{% if returntab == "report_notes" %} class="active"{% endif %}><a href="#tab-report_notes" aria-controls="tab-report_notes" role="tab" data-toggle="tab">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.report_notes %}<b>{% endif %}{{ lang.examination_report }}{% if caserow.0.report_notes %}</b>{% endif %}</a></li>
-            <li role="presentation"{% if returntab == "examiners_notes" %} class="active"{% endif %}><a href="#tab-examiners_notes" aria-controls="tab-examiners_notes" role="tab" data-toggle="tab">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.examiners_notes %}<b>{% endif %}{{ lang.examination_notes }}{% if caserow.0.examiners_notes %}</b>{% endif %}</a></li>
-            <li role="presentation"{% if returntab == "access" %} class="active"{% endif %}><a href="#tab-access" aria-controls="tab-access" role="tab" data-toggle="tab">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.case_owner %}<b>{{ lang.access_control }}</b>{% else %}{{ lang.access_control }}{% endif %}</a></li>
-            {% if settings.show_log == "1" %}<li role="presentation"{% if returntab == "caselog" %} class="active"{% endif %}><a href="#tab-caselog" id="caselog-menuitem" aria-controls="tab-caselog" role="tab" data-toggle="tab">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {{ lang.case_log }}</a></li>{% endif %}
+          <ul class="nav nav-sidebar nav-sub">
+            <li role="presentation"{% if not returntab %} class="active"{% endif %}><a href="#tab-exam-request" aria-controls="tab-exam-request" role="tab" data-toggle="tab"><i class="fa fa-folder-open-o"></i> <span>{{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date("Y") }} {{ caserow.0.case_name }}</span></a></li>
+            <li role="presentation"{% if returntab == "devices" %} class="active"{% endif %}><a href="#tab-devices" aria-controls="tab-devices" role="tab" data-toggle="tab"><i class="fa fa-hdd-o"></i> {% if caserow.0.case_devicecount >= "1" %}<b>{% endif %}{{ lang.devices_and_medias }}{% if caserow.0.case_devicecount >= "1" %}</b><span class="badge">{{ caserow.0.case_devicecount }}</span>{% endif %}</a></li>
+            <li role="presentation"{% if returntab == "report_notes" %} class="active"{% endif %}><a href="#tab-report_notes" aria-controls="tab-report_notes" role="tab" data-toggle="tab"><i class="fa fa-file-text-o"></i> {% if caserow.0.report_notes %}<b>{% endif %}{{ lang.examination_report }}{% if caserow.0.report_notes %}</b>{% endif %}</a></li>
+            <li role="presentation"{% if returntab == "examiners_notes" %} class="active"{% endif %}><a href="#tab-examiners_notes" aria-controls="tab-examiners_notes" role="tab" data-toggle="tab"><i class="fa fa-pencil-square-o"></i> {% if caserow.0.examiners_notes %}<b>{% endif %}{{ lang.examination_notes }}{% if caserow.0.examiners_notes %}</b>{% endif %}</a></li>
+            <li role="presentation"{% if returntab == "access" %} class="active"{% endif %}><a href="#tab-access" aria-controls="tab-access" role="tab" data-toggle="tab"><i class="fa fa-{% if caserow.0.case_owner %}lock{% else %}unlock-alt{% endif %}"></i> {% if caserow.0.case_owner %}<b>{{ lang.access_control }}</b>{% else %}{{ lang.access_control }}{% endif %}</a></li>
+            {% if settings.show_log == "1" %}<li role="presentation"{% if returntab == "caselog" %} class="active"{% endif %}><a href="#tab-caselog" id="caselog-menuitem" aria-controls="tab-caselog" role="tab" data-toggle="tab"><i class="fa fa-history"></i> {{ lang.case_log }}</a></li>{% endif %}
           </ul>
           {% endif %}
 
           {% if ("device_memo.php" in settings.self) %}
-          <ul class="nav nav-sidebar">
-            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date("Y") }} {{ caserow.0.case_name }}</a></li>
-            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=devices">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.case_devicecount >= "1" %}<b>{% endif %}{{ lang.devices_and_medias }} {% if caserow.0.case_devicecount >= "1" %}</b><span class="badge pull-right">{{ caserow.0.case_devicecount }}</span>{% endif %}</a></li>
-            <li role="presentation" class="active"><a href="#">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {{ mediarow.0.device_type }} </a></li>
-            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=report_notes">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.report_notes %}<b>{% endif %}{{ lang.examination_report }}{% if caserow.0.report_notes %}</b>{% endif %}</a></li>
-            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=examiners_notes">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.examiners_notes %}<b>{% endif %}{{ lang.examination_notes }}{% if caserow.0.examiners_notes %}</b>{% endif %}</a></li>
-            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=access">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {% if caserow.0.case_owner %}<b>{{ lang.access_control }}</b>{% else %}{{ lang.access_control }}{% endif %}</a></li>
-            {% if settings.show_log == "1" %}<li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=caselog">&nbsp;&nbsp;<i class="fa fa-caret-right"></i> {{ lang.case_log }}</a></li>{% endif %}
+          <ul class="nav nav-sidebar nav-sub">
+            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}"><i class="fa fa-folder-open-o"></i> <span>{{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date("Y") }} {{ caserow.0.case_name }}</span></a></li>
+            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=devices"><i class="fa fa-hdd-o"></i> {% if caserow.0.case_devicecount >= "1" %}<b>{% endif %}{{ lang.devices_and_medias }}{% if caserow.0.case_devicecount >= "1" %}</b><span class="badge">{{ caserow.0.case_devicecount }}</span>{% endif %}</a></li>
+            <li role="presentation" class="active"><a href="#" aria-current="page"><i class="fa fa-caret-right"></i> {{ mediarow.0.device_type }}</a></li>
+            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=report_notes"><i class="fa fa-file-text-o"></i> {% if caserow.0.report_notes %}<b>{% endif %}{{ lang.examination_report }}{% if caserow.0.report_notes %}</b>{% endif %}</a></li>
+            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=examiners_notes"><i class="fa fa-pencil-square-o"></i> {% if caserow.0.examiners_notes %}<b>{% endif %}{{ lang.examination_notes }}{% if caserow.0.examiners_notes %}</b>{% endif %}</a></li>
+            <li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=access"><i class="fa fa-{% if caserow.0.case_owner %}lock{% else %}unlock-alt{% endif %}"></i> {% if caserow.0.case_owner %}<b>{{ lang.access_control }}</b>{% else %}{{ lang.access_control }}{% endif %}</a></li>
+            {% if settings.show_log == "1" %}<li role="presentation"><a href="edit_request.php?case={{ caserow.0.id }}&tab=caselog"><i class="fa fa-history"></i> {{ lang.case_log }}</a></li>{% endif %}
           </ul>
           {% endif %}
+          <ul class="nav nav-sidebar">
           {% if session.user.access <= 2 %}
-          <ul class="nav nav-sidebar">
-            <li{% if "statistics.php" in settings.self %} class="active"{% endif %}><a href='statistics.php?year={{ dateStart|date("Y") }}'> <i class="fa fa-area-chart"></i> {{ lang.statistics }} {{ dateStart|date("Y") }}</a></li>
-          </ul>
+            <li{% if "statistics.php" in settings.self %} class="active"{% endif %}><a href='statistics.php?year={{ dateStart|date("Y") }}'><i class="fa fa-area-chart"></i> {{ lang.statistics }} {{ dateStart|date("Y") }}</a></li>
           {% endif %}
-          <ul class="nav nav-sidebar">
             <li{% if "add_case.php" in settings.self %} class="active"{% endif %}><a href="add_case.php"><i class="fa fa-plus"></i> {{ lang.add_a_request }}</a></li>
-          </ul>
-          <ul class="nav nav-sidebar">
-            <li{% if "help.php" in settings.self %} class="active"{% endif %}><a href="help.php"><i class="fa fa-question"></i> {{ lang.help_licenses }}</a></li>
-          </ul>
-          {% if session.user.access <= 2 %}
-          <ul class="nav nav-sidebar">
-            <li{% if "settings.php" in settings.self %} class="active"{% endif %}{% if session.user.access > 1 %} class="disabled"{% endif %}><a href="settings.php"><i class="fa fa-cog"></i> {{ lang.settings }}</a></li>
-          </ul>
-          {% endif %}
-          {% if session.user.access <= 0 %}
-          <ul class="nav nav-sidebar">
-            <li{% if "users.php" in settings.self %} class="active"{% endif %}><a href="users.php"><i class="fa fa-users"></i> {{ lang.manage_users }}</a></li>
-          </ul>
-          {% endif %}
-          {% if session.user.access <= 1 %}
-          <ul class="nav nav-sidebar">
-            <li{% if "tools.php" in settings.self %} class="active"{% endif %}><a href="tools.php"><i class="fa fa-wrench"></i> {{ lang.manage_tools|capitalize }}</a></li>
-          </ul>
-          {% endif %}
-
-          <ul class="nav nav-sidebar">
             <li{% if "messages.php" in settings.self and not show %} class="active"{% endif %}>
-            <a href="messages.php{% if (session.unread.new > 0) and "messages.php" not in settings.self %}?show=inbox{% endif %}">
-              <i class="fa fa-inbox"></i> {{ lang.messages|capitalize }}<span class="pull-right"><div id="unreadcounter">{% if session.unread.new > 0 %}<span style="color:white;" class="label label-danger">{{ session.unread.new }}</span>{% endif %}</div></span></a></li>
+              <a href="messages.php{% if (session.unread.new > 0) and "messages.php" not in settings.self %}?show=inbox{% endif %}"><i class="fa fa-inbox"></i> {{ lang.messages|capitalize }}<span class="pull-right"><span id="unreadcounter">{% if session.unread.new > 0 %}<span class="label label-danger">{{ session.unread.new }}</span>{% endif %}</span></span></a></li>
           </ul>
           {% if ("messages.php" in settings.self) %}
-          <ul class="nav nav-sidebar">
-            <li{% if show == "inbox" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=inbox">&nbsp;&nbsp;<i class="fa fa-folder{% if show == "inbox" or not show %}-open{% endif %}"></i> {{ lang.inbox|capitalize }} <span class="pull-right">{% if session.unread.msgcount_to > 0%}{{ session.unread.msgcount_to }}{% endif %}</span></a></li>
-            <li{% if show == "outbox" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=outbox">&nbsp;&nbsp;<i class="fa fa-folder{% if show == "outbox" or not show %}-open{% endif %}"></i> {{ lang.outbox|capitalize }} <span class="pull-right">{% if session.unread.msgcount_from > 0%}{{ session.unread.msgcount_from }}{% endif %}</span></a></li>
-            <li{% if show == "archive" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=archive">&nbsp;&nbsp;<i class="fa fa-folder{% if show == "archive" or not show %}-open{% endif %}"></i> {{ lang.archived|capitalize }} <span class="pull-right">{% if session.unread.msgcount_archived > 0%}{{ session.unread.msgcount_archived }}{% endif %}</span></a></li>
-            <li{% if show == "compose" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=compose">&nbsp;&nbsp;<i class="fa fa-paper-plane-o"></i> {{ lang.send_a_message|capitalize }}</a></li>
+          <ul class="nav nav-sidebar nav-sub">
+            <li{% if show == "inbox" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=inbox"><i class="fa fa-folder{% if show == "inbox" or not show %}-open{% endif %}"></i> {{ lang.inbox|capitalize }} <span class="pull-right">{% if session.unread.msgcount_to > 0%}{{ session.unread.msgcount_to }}{% endif %}</span></a></li>
+            <li{% if show == "outbox" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=outbox"><i class="fa fa-folder{% if show == "outbox" or not show %}-open{% endif %}"></i> {{ lang.outbox|capitalize }} <span class="pull-right">{% if session.unread.msgcount_from > 0%}{{ session.unread.msgcount_from }}{% endif %}</span></a></li>
+            <li{% if show == "archive" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=archive"><i class="fa fa-folder{% if show == "archive" or not show %}-open{% endif %}"></i> {{ lang.archived|capitalize }} <span class="pull-right">{% if session.unread.msgcount_archived > 0%}{{ session.unread.msgcount_archived }}{% endif %}</span></a></li>
+            <li{% if show == "compose" %} class="active"{% endif %} role="presentation"><a href="messages.php?show=compose"><i class="fa fa-paper-plane-o"></i> {{ lang.send_a_message|capitalize }}</a></li>
           </ul>
           {% endif %}
 
-          {% if session.user.username %}
+          <div class="nav-sidebar-divider"></div>
           <ul class="nav nav-sidebar">
-            <li><a href="submit.php?type=logout" data-post><i class="fa fa-user"></i> {{ lang.log_out }} {{ session.user.name }} </a></li>
+          {% if session.user.access <= 2 %}
+            <li{% if "settings.php" in settings.self %} class="active"{% endif %}{% if session.user.access > 1 %} class="disabled"{% endif %}><a href="settings.php"><i class="fa fa-cog"></i> {{ lang.settings }}</a></li>
+          {% endif %}
+          {% if session.user.access <= 0 %}
+            <li{% if "users.php" in settings.self %} class="active"{% endif %}><a href="users.php"><i class="fa fa-users"></i> {{ lang.manage_users }}</a></li>
+          {% endif %}
+          {% if session.user.access <= 1 %}
+            <li{% if "tools.php" in settings.self %} class="active"{% endif %}><a href="tools.php"><i class="fa fa-wrench"></i> {{ lang.manage_tools|capitalize }}</a></li>
+          {% endif %}
+            <li{% if "help.php" in settings.self %} class="active"{% endif %}><a href="help.php"><i class="fa fa-question-circle"></i> {{ lang.help_licenses }}</a></li>
+          </ul>
+
+          <div class="nav-sidebar-divider"></div>
+          {% if session.user.username %}
+          <div class="sidebar-user">{{ session.user.name }}</div>
+          <ul class="nav nav-sidebar">
+            <li><a href="submit.php?type=logout" data-post><i class="fa fa-sign-out"></i> {{ lang.log_out }}</a></li>
           </ul>
           {% else %}
           <ul class="nav nav-sidebar">
@@ -185,27 +179,23 @@
           {% endif %}
 
           {% endif %}
+          </nav>
 
           <!-- info message -->
           {% if session.message.type == "info"%}
-          <div style="background:#9F9;padding:10px;-webkit-box-shadow: 10px 10px 15px -4px rgba(0,0,0,0.27);-moz-box-shadow: 10px 10px 15px -4px rgba(0,0,0,0.27);box-shadow: 10px 10px 15px -4px rgba(0,0,0,0.27);" id="alert-success"><i class="fa fa-info-circle" style="color:green;"></i> {{ session.message.content }}</div>
+          <div class="flash flash-info" id="alert-success" role="status"><i class="fa fa-check-circle" aria-hidden="true"></i> <span>{{ session.message.content }}</span></div>
           {% endif %}
-
-          <!-- error message -->
         </div>
+        <!-- error message -->
         {% if session.message.type == "error"%}
-          <div class="col-sm-offset-3 col-md-offset-2 text-center" style="background:#F66;padding-top:10px;padding-bottom:10px;
-          -webkit-box-shadow: 0px 0px 20px 7px rgba(0,0,0,0.27);
-          -moz-box-shadow: 0px 0px 20px 7px rgba(0,0,0,0.27);
-          box-shadow: 0px 0px 20px 7px rgba(0,0,0,0.27);">
-          {{ session.message.content }}<span class="pull-right" style="color:white;"><i class="fa fa-warning"></i>&nbsp;&nbsp;&nbsp;</span>
-        </div>
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 flash flash-error" role="alert"><i class="fa fa-warning" aria-hidden="true"></i> <span>{{ session.message.content }}</span></div>
         {% endif %}
         {% endblock navi %}
         {% block content %}
         {% endblock %}
+    {% block layout_end %}
       </div>
     </div>
-    </div>
+    {% endblock layout_end %}
   </body>
 </html>

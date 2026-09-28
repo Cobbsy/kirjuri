@@ -1,6 +1,7 @@
 {
     "blacklist_not_a_valid_ip": "Virheellinen IP-osoite estetyiss\u00e4 osoitteissa",
     "device": "laite",
+    "menu": "Valikko",
     "notice_duplicate_request": "HUOM! Ilmoitusnumerolla on kirjattu tutkintapyynt\u00f6",
     "access": "P\u00e4\u00e4sy",
     "access_control": "P\u00e4\u00e4synhallinta",
@@ -274,6 +275,7 @@
     "number_abbrev": "Nro",
     "object_no": "esine",
     "open": "kesken",
+    "open_assigned_to_me": "avoin, minulle osoitettu",
     "operating_system_long": "K\u00e4ytt\u00f6j\u00e4rjestelm\u00e4",
     "operating_system_short": "K\u00e4ytt.j\u00e4rj.",
     "original_message": "Alkuper\u00e4inen viesti",
