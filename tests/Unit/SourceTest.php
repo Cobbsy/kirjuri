@@ -118,6 +118,25 @@ final class SourceTest extends TestCase
         $this->assertSame(array(), array_values(array_diff(array_unique($used), array_keys($strings))));
     }
 
+    /** Inline event handlers only call functions the same page defines. */
+    #[DataProvider('templates')]
+    public function testTemplateHandlersCallDefinedFunctions(string $template): void
+    {
+        $source = file_get_contents(KIRJURI_ROOT . '/views/' . $template);
+        preg_match_all('/\\bon[a-z]+="([A-Za-z_]\\w*)\\(/', $source, $matches);
+        $defined = array();
+        foreach (glob(KIRJURI_ROOT . '/views/js/*.js') as $script) {
+            preg_match_all('/function\\s+(\\w+)\\s*\\(/', file_get_contents($script), $found);
+            $defined = array_merge($defined, $found[1]);
+        }
+        foreach (array($source, file_get_contents(KIRJURI_ROOT . '/views/base.twig')) as $page) {
+            preg_match_all('/function\\s+(\\w+)\\s*\\(/', $page, $found);
+            $defined = array_merge($defined, $found[1]);
+        }
+        $builtins = array('confirm', 'alert', 'return', 'history', 'window', 'document', 'this', 'location', 'event');
+        $this->assertSame(array(), array_values(array_diff(array_unique($matches[1]), $defined, $builtins)));
+    }
+
     /** CSRF and case tokens are sent in POST bodies only: URLs end up in logs, history and Referer headers. */
     #[DataProvider('templates')]
     public function testTemplateLinksCarryNoTokens(string $template): void

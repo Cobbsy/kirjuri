@@ -344,4 +344,31 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame(200, $view->status);
         $this->assertStringContainsString('request_contents', $view->body);
     }
+
+    public function testFrontPageCountsOwnOpenCasesAsOpen(): void
+    {
+        $admin = $this->admin();
+        $name = $this->uniqueName('Own open case ');
+        $caseId = $this->createCase($admin, $name);
+        $this->server->pdo()->prepare("UPDATE exam_requests SET case_status = '2', forensic_investigator = 'Administrator' WHERE id = :id")->execute(array(':id' => $caseId));
+
+        // An open case assigned to the viewer was left out of the open count.
+        $body = $admin->get('index.php?search=' . rawurlencode('"' . $name . '"'))->body;
+        $this->assertStringContainsString('(0 new, 1 open, 0 ready', $body);
+    }
+
+    public function testFrontPageColumnHeadersAreTranslatedInBothSortDirections(): void
+    {
+        $admin = $this->admin();
+        $this->createCase($admin, $this->uniqueName('Sorted case '));
+        // Descending sort showed Finnish words or database column names in the header.
+        foreach (range(1, 9) as $column) {
+            foreach (array('', '&d=a') as $direction) {
+                $body = $admin->get('index.php?j=' . $column . $direction)->body;
+                foreach (array('>Nro <', '>case_name <', '>Ilm. nro <', '>Rikosnimike <', '>Epäilty <', '>case_added_date <') as $untranslated) {
+                    $this->assertStringNotContainsString($untranslated, $body, 'j=' . $column . $direction);
+                }
+            }
+        }
+    }
 }
