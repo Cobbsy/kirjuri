@@ -149,6 +149,27 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->assertSame('login.php', $response->location());
     }
 
+    public function testABlankAddressLimitMeansTheDefault(): void
+    {
+        // (int) '' is 0, so a blank setting used to switch the limit off; only an explicit 0 does that now.
+        $admin = $this->admin();
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
+            'settings' => array('login_max_failures_per_ip' => ' ') + $defaults['settings'],
+            'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+        try {
+            $username = $this->uniqueName('blank');
+            $this->createUser($username, 'correct-password', 1);
+            for ($i = 0; $i < LOGIN_MAX_FAILURES_PER_IP; $i++) {
+                $this->client()->post('submit.php?type=login', array('username' => 'blank' . $i, 'password' => 'wrong', 'auth_type' => 'local'));
+            }
+            $response = $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'correct-password', 'auth_type' => 'local'));
+            $this->assertSame('login.php', $response->location());
+        } finally {
+            $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
+        }
+    }
+
     public function testSuccessfulLoginResetsTheFailureCount(): void
     {
         $username = $this->uniqueName('reset');

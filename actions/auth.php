@@ -44,7 +44,9 @@ case 'login':
     // address they come from, so that trying a few passwords on each of many accounts is limited too.
     // Each attempt is counted before the password is checked and given back unless it fails.
     $throttle_name = kirjuri_account_username($kirjuri_database, $_POST['username']);
-    $ip_limit = isset($prefs['settings']['login_max_failures_per_ip']) ? (int) $prefs['settings']['login_max_failures_per_ip'] : LOGIN_MAX_FAILURES_PER_IP;
+    // Only a number counts: a blank or mistyped setting keeps the default rather than reading as 0 (off).
+    $ip_setting = trim((string) (isset($prefs['settings']['login_max_failures_per_ip']) ? $prefs['settings']['login_max_failures_per_ip'] : ''));
+    $ip_limit = ctype_digit($ip_setting) ? (int) $ip_setting : LOGIN_MAX_FAILURES_PER_IP;
     $throttle_ip = ($ip_limit > 0) ? login_throttle_ip_key($_SERVER['REMOTE_ADDR']) : null; // 0 turns the address limit off.
     if (!login_throttle_attempt($throttle_name, LOGIN_MAX_FAILURES)) {
         message('error', $_SESSION['lang']['invalid_credentials']);
