@@ -54,7 +54,7 @@ Unreleased
 * - A single IP address without a netmask in an account's allow or deny list logged a PHP warning, and an invalid deny list entry showed an undefined message.
 * - The mobile examiner column header on the front page was blank in one sort order, and the case report and statistics used an undefined "device" string. A unit test now checks that every language string in use exists in every language file.
 * - The front page crashed with "Invalid parameter number" on current PHP/MySQL versions.
-* - Installer: on PHP 8.1+ an existing database aborted the install halfway and left a credentials file behind, which blocked rerunning it.
+* - Installer: on PHP 8.1+ an existing database aborted the install halfway and left a credentials file behind, which blocked rerunning it. The credentials file is now written last, so an install that fails while creating the tables or the admin account can be run again.
 * - PHP 8.1 returns integer columns as ints, which broke every access level check (admins were not treated as admins and add-only users saw the case list).
 * - api.php crashed after every add/update (undefined logline()) and used a two digit year for its date range.
 * - Deleting a user never protected the built-in accounts, and reported success when nothing was deleted.

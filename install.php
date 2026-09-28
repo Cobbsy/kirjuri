@@ -149,9 +149,6 @@ Please choose a name for your database. The default is "kirjuri".
         die('<p style="color:red;">Connection failed: '.htmlspecialchars($e->getMessage()).'</p>');
     }
 
-    // Save credentials to file only once the database is reachable, so a failed install can be retried.
-    kirjuri_write_mysql_credentials($mysql_config);
-
     $report = function ($line) {
         echo '<p style="color:green;">' . htmlspecialchars($line) . '</p>';
     };
@@ -177,6 +174,9 @@ Please choose a name for your database. The default is "kirjuri".
 
     // The built-in accounts. On a rerun against an existing database they already exist.
     echo '<p style="color:green;">Default users added (' . kirjuri_create_default_users($kirjuri_database, $_POST['ap']) . ' new).</p>';
+
+    // The credentials file closes the installer, so it is written last: a failure above can be retried.
+    kirjuri_write_mysql_credentials($mysql_config);
 
     echo '<p>Install script done, reload <a href="index.php">index.php</a>. The admininistrator account is "admin", log in with the password you designated.</p></div>
     </div>

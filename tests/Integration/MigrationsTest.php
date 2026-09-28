@@ -122,6 +122,28 @@ final class MigrationsTest extends IntegrationTestCase
         $this->assertCount(count(kirjuri_migrations()) - 1, kirjuri_pending_migrations($db));
     }
 
+    public function testAFailedInstallCanBeRetried(): void
+    {
+        // install.php wrote conf/mysql_credentials.php before creating the tables and the admin account,
+        // so after a failure it refused to run again, and nobody could log in.
+        $name = 'kirjuritestmig' . generate_token(8);
+        $this->rootPdo()->exec('CREATE DATABASE `' . $name . '`');
+        $this->scratch[] = $name;
+        $this->rootPdo()->exec('CREATE VIEW `' . $name . '`.exam_requests AS SELECT 1 AS id'); // Migration 002 can not alter a view.
+
+        $credentials = $this->server->dir . '/conf/mysql_credentials.php';
+        rename($credentials, $credentials . '.saved');
+        try {
+            $response = $this->client()->post('install.php', array('s' => getenv('KIRJURI_TEST_DB_HOST'),
+                'u' => getenv('KIRJURI_TEST_DB_USER') ?: 'root', 'p' => getenv('KIRJURI_TEST_DB_PASSWORD') ?: '', 'd' => $name, 'ap' => 'install-password'));
+            $this->assertStringContainsString('Error creating the database tables', $response->body);
+            $this->assertFileDoesNotExist($credentials);
+            $this->assertStringNotContainsString('Installer has already been run', $this->client()->get('install.php')->body);
+        } finally {
+            rename($credentials . '.saved', $credentials);
+        }
+    }
+
     public function testInstalledSiteAppliesPendingMigrationsOnTheNextPageLoad(): void
     {
         $db = $this->server->pdo();
@@ -130,7 +152,7 @@ final class MigrationsTest extends IntegrationTestCase
         // Pretend the index migration is new, as after upgrading Kirjuri.
         $db->exec('DROP INDEX idx_msgto ON messages');
         $db->exec("DELETE FROM schema_migrations WHERE id = '003_indexes'");
-        unlink($this->server->dir . '/cache/schema_version');
+        @unlink($this->server->dir . '/cache/schema_version'); // Written by the first page load since install, if any.
 
         $this->assertSame(200, $this->client()->get('login.php')->status);
         $this->assertSame(array(), kirjuri_pending_migrations($db));
