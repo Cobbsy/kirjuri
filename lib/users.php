@@ -72,14 +72,14 @@ function kirjuri_delete_user(PDO $db, $user_id, $username) {
 
 
 /** Update an account. $account has password_hash, name, access, flags, note (attr_1) and ip_access (JSON, attr_2). */
-function kirjuri_update_user(PDO $db, $username, array $account) {
+function kirjuri_update_user(PDO $db, $user_id, array $account) {
     if (!in_array((string) $account['access'], array('0', '1', '2', '3'), true)) {
         throw new InvalidArgumentException('Unknown access level: ' . $account['access']);
     }
     $query = $db->prepare('UPDATE users SET password = :password, name = :name, access = :access,
-        flags = :flags, attr_1 = :attr_1, attr_2 = :attr_2 WHERE username = :username');
+        flags = :flags, attr_1 = :attr_1, attr_2 = :attr_2 WHERE id = :id');
     $query->execute(array(
-            ':username' => $username,
+            ':id' => $user_id,
             ':name' => $account['name'],
             ':password' => $account['password_hash'],
             ':flags' => $account['flags'],

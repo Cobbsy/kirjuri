@@ -299,6 +299,21 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertSame(200, $unchanged->get('index.php')->status, 'Other account changes keep the session.');
     }
 
+    public function testLookAlikeUsernamesAreRefused(): void
+    {
+        // The database compares usernames without accents, so "löok" and "look" are one name to it. The
+        // web form created the second account anyway, and editing it rewrote the first one too.
+        $username = $this->uniqueName('look');
+        $this->createUser($username, 'password1', 1);
+        $lookAlike = 'l' . 'ö' . substr($username, 2);
+        $admin = $this->admin();
+        $this->saveUser($admin, $lookAlike, array('password' => 'password2', 'access' => '2'));
+        $query = $this->server->pdo()->prepare('SELECT username, access FROM users WHERE username = :username');
+        $query->execute(array(':username' => $username));
+        $this->assertSame(array(array('username' => $username, 'access' => '1')), $query->fetchAll(\PDO::FETCH_ASSOC));
+        $this->login($username, 'password1');
+    }
+
     public function testSessionsEndWhenTheIpAddressIsNoLongerAllowed(): void
     {
         $username = $this->uniqueName('moved');

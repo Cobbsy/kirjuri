@@ -57,13 +57,12 @@ case 'create_user':
                 if (!empty($_POST['password'])) {
                     $user_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
                     event_log_write('0', 'Update', 'Password changed for user ' . $user['username'] . '.');
-                    kirjuri_end_user_sessions($user['username']); // Whoever knew the old password is logged out.
                 }
                 else {
                     $user_password = $user['password'];
                 }
                 $new_name = ucwords(trim(substr($_POST['name'], 0, 256)));
-                kirjuri_update_user($kirjuri_database, $username_input, array(
+                kirjuri_update_user($kirjuri_database, $user['id'], array(
                         'name' => $new_name,
                         'password_hash' => $user_password,
                         'flags' => $_POST['flag1'] . $_POST['flag2'] . $_POST['flag3'] . $_POST['flag4'],
@@ -71,6 +70,10 @@ case 'create_user':
                         'note' => 'User modified by ' . $_SESSION['user']['username'] . ' at ' . date('Y-m-d H:i'),
                         'ip_access' => $ip_json,
                     ));
+                if (!empty($_POST['password'])) {
+                    // After the new hash is stored, so a login with the old password can not slip in between.
+                    kirjuri_end_user_sessions($user['username']); // Whoever knew the old password is logged out.
+                }
                 kirjuri_rename_examiner($kirjuri_database, $oldname, $new_name);
                 event_log_write('0', 'Update', 'User modified: ' . $username_input . ', access level ' . substr($_POST['access'], 0, 1));
                 message('info', $_SESSION['lang']['user_modified']);
@@ -79,6 +82,13 @@ case 'create_user':
             }
         }
 
+        if (kirjuri_username_exists($kirjuri_database, $username_input)) {
+            // Not the exact name of an account, but the database compares names without accents or case,
+            // so it would be the same name to logins and to every lookup. bin/kirjuri refuses it too.
+            message('error', $_SESSION['lang']['create_error']);
+            header('Location: users.php');
+            die;
+        }
         if (strlen($_POST['password']) < KIRJURI_MIN_PASSWORD_LENGTH) { // A new account needs a password.
             message('error', sprintf($_SESSION['lang']['password_too_short'], KIRJURI_MIN_PASSWORD_LENGTH));
             header('Location: users.php');
