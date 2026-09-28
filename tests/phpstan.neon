@@ -10,7 +10,6 @@ parameters:
             - ../tests
             - ../cache
             - ../views/js # Third-party JavaScript libraries.
-            - ../rest_api.php # Entirely commented out; see its header.
     bootstrapFiles:
         - ../vendor/autoload.php
     ignoreErrors:

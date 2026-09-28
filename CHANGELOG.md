@@ -99,6 +99,7 @@ Unreleased
 * Actions that change data are sent as POST, with no CSRF or case token in the URL, and logout needs the token. The logged in user's password hash is no longer kept in the session.
 * The API's add operation returns the new case's UID and case number.
 * Settings added in a new release get their default value when conf/settings.local predates them, as the settings file always promised.
+* Removed rest_api.php, an unfinished API whose opening comment was never closed, so it never ran. api.php is the API.
 * Added a Docker setup (docker compose up) that installs itself, and `php bin/kirjuri install` for installing without a browser.
 * Added deny rules for .git/, tests/, docker/ and build files (composer.json, Dockerfile, docker-compose.yml), so a git checkout in the web root does not expose the repository.
 * Database connections no longer allow several SQL statements in one query.

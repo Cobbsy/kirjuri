@@ -56,8 +56,7 @@ final class SourceTest extends TestCase
     public static function filesOutsideDataLayer(): array
     {
         return array_filter(self::phpFiles(), function ($file) {
-            // rest_api.php is entirely commented out; see its header.
-            return strpos($file, 'lib/') !== 0 && $file !== 'rest_api.php';
+            return strpos($file, 'lib/') !== 0;
         }, ARRAY_FILTER_USE_KEY);
     }
 
