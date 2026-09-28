@@ -1,0 +1,14 @@
+# Keep repository and build files off the web when Kirjuri is deployed as a git checkout.
+# (conf/, logs/, cache/, lib/, actions/, bin/, docker/ and tests/ have their own deny rules.)
+<IfModule mod_alias.c>
+    RedirectMatch 404 "/\.(git|github)(/|$)"
+</IfModule>
+<FilesMatch "^(\.|Dockerfile$|docker-compose\.yml$|composer\.(json|lock)$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

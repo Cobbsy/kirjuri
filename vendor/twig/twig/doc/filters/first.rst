@@ -4,12 +4,12 @@
 The ``first`` filter returns the first "element" of a sequence, a mapping, or
 a string:
 
-.. code-block:: jinja
+.. code-block:: twig
 
     {{ [1, 2, 3, 4]|first }}
     {# outputs 1 #}
 
-    {{ { a: 1, b: 2, c: 3, d: 4 }|first }}
+    {{ {a: 1, b: 2, c: 3, d: 4}|first }}
     {# outputs 1 #}
 
     {{ '1234'|first }}
@@ -19,4 +19,4 @@ a string:
 
     It also works with objects implementing the `Traversable`_ interface.
 
-.. _`Traversable`: http://php.net/manual/en/class.traversable.php
+.. _`Traversable`: https://www.php.net/manual/en/class.traversable.php

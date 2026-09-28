@@ -6,8 +6,5 @@ if (isset($_SESSION['user']['username'])) {
 }
 
 $_SESSION['message_set'] = false;
-echo $twig->render('login.twig', array(
-        'session' => $_SESSION,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+echo kirjuri_render('login.twig', array(
     ));

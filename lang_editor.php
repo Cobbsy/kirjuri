@@ -1,10 +1,11 @@
 <?php
 
 require_once './include_functions.php';
-ksess_verify(9); // Admin only
+ksess_verify(0); // Admin only
 
 $langfile_default = json_decode(file_get_contents('conf/lang_EN.JSON'), true); // Parse language file
 
+$langfiles = array();
 $conffiles = scandir('conf/');
 foreach ($conffiles as $file) {
     if (substr($file, 0, 5) === "lang_") {
@@ -18,12 +19,9 @@ ksort($_SESSION['lang']);
 ksort($diff);
 
 $_SESSION['message_set'] = false;
-echo $twig->render('lang_editor.twig', array(
-        'settings' => $prefs['settings'],
+echo kirjuri_render('lang_editor.twig', array(
         'langfiles' => $langfiles,
-        'session' => $_SESSION,
         'langfile' => $_SESSION['lang'],
         'diff' => $diff,
-        'langfile_name' => $prefs['settings']['lang'],
-        'lang' => $_SESSION['lang'],
+        'langfile_name' => $prefs['settings']['lang']
     ));

@@ -1,9 +1,9 @@
 ``cycle``
 =========
 
-The ``cycle`` function cycles on an array of values:
+The ``cycle`` function cycles on a sequence:
 
-.. code-block:: jinja
+.. code-block:: twig
 
     {% set start_year = date() | date('Y') %}
     {% set end_year = start_year + 5 %}
@@ -11,18 +11,48 @@ The ``cycle`` function cycles on an array of values:
     {% for year in start_year..end_year %}
         {{ cycle(['odd', 'even'], loop.index0) }}
     {% endfor %}
+    
+    {# outputs
 
-The array can contain any number of values:
+        odd
+        even
+        odd
+        even
+        odd
+        even
+        
+    #}
 
-.. code-block:: jinja
+The ``cycle`` function takes two arguments: the ``sequence`` to cycle through and the ``position`` in the sequence.
+
+The ``sequence`` must be non-empty and can contain any number of values:
+
+.. code-block:: twig
 
     {% set fruits = ['apple', 'orange', 'citrus'] %}
 
     {% for i in 0..10 %}
         {{ cycle(fruits, i) }}
     {% endfor %}
+    
+    {# outputs
+    
+        apple
+        orange
+        citrus
+        apple
+        orange
+        citrus
+        apple
+        orange
+        citrus
+        apple
+        orange
+    
+    #}
 
 Arguments
 ---------
 
-* ``position``: The cycle position
+* ``values``: The sequence to cycle on
+* ``position``: The position in the sequence

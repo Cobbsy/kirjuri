@@ -1,94 +1,97 @@
+/**
+ * TinyMCE version 7.9.3 (2026-05-19)
+ */
+
 (function () {
-var code = (function () {
-  'use strict';
+    'use strict';
 
-  var PluginManager = tinymce.util.Tools.resolve('tinymce.PluginManager');
+    var global = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
-  var DOMUtils = tinymce.util.Tools.resolve('tinymce.dom.DOMUtils');
+    const setContent = (editor, html) => {
+        // We get a lovely "Wrong document" error in IE 11 if we
+        // don't move the focus to the editor before creating an undo
+        // transaction since it tries to make a bookmark for the current selection
+        editor.focus();
+        editor.undoManager.transact(() => {
+            editor.setContent(html);
+        });
+        editor.selection.setCursorLocation();
+        editor.nodeChanged();
+    };
+    const getContent = (editor) => {
+        return editor.getContent({ source_view: true });
+    };
 
-  var getMinWidth = function (editor) {
-    return editor.getParam('code_dialog_width', 600);
-  };
-  var getMinHeight = function (editor) {
-    return editor.getParam('code_dialog_height', Math.min(DOMUtils.DOM.getViewPort().h - 200, 500));
-  };
-  var $_bdsc1g9aje5nvbkf = {
-    getMinWidth: getMinWidth,
-    getMinHeight: getMinHeight
-  };
+    const open = (editor) => {
+        const editorContent = getContent(editor);
+        editor.windowManager.open({
+            title: 'Source Code',
+            size: 'large',
+            body: {
+                type: 'panel',
+                items: [
+                    {
+                        type: 'textarea',
+                        name: 'code'
+                    }
+                ]
+            },
+            buttons: [
+                {
+                    type: 'cancel',
+                    name: 'cancel',
+                    text: 'Cancel'
+                },
+                {
+                    type: 'submit',
+                    name: 'save',
+                    text: 'Save',
+                    primary: true
+                }
+            ],
+            initialData: {
+                code: editorContent
+            },
+            onSubmit: (api) => {
+                setContent(editor, api.getData().code);
+                api.close();
+            }
+        });
+    };
 
-  var setContent = function (editor, html) {
-    editor.focus();
-    editor.undoManager.transact(function () {
-      editor.setContent(html);
-    });
-    editor.selection.setCursorLocation();
-    editor.nodeChanged();
-  };
-  var getContent = function (editor) {
-    return editor.getContent({ source_view: true });
-  };
-  var $_87my539cje5nvbkg = {
-    setContent: setContent,
-    getContent: getContent
-  };
+    const register$1 = (editor) => {
+        editor.addCommand('mceCodeEditor', () => {
+            open(editor);
+        });
+    };
 
-  var open = function (editor) {
-    var minWidth = $_bdsc1g9aje5nvbkf.getMinWidth(editor);
-    var minHeight = $_bdsc1g9aje5nvbkf.getMinHeight(editor);
-    var win = editor.windowManager.open({
-      title: 'Source code',
-      body: {
-        type: 'textbox',
-        name: 'code',
-        multiline: true,
-        minWidth: minWidth,
-        minHeight: minHeight,
-        spellcheck: false,
-        style: 'direction: ltr; text-align: left'
-      },
-      onSubmit: function (e) {
-        $_87my539cje5nvbkg.setContent(editor, e.data.code);
-      }
-    });
-    win.find('#code').value($_87my539cje5nvbkg.getContent(editor));
-  };
-  var $_agyp9q99je5nvbke = { open: open };
+    const register = (editor) => {
+        const onAction = () => editor.execCommand('mceCodeEditor');
+        editor.ui.registry.addButton('code', {
+            icon: 'sourcecode',
+            tooltip: 'Source code',
+            onAction
+        });
+        editor.ui.registry.addMenuItem('code', {
+            icon: 'sourcecode',
+            text: 'Source code',
+            onAction
+        });
+    };
 
-  var register = function (editor) {
-    editor.addCommand('mceCodeEditor', function () {
-      $_agyp9q99je5nvbke.open(editor);
-    });
-  };
-  var $_9tzgyf98je5nvbkd = { register: register };
+    var Plugin = () => {
+        global.add('code', (editor) => {
+            register$1(editor);
+            register(editor);
+            return {};
+        });
+    };
 
-  var register$1 = function (editor) {
-    editor.addButton('code', {
-      icon: 'code',
-      tooltip: 'Source code',
-      onclick: function () {
-        $_agyp9q99je5nvbke.open(editor);
-      }
-    });
-    editor.addMenuItem('code', {
-      icon: 'code',
-      text: 'Source code',
-      onclick: function () {
-        $_agyp9q99je5nvbke.open(editor);
-      }
-    });
-  };
-  var $_e0a13c9dje5nvbkh = { register: register$1 };
+    Plugin();
+    /** *****
+     * DO NOT EXPORT ANYTHING
+     *
+     * IF YOU DO ROLLUP WILL LEAVE A GLOBAL ON THE PAGE
+     *******/
 
-  PluginManager.add('code', function (editor) {
-    $_9tzgyf98je5nvbkd.register(editor);
-    $_e0a13c9dje5nvbkh.register(editor);
-    return {};
-  });
-  function Plugin () {
-  }
-
-  return Plugin;
-
-}());
 })();

@@ -17,6 +17,8 @@ key           User API key    40 character hash value
 year          Year to use     Year in four character format, default current
 ```
 
+The key's account needs the same access level as on the web pages: "add" needs add only or higher, "get", "find" and "info" view only or higher, and "update" user or admin. Other requests are answered with 403.
+
 
 # Add data
 

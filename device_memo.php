@@ -3,54 +3,29 @@
 require_once './include_functions.php';
 ksess_verify(2); // View only or higher
 
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE is_removed != "1" AND id = :uid AND parent_id != id LIMIT 1');
-$query->execute(array(
-        ':uid' => $_GET['uid'],
-    ));
-$mediarow = $query->fetchAll(PDO::FETCH_ASSOC);
-
-if (count($mediarow) === 0) {
+$device = kirjuri_find_device($kirjuri_database, isset($_GET['uid']) ? filter_numbers($_GET['uid']) : '');
+if ($device === null) {
     header('Location: index.php');
     die;
 }
-
-$query = $kirjuri_database->prepare('SELECT id, device_type, device_manuf, device_model, device_host_id FROM exam_requests WHERE is_removed != "1" AND device_host_id = :uid');
-$query->execute(array(
-        ':uid' => $_GET['uid'],
-    ));
-$connectedmediarow = $query->fetchAll(PDO::FETCH_ASSOC);
-$query = $kirjuri_database->prepare('SELECT id, device_type, device_manuf, device_model, device_host_id FROM exam_requests WHERE is_removed != "1" AND id = :uid');
-$query->execute(array(
-        ':uid' => $mediarow[0]['device_host_id'],
-    ));
-$hostdevice = $query->fetchAll(PDO::FETCH_ASSOC);
-
-foreach ($mediarow as $entry) {
-    $casefetch = $entry;
-}
-
+$mediarow = array($device);
+$casefetch = $device;
 verify_case_ownership($casefetch['parent_id']);
+
+// Hosts and media of other cases are left out: older versions and KRF imports could link devices across cases.
+$connectedmediarow = kirjuri_attached_media($kirjuri_database, $device['parent_id'], $device['id']);
+$host = kirjuri_case_device($kirjuri_database, $device['parent_id'], $device['device_host_id']);
+$hostdevice = ($host === null) ? array() : array($host);
 
 if (empty($_SESSION['case_token'][ $casefetch['parent_id'] ])) {
     $_SESSION['case_token'][$casefetch['parent_id']] = generate_token(16); // Initialize case token
 }
 
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE is_removed != "1" AND id = :parent_id LIMIT 1');
-$query->execute(array(
-        ':parent_id' => $casefetch['parent_id'],
-    ));
-$caserow = $query->fetchAll(PDO::FETCH_ASSOC);
-
-$query = $kirjuri_database->prepare('SELECT id, parent_id, device_type, device_manuf, device_model FROM exam_requests WHERE is_removed != "1" AND parent_id = :parent_id AND id != :parent_id');
-$query->execute(array(
-        ':parent_id' => $casefetch['parent_id'],
-    ));
-$case_device_id_list = $query->fetchAll(PDO::FETCH_ASSOC);
-
-$query = $kirjuri_database->prepare('SELECT id, case_id, case_name, case_suspect, case_added_date FROM exam_requests WHERE case_status <= 2 AND parent_id = id AND is_removed = "0" ORDER BY id ASC');
-$query->execute();
-$allcases = $query->fetchAll(PDO::FETCH_ASSOC);
-
+$case = kirjuri_find_case($kirjuri_database, $casefetch['parent_id'], false);
+$caserow = ($case === null) ? array() : array($case);
+$case_device_id_list = kirjuri_case_devices($kirjuri_database, $casefetch['parent_id']);
+// Cases the device can be moved to. Restricted cases the user may not open are left out.
+$allcases = kirjuri_open_cases_for_user($kirjuri_database, $_SESSION['user']);
 
 $imei_data = "";
 if ( strpos( strtoupper($mediarow[0]['device_identifier']), "IMEI") !== false) {
@@ -80,11 +55,10 @@ else {
 }
 
 $_SESSION['message_set'] = false;
-echo $twig->render('device_memo.twig', array(
+echo kirjuri_render('device_memo.twig', array(
         'ct' => $_SESSION['case_token'][$casefetch['parent_id']],
         'templates' => $templates,
         'imei_data' => $imei_data,
-        'session' => $_SESSION,
         'device_actions' => $_SESSION['lang']['device_actions'],
         'device_locations' => $_SESSION['lang']['device_locations'],
         'connectedmediarow' => $connectedmediarow,
@@ -94,7 +68,5 @@ echo $twig->render('device_memo.twig', array(
         'allcases' => $allcases,
         'caserow' => $caserow,
         'devices' => $_SESSION['lang']['devices'],
-        'media_objs' => $_SESSION['lang']['media_objs'],
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+        'media_objs' => $_SESSION['lang']['media_objs']
     ));

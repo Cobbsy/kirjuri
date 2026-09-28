@@ -1,716 +1,809 @@
+/**
+ * TinyMCE version 7.9.3 (2026-05-19)
+ */
+
 (function () {
-var visualchars = (function () {
-  'use strict';
+    'use strict';
 
-  var Cell = function (initial) {
-    var value = initial;
-    var get = function () {
-      return value;
-    };
-    var set = function (v) {
-      value = v;
-    };
-    var clone = function () {
-      return Cell(get());
-    };
-    return {
-      get: get,
-      set: set,
-      clone: clone
-    };
-  };
-
-  var PluginManager = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-  var get = function (toggleState) {
-    var isEnabled = function () {
-      return toggleState.get();
-    };
-    return { isEnabled: isEnabled };
-  };
-  var $_huyojrgje5nve92 = { get: get };
-
-  var fireVisualChars = function (editor, state) {
-    return editor.fire('VisualChars', { state: state });
-  };
-  var $_2j2k01rjje5nve95 = { fireVisualChars: fireVisualChars };
-
-  var charMap = {
-    '\xA0': 'nbsp',
-    '\xAD': 'shy'
-  };
-  var charMapToRegExp = function (charMap, global) {
-    var key, regExp = '';
-    for (key in charMap) {
-      regExp += key;
-    }
-    return new RegExp('[' + regExp + ']', global ? 'g' : '');
-  };
-  var charMapToSelector = function (charMap) {
-    var key, selector = '';
-    for (key in charMap) {
-      if (selector) {
-        selector += ',';
-      }
-      selector += 'span.mce-' + charMap[key];
-    }
-    return selector;
-  };
-  var $_2agcm6rlje5nve9c = {
-    charMap: charMap,
-    regExp: charMapToRegExp(charMap),
-    regExpGlobal: charMapToRegExp(charMap, true),
-    selector: charMapToSelector(charMap),
-    charMapToRegExp: charMapToRegExp,
-    charMapToSelector: charMapToSelector
-  };
-
-  var noop = function () {
-  };
-  var noarg = function (f) {
-    return function () {
-      return f();
-    };
-  };
-  var compose = function (fa, fb) {
-    return function () {
-      return fa(fb.apply(null, arguments));
-    };
-  };
-  var constant = function (value) {
-    return function () {
-      return value;
-    };
-  };
-  var identity = function (x) {
-    return x;
-  };
-  var tripleEquals = function (a, b) {
-    return a === b;
-  };
-  var curry = function (f) {
-    var args = new Array(arguments.length - 1);
-    for (var i = 1; i < arguments.length; i++)
-      args[i - 1] = arguments[i];
-    return function () {
-      var newArgs = new Array(arguments.length);
-      for (var j = 0; j < newArgs.length; j++)
-        newArgs[j] = arguments[j];
-      var all = args.concat(newArgs);
-      return f.apply(null, all);
-    };
-  };
-  var not = function (f) {
-    return function () {
-      return !f.apply(null, arguments);
-    };
-  };
-  var die = function (msg) {
-    return function () {
-      throw new Error(msg);
-    };
-  };
-  var apply = function (f) {
-    return f();
-  };
-  var call = function (f) {
-    f();
-  };
-  var never = constant(false);
-  var always = constant(true);
-  var $_2gj3vurpje5nve9p = {
-    noop: noop,
-    noarg: noarg,
-    compose: compose,
-    constant: constant,
-    identity: identity,
-    tripleEquals: tripleEquals,
-    curry: curry,
-    not: not,
-    die: die,
-    apply: apply,
-    call: call,
-    never: never,
-    always: always
-  };
-
-  var never$1 = $_2gj3vurpje5nve9p.never;
-  var always$1 = $_2gj3vurpje5nve9p.always;
-  var none = function () {
-    return NONE;
-  };
-  var NONE = function () {
-    var eq = function (o) {
-      return o.isNone();
-    };
-    var call = function (thunk) {
-      return thunk();
-    };
-    var id = function (n) {
-      return n;
-    };
-    var noop = function () {
-    };
-    var me = {
-      fold: function (n, s) {
-        return n();
-      },
-      is: never$1,
-      isSome: never$1,
-      isNone: always$1,
-      getOr: id,
-      getOrThunk: call,
-      getOrDie: function (msg) {
-        throw new Error(msg || 'error: getOrDie called on none.');
-      },
-      or: id,
-      orThunk: call,
-      map: none,
-      ap: none,
-      each: noop,
-      bind: none,
-      flatten: none,
-      exists: never$1,
-      forall: always$1,
-      filter: none,
-      equals: eq,
-      equals_: eq,
-      toArray: function () {
-        return [];
-      },
-      toString: $_2gj3vurpje5nve9p.constant('none()')
-    };
-    if (Object.freeze)
-      Object.freeze(me);
-    return me;
-  }();
-  var some = function (a) {
-    var constant_a = function () {
-      return a;
-    };
-    var self = function () {
-      return me;
-    };
-    var map = function (f) {
-      return some(f(a));
-    };
-    var bind = function (f) {
-      return f(a);
-    };
-    var me = {
-      fold: function (n, s) {
-        return s(a);
-      },
-      is: function (v) {
-        return a === v;
-      },
-      isSome: always$1,
-      isNone: never$1,
-      getOr: constant_a,
-      getOrThunk: constant_a,
-      getOrDie: constant_a,
-      or: self,
-      orThunk: self,
-      map: map,
-      ap: function (optfab) {
-        return optfab.fold(none, function (fab) {
-          return some(fab(a));
-        });
-      },
-      each: function (f) {
-        f(a);
-      },
-      bind: bind,
-      flatten: constant_a,
-      exists: bind,
-      forall: bind,
-      filter: function (f) {
-        return f(a) ? me : NONE;
-      },
-      equals: function (o) {
-        return o.is(a);
-      },
-      equals_: function (o, elementEq) {
-        return o.fold(never$1, function (b) {
-          return elementEq(a, b);
-        });
-      },
-      toArray: function () {
-        return [a];
-      },
-      toString: function () {
-        return 'some(' + a + ')';
-      }
-    };
-    return me;
-  };
-  var from = function (value) {
-    return value === null || value === undefined ? NONE : some(value);
-  };
-  var Option = {
-    some: some,
-    none: none,
-    from: from
-  };
-
-  var rawIndexOf = function () {
-    var pIndexOf = Array.prototype.indexOf;
-    var fastIndex = function (xs, x) {
-      return pIndexOf.call(xs, x);
-    };
-    var slowIndex = function (xs, x) {
-      return slowIndexOf(xs, x);
-    };
-    return pIndexOf === undefined ? slowIndex : fastIndex;
-  }();
-  var indexOf = function (xs, x) {
-    var r = rawIndexOf(xs, x);
-    return r === -1 ? Option.none() : Option.some(r);
-  };
-  var contains = function (xs, x) {
-    return rawIndexOf(xs, x) > -1;
-  };
-  var exists = function (xs, pred) {
-    return findIndex(xs, pred).isSome();
-  };
-  var range = function (num, f) {
-    var r = [];
-    for (var i = 0; i < num; i++) {
-      r.push(f(i));
-    }
-    return r;
-  };
-  var chunk = function (array, size) {
-    var r = [];
-    for (var i = 0; i < array.length; i += size) {
-      var s = array.slice(i, i + size);
-      r.push(s);
-    }
-    return r;
-  };
-  var map = function (xs, f) {
-    var len = xs.length;
-    var r = new Array(len);
-    for (var i = 0; i < len; i++) {
-      var x = xs[i];
-      r[i] = f(x, i, xs);
-    }
-    return r;
-  };
-  var each = function (xs, f) {
-    for (var i = 0, len = xs.length; i < len; i++) {
-      var x = xs[i];
-      f(x, i, xs);
-    }
-  };
-  var eachr = function (xs, f) {
-    for (var i = xs.length - 1; i >= 0; i--) {
-      var x = xs[i];
-      f(x, i, xs);
-    }
-  };
-  var partition = function (xs, pred) {
-    var pass = [];
-    var fail = [];
-    for (var i = 0, len = xs.length; i < len; i++) {
-      var x = xs[i];
-      var arr = pred(x, i, xs) ? pass : fail;
-      arr.push(x);
-    }
-    return {
-      pass: pass,
-      fail: fail
-    };
-  };
-  var filter = function (xs, pred) {
-    var r = [];
-    for (var i = 0, len = xs.length; i < len; i++) {
-      var x = xs[i];
-      if (pred(x, i, xs)) {
-        r.push(x);
-      }
-    }
-    return r;
-  };
-  var groupBy = function (xs, f) {
-    if (xs.length === 0) {
-      return [];
-    } else {
-      var wasType = f(xs[0]);
-      var r = [];
-      var group = [];
-      for (var i = 0, len = xs.length; i < len; i++) {
-        var x = xs[i];
-        var type = f(x);
-        if (type !== wasType) {
-          r.push(group);
-          group = [];
+    /* eslint-disable @typescript-eslint/no-wrapper-object-types */
+    const hasProto = (v, constructor, predicate) => {
+        var _a;
+        if (predicate(v, constructor.prototype)) {
+            return true;
         }
-        wasType = type;
-        group.push(x);
-      }
-      if (group.length !== 0) {
-        r.push(group);
-      }
-      return r;
+        else {
+            // String-based fallback time
+            return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
+        }
+    };
+    const typeOf = (x) => {
+        const t = typeof x;
+        if (x === null) {
+            return 'null';
+        }
+        else if (t === 'object' && Array.isArray(x)) {
+            return 'array';
+        }
+        else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
+            return 'string';
+        }
+        else {
+            return t;
+        }
+    };
+    const isType$1 = (type) => (value) => typeOf(value) === type;
+    const isSimpleType = (type) => (value) => typeof value === type;
+    const eq = (t) => (a) => t === a;
+    const isString = isType$1('string');
+    const isObject = isType$1('object');
+    const isNull = eq(null);
+    const isBoolean = isSimpleType('boolean');
+    const isNullable = (a) => a === null || a === undefined;
+    const isNonNullable = (a) => !isNullable(a);
+    const isFunction = isSimpleType('function');
+    const isNumber = isSimpleType('number');
+
+    /**
+     * The `Optional` type represents a value (of any type) that potentially does
+     * not exist. Any `Optional<T>` can either be a `Some<T>` (in which case the
+     * value does exist) or a `None` (in which case the value does not exist). This
+     * module defines a whole lot of FP-inspired utility functions for dealing with
+     * `Optional` objects.
+     *
+     * Comparison with null or undefined:
+     * - We don't get fancy null coalescing operators with `Optional`
+     * - We do get fancy helper functions with `Optional`
+     * - `Optional` support nesting, and allow for the type to still be nullable (or
+     * another `Optional`)
+     * - There is no option to turn off strict-optional-checks like there is for
+     * strict-null-checks
+     */
+    class Optional {
+        // The internal representation has a `tag` and a `value`, but both are
+        // private: able to be console.logged, but not able to be accessed by code
+        constructor(tag, value) {
+            this.tag = tag;
+            this.value = value;
+        }
+        // --- Identities ---
+        /**
+         * Creates a new `Optional<T>` that **does** contain a value.
+         */
+        static some(value) {
+            return new Optional(true, value);
+        }
+        /**
+         * Create a new `Optional<T>` that **does not** contain a value. `T` can be
+         * any type because we don't actually have a `T`.
+         */
+        static none() {
+            return Optional.singletonNone;
+        }
+        /**
+         * Perform a transform on an `Optional` type. Regardless of whether this
+         * `Optional` contains a value or not, `fold` will return a value of type `U`.
+         * If this `Optional` does not contain a value, the `U` will be created by
+         * calling `onNone`. If this `Optional` does contain a value, the `U` will be
+         * created by calling `onSome`.
+         *
+         * For the FP enthusiasts in the room, this function:
+         * 1. Could be used to implement all of the functions below
+         * 2. Forms a catamorphism
+         */
+        fold(onNone, onSome) {
+            if (this.tag) {
+                return onSome(this.value);
+            }
+            else {
+                return onNone();
+            }
+        }
+        /**
+         * Determine if this `Optional` object contains a value.
+         */
+        isSome() {
+            return this.tag;
+        }
+        /**
+         * Determine if this `Optional` object **does not** contain a value.
+         */
+        isNone() {
+            return !this.tag;
+        }
+        // --- Functor (name stolen from Haskell / maths) ---
+        /**
+         * Perform a transform on an `Optional` object, **if** there is a value. If
+         * you provide a function to turn a T into a U, this is the function you use
+         * to turn an `Optional<T>` into an `Optional<U>`. If this **does** contain
+         * a value then the output will also contain a value (that value being the
+         * output of `mapper(this.value)`), and if this **does not** contain a value
+         * then neither will the output.
+         */
+        map(mapper) {
+            if (this.tag) {
+                return Optional.some(mapper(this.value));
+            }
+            else {
+                return Optional.none();
+            }
+        }
+        // --- Monad (name stolen from Haskell / maths) ---
+        /**
+         * Perform a transform on an `Optional` object, **if** there is a value.
+         * Unlike `map`, here the transform itself also returns an `Optional`.
+         */
+        bind(binder) {
+            if (this.tag) {
+                return binder(this.value);
+            }
+            else {
+                return Optional.none();
+            }
+        }
+        // --- Traversable (name stolen from Haskell / maths) ---
+        /**
+         * For a given predicate, this function finds out if there **exists** a value
+         * inside this `Optional` object that meets the predicate. In practice, this
+         * means that for `Optional`s that do not contain a value it returns false (as
+         * no predicate-meeting value exists).
+         */
+        exists(predicate) {
+            return this.tag && predicate(this.value);
+        }
+        /**
+         * For a given predicate, this function finds out if **all** the values inside
+         * this `Optional` object meet the predicate. In practice, this means that
+         * for `Optional`s that do not contain a value it returns true (as all 0
+         * objects do meet the predicate).
+         */
+        forall(predicate) {
+            return !this.tag || predicate(this.value);
+        }
+        filter(predicate) {
+            if (!this.tag || predicate(this.value)) {
+                return this;
+            }
+            else {
+                return Optional.none();
+            }
+        }
+        // --- Getters ---
+        /**
+         * Get the value out of the inside of the `Optional` object, using a default
+         * `replacement` value if the provided `Optional` object does not contain a
+         * value.
+         */
+        getOr(replacement) {
+            return this.tag ? this.value : replacement;
+        }
+        /**
+         * Get the value out of the inside of the `Optional` object, using a default
+         * `replacement` value if the provided `Optional` object does not contain a
+         * value.  Unlike `getOr`, in this method the `replacement` object is also
+         * `Optional` - meaning that this method will always return an `Optional`.
+         */
+        or(replacement) {
+            return this.tag ? this : replacement;
+        }
+        /**
+         * Get the value out of the inside of the `Optional` object, using a default
+         * `replacement` value if the provided `Optional` object does not contain a
+         * value. Unlike `getOr`, in this method the `replacement` value is
+         * "thunked" - that is to say that you don't pass a value to `getOrThunk`, you
+         * pass a function which (if called) will **return** the `value` you want to
+         * use.
+         */
+        getOrThunk(thunk) {
+            return this.tag ? this.value : thunk();
+        }
+        /**
+         * Get the value out of the inside of the `Optional` object, using a default
+         * `replacement` value if the provided Optional object does not contain a
+         * value.
+         *
+         * Unlike `or`, in this method the `replacement` value is "thunked" - that is
+         * to say that you don't pass a value to `orThunk`, you pass a function which
+         * (if called) will **return** the `value` you want to use.
+         *
+         * Unlike `getOrThunk`, in this method the `replacement` value is also
+         * `Optional`, meaning that this method will always return an `Optional`.
+         */
+        orThunk(thunk) {
+            return this.tag ? this : thunk();
+        }
+        /**
+         * Get the value out of the inside of the `Optional` object, throwing an
+         * exception if the provided `Optional` object does not contain a value.
+         *
+         * WARNING:
+         * You should only be using this function if you know that the `Optional`
+         * object **is not** empty (otherwise you're throwing exceptions in production
+         * code, which is bad).
+         *
+         * In tests this is more acceptable.
+         *
+         * Prefer other methods to this, such as `.each`.
+         */
+        getOrDie(message) {
+            if (!this.tag) {
+                throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
+            }
+            else {
+                return this.value;
+            }
+        }
+        // --- Interop with null and undefined ---
+        /**
+         * Creates an `Optional` value from a nullable (or undefined-able) input.
+         * Null, or undefined, is converted to `None`, and anything else is converted
+         * to `Some`.
+         */
+        static from(value) {
+            return isNonNullable(value) ? Optional.some(value) : Optional.none();
+        }
+        /**
+         * Converts an `Optional` to a nullable type, by getting the value if it
+         * exists, or returning `null` if it does not.
+         */
+        getOrNull() {
+            return this.tag ? this.value : null;
+        }
+        /**
+         * Converts an `Optional` to an undefined-able type, by getting the value if
+         * it exists, or returning `undefined` if it does not.
+         */
+        getOrUndefined() {
+            return this.value;
+        }
+        // --- Utilities ---
+        /**
+         * If the `Optional` contains a value, perform an action on that value.
+         * Unlike the rest of the methods on this type, `.each` has side-effects. If
+         * you want to transform an `Optional<T>` **into** something, then this is not
+         * the method for you. If you want to use an `Optional<T>` to **do**
+         * something, then this is the method for you - provided you're okay with not
+         * doing anything in the case where the `Optional` doesn't have a value inside
+         * it. If you're not sure whether your use-case fits into transforming
+         * **into** something or **doing** something, check whether it has a return
+         * value. If it does, you should be performing a transform.
+         */
+        each(worker) {
+            if (this.tag) {
+                worker(this.value);
+            }
+        }
+        /**
+         * Turn the `Optional` object into an array that contains all of the values
+         * stored inside the `Optional`. In practice, this means the output will have
+         * either 0 or 1 elements.
+         */
+        toArray() {
+            return this.tag ? [this.value] : [];
+        }
+        /**
+         * Turn the `Optional` object into a string for debugging or printing. Not
+         * recommended for production code, but good for debugging. Also note that
+         * these days an `Optional` object can be logged to the console directly, and
+         * its inner value (if it exists) will be visible.
+         */
+        toString() {
+            return this.tag ? `some(${this.value})` : 'none()';
+        }
     }
-  };
-  var foldr = function (xs, f, acc) {
-    eachr(xs, function (x) {
-      acc = f(acc, x);
-    });
-    return acc;
-  };
-  var foldl = function (xs, f, acc) {
-    each(xs, function (x) {
-      acc = f(acc, x);
-    });
-    return acc;
-  };
-  var find = function (xs, pred) {
-    for (var i = 0, len = xs.length; i < len; i++) {
-      var x = xs[i];
-      if (pred(x, i, xs)) {
-        return Option.some(x);
-      }
-    }
-    return Option.none();
-  };
-  var findIndex = function (xs, pred) {
-    for (var i = 0, len = xs.length; i < len; i++) {
-      var x = xs[i];
-      if (pred(x, i, xs)) {
-        return Option.some(i);
-      }
-    }
-    return Option.none();
-  };
-  var slowIndexOf = function (xs, x) {
-    for (var i = 0, len = xs.length; i < len; ++i) {
-      if (xs[i] === x) {
-        return i;
-      }
-    }
-    return -1;
-  };
-  var push = Array.prototype.push;
-  var flatten = function (xs) {
-    var r = [];
-    for (var i = 0, len = xs.length; i < len; ++i) {
-      if (!Array.prototype.isPrototypeOf(xs[i]))
-        throw new Error('Arr.flatten item ' + i + ' was not an array, input: ' + xs);
-      push.apply(r, xs[i]);
-    }
-    return r;
-  };
-  var bind = function (xs, f) {
-    var output = map(xs, f);
-    return flatten(output);
-  };
-  var forall = function (xs, pred) {
-    for (var i = 0, len = xs.length; i < len; ++i) {
-      var x = xs[i];
-      if (pred(x, i, xs) !== true) {
+    // Sneaky optimisation: every instance of Optional.none is identical, so just
+    // reuse the same object
+    Optional.singletonNone = new Optional(false);
+
+    /* eslint-disable @typescript-eslint/unbound-method */
+    const nativeSlice = Array.prototype.slice;
+    const map = (xs, f) => {
+        // pre-allocating array size when it's guaranteed to be known
+        // http://jsperf.com/push-allocated-vs-dynamic/22
+        const len = xs.length;
+        const r = new Array(len);
+        for (let i = 0; i < len; i++) {
+            const x = xs[i];
+            r[i] = f(x, i);
+        }
+        return r;
+    };
+    // Unwound implementing other functions in terms of each.
+    // The code size is roughly the same, and it should allow for better optimisation.
+    // const each = function<T, U>(xs: T[], f: (x: T, i?: number, xs?: T[]) => void): void {
+    const each$1 = (xs, f) => {
+        for (let i = 0, len = xs.length; i < len; i++) {
+            const x = xs[i];
+            f(x, i);
+        }
+    };
+    const filter = (xs, pred) => {
+        const r = [];
+        for (let i = 0, len = xs.length; i < len; i++) {
+            const x = xs[i];
+            if (pred(x, i)) {
+                r.push(x);
+            }
+        }
+        return r;
+    };
+    isFunction(Array.from) ? Array.from : (x) => nativeSlice.call(x);
+
+    // There are many variations of Object iteration that are faster than the 'for-in' style:
+    // http://jsperf.com/object-keys-iteration/107
+    //
+    // Use the native keys if it is available (IE9+), otherwise fall back to manually filtering
+    const keys = Object.keys;
+    const each = (obj, f) => {
+        const props = keys(obj);
+        for (let k = 0, len = props.length; k < len; k++) {
+            const i = props[k];
+            const x = obj[i];
+            f(x, i);
+        }
+    };
+
+    const Cell = (initial) => {
+        let value = initial;
+        const get = () => {
+            return value;
+        };
+        const set = (v) => {
+            value = v;
+        };
+        return {
+            get,
+            set
+        };
+    };
+
+    // Use window object as the global if it's available since CSP will block script evals
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const Global = typeof window !== 'undefined' ? window : Function('return this;')();
+
+    /** path :: ([String], JsObj?) -> JsObj */
+    const path = (parts, scope) => {
+        let o = scope !== undefined && scope !== null ? scope : Global;
+        for (let i = 0; i < parts.length && o !== undefined && o !== null; ++i) {
+            o = o[parts[i]];
+        }
+        return o;
+    };
+    /** resolve :: (String, JsObj?) -> JsObj */
+    const resolve = (p, scope) => {
+        const parts = p.split('.');
+        return path(parts, scope);
+    };
+
+    // Run a function fn after rate ms. If another invocation occurs
+    // during the time it is waiting, ignore it completely.
+    const first = (fn, rate) => {
+        let timer = null;
+        const cancel = () => {
+            if (!isNull(timer)) {
+                clearTimeout(timer);
+                timer = null;
+            }
+        };
+        const throttle = (...args) => {
+            if (isNull(timer)) {
+                timer = setTimeout(() => {
+                    timer = null;
+                    fn.apply(null, args);
+                }, rate);
+            }
+        };
+        return {
+            cancel,
+            throttle
+        };
+    };
+
+    var global = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const get$2 = (toggleState) => {
+        const isEnabled = () => {
+            return toggleState.get();
+        };
+        return {
+            isEnabled
+        };
+    };
+
+    const fireVisualChars = (editor, state) => {
+        return editor.dispatch('VisualChars', { state });
+    };
+
+    const fromHtml = (html, scope) => {
+        const doc = scope || document;
+        const div = doc.createElement('div');
+        div.innerHTML = html;
+        if (!div.hasChildNodes() || div.childNodes.length > 1) {
+            const message = 'HTML does not have a single root node';
+            // eslint-disable-next-line no-console
+            console.error(message, html);
+            throw new Error(message);
+        }
+        return fromDom(div.childNodes[0]);
+    };
+    const fromTag = (tag, scope) => {
+        const doc = scope || document;
+        const node = doc.createElement(tag);
+        return fromDom(node);
+    };
+    const fromText = (text, scope) => {
+        const doc = scope || document;
+        const node = doc.createTextNode(text);
+        return fromDom(node);
+    };
+    const fromDom = (node) => {
+        // TODO: Consider removing this check, but left atm for safety
+        if (node === null || node === undefined) {
+            throw new Error('Node cannot be null or undefined');
+        }
+        return {
+            dom: node
+        };
+    };
+    const fromPoint = (docElm, x, y) => Optional.from(docElm.dom.elementFromPoint(x, y)).map(fromDom);
+    // tslint:disable-next-line:variable-name
+    const SugarElement = {
+        fromHtml,
+        fromTag,
+        fromText,
+        fromDom,
+        fromPoint
+    };
+
+    const ELEMENT = 1;
+    const TEXT = 3;
+
+    const unsafe = (name, scope) => {
+        return resolve(name, scope);
+    };
+    const getOrDie = (name, scope) => {
+        const actual = unsafe(name, scope);
+        if (actual === undefined || actual === null) {
+            throw new Error(name + ' not available on this browser');
+        }
+        return actual;
+    };
+
+    const getPrototypeOf = Object.getPrototypeOf;
+    /*
+     * IE9 and above
+     *
+     * MDN no use on this one, but here's the link anyway:
+     * https://developer.mozilla.org/en/docs/Web/API/HTMLElement
+     */
+    const sandHTMLElement = (scope) => {
+        return getOrDie('HTMLElement', scope);
+    };
+    const isPrototypeOf = (x) => {
+        // use Resolve to get the window object for x and just return undefined if it can't find it.
+        // undefined scope later triggers using the global window.
+        const scope = resolve('ownerDocument.defaultView', x);
+        // TINY-7374: We can't rely on looking at the owner window HTMLElement as the element may have
+        // been constructed in a different window and then appended to the current window document.
+        return isObject(x) && (sandHTMLElement(scope).prototype.isPrototypeOf(x) || /^HTML\w*Element$/.test(getPrototypeOf(x).constructor.name));
+    };
+
+    const type = (element) => element.dom.nodeType;
+    const value = (element) => element.dom.nodeValue;
+    const isType = (t) => (element) => type(element) === t;
+    const isHTMLElement = (element) => isElement(element) && isPrototypeOf(element.dom);
+    const isElement = isType(ELEMENT);
+    const isText = isType(TEXT);
+
+    const rawSet = (dom, key, value) => {
+        /*
+         * JQuery coerced everything to a string, and silently did nothing on text node/null/undefined.
+         *
+         * We fail on those invalid cases, only allowing numbers and booleans.
+         */
+        if (isString(value) || isBoolean(value) || isNumber(value)) {
+            dom.setAttribute(key, value + '');
+        }
+        else {
+            // eslint-disable-next-line no-console
+            console.error('Invalid call to Attribute.set. Key ', key, ':: Value ', value, ':: Element ', dom);
+            throw new Error('Attribute value was not simple');
+        }
+    };
+    const set = (element, key, value) => {
+        rawSet(element.dom, key, value);
+    };
+    const get$1 = (element, key) => {
+        const v = element.dom.getAttribute(key);
+        // undefined is the more appropriate value for JS, and this matches JQuery
+        return v === null ? undefined : v;
+    };
+    const remove$3 = (element, key) => {
+        element.dom.removeAttribute(key);
+    };
+
+    // Methods for handling attributes that contain a list of values <div foo="alpha beta theta">
+    const read = (element, attr) => {
+        const value = get$1(element, attr);
+        return value === undefined || value === '' ? [] : value.split(' ');
+    };
+    const add$2 = (element, attr, id) => {
+        const old = read(element, attr);
+        const nu = old.concat([id]);
+        set(element, attr, nu.join(' '));
+        return true;
+    };
+    const remove$2 = (element, attr, id) => {
+        const nu = filter(read(element, attr), (v) => v !== id);
+        if (nu.length > 0) {
+            set(element, attr, nu.join(' '));
+        }
+        else {
+            remove$3(element, attr);
+        }
         return false;
-      }
-    }
-    return true;
-  };
-  var equal = function (a1, a2) {
-    return a1.length === a2.length && forall(a1, function (x, i) {
-      return x === a2[i];
-    });
-  };
-  var slice = Array.prototype.slice;
-  var reverse = function (xs) {
-    var r = slice.call(xs, 0);
-    r.reverse();
-    return r;
-  };
-  var difference = function (a1, a2) {
-    return filter(a1, function (x) {
-      return !contains(a2, x);
-    });
-  };
-  var mapToObject = function (xs, f) {
-    var r = {};
-    for (var i = 0, len = xs.length; i < len; i++) {
-      var x = xs[i];
-      r[String(x)] = f(x, i);
-    }
-    return r;
-  };
-  var pure = function (x) {
-    return [x];
-  };
-  var sort = function (xs, comparator) {
-    var copy = slice.call(xs, 0);
-    copy.sort(comparator);
-    return copy;
-  };
-  var head = function (xs) {
-    return xs.length === 0 ? Option.none() : Option.some(xs[0]);
-  };
-  var last = function (xs) {
-    return xs.length === 0 ? Option.none() : Option.some(xs[xs.length - 1]);
-  };
-  var $_fkvon5rnje5nve9i = {
-    map: map,
-    each: each,
-    eachr: eachr,
-    partition: partition,
-    filter: filter,
-    groupBy: groupBy,
-    indexOf: indexOf,
-    foldr: foldr,
-    foldl: foldl,
-    find: find,
-    findIndex: findIndex,
-    flatten: flatten,
-    bind: bind,
-    forall: forall,
-    exists: exists,
-    contains: contains,
-    equal: equal,
-    reverse: reverse,
-    chunk: chunk,
-    difference: difference,
-    mapToObject: mapToObject,
-    pure: pure,
-    sort: sort,
-    range: range,
-    head: head,
-    last: last
-  };
-
-  var fromHtml = function (html, scope) {
-    var doc = scope || document;
-    var div = doc.createElement('div');
-    div.innerHTML = html;
-    if (!div.hasChildNodes() || div.childNodes.length > 1) {
-      console.error('HTML does not have a single root node', html);
-      throw 'HTML must have a single root node';
-    }
-    return fromDom(div.childNodes[0]);
-  };
-  var fromTag = function (tag, scope) {
-    var doc = scope || document;
-    var node = doc.createElement(tag);
-    return fromDom(node);
-  };
-  var fromText = function (text, scope) {
-    var doc = scope || document;
-    var node = doc.createTextNode(text);
-    return fromDom(node);
-  };
-  var fromDom = function (node) {
-    if (node === null || node === undefined)
-      throw new Error('Node cannot be null or undefined');
-    return { dom: $_2gj3vurpje5nve9p.constant(node) };
-  };
-  var fromPoint = function (doc, x, y) {
-    return Option.from(doc.dom().elementFromPoint(x, y)).map(fromDom);
-  };
-  var $_17ej7trqje5nve9r = {
-    fromHtml: fromHtml,
-    fromTag: fromTag,
-    fromText: fromText,
-    fromDom: fromDom,
-    fromPoint: fromPoint
-  };
-
-  var $_4wq63crsje5nve9w = {
-    ATTRIBUTE: 2,
-    CDATA_SECTION: 4,
-    COMMENT: 8,
-    DOCUMENT: 9,
-    DOCUMENT_TYPE: 10,
-    DOCUMENT_FRAGMENT: 11,
-    ELEMENT: 1,
-    TEXT: 3,
-    PROCESSING_INSTRUCTION: 7,
-    ENTITY_REFERENCE: 5,
-    ENTITY: 6,
-    NOTATION: 12
-  };
-
-  var name = function (element) {
-    var r = element.dom().nodeName;
-    return r.toLowerCase();
-  };
-  var type = function (element) {
-    return element.dom().nodeType;
-  };
-  var value = function (element) {
-    return element.dom().nodeValue;
-  };
-  var isType = function (t) {
-    return function (element) {
-      return type(element) === t;
     };
-  };
-  var isComment = function (element) {
-    return type(element) === $_4wq63crsje5nve9w.COMMENT || name(element) === '#comment';
-  };
-  var isElement = isType($_4wq63crsje5nve9w.ELEMENT);
-  var isText = isType($_4wq63crsje5nve9w.TEXT);
-  var isDocument = isType($_4wq63crsje5nve9w.DOCUMENT);
-  var $_affifyrrje5nve9v = {
-    name: name,
-    type: type,
-    value: value,
-    isElement: isElement,
-    isText: isText,
-    isDocument: isDocument,
-    isComment: isComment
-  };
 
-  var wrapCharWithSpan = function (value) {
-    return '<span data-mce-bogus="1" class="mce-' + $_2agcm6rlje5nve9c.charMap[value] + '">' + value + '</span>';
-  };
-  var $_1l7w4ertje5nve9y = { wrapCharWithSpan: wrapCharWithSpan };
+    // IE11 Can return undefined for a classList on elements such as math, so we make sure it's not undefined before attempting to use it.
+    const supports = (element) => element.dom.classList !== undefined;
+    const get = (element) => read(element, 'class');
+    const add$1 = (element, clazz) => add$2(element, 'class', clazz);
+    const remove$1 = (element, clazz) => remove$2(element, 'class', clazz);
 
-  var isMatch = function (n) {
-    return $_affifyrrje5nve9v.isText(n) && $_affifyrrje5nve9v.value(n) !== undefined && $_2agcm6rlje5nve9c.regExp.test($_affifyrrje5nve9v.value(n));
-  };
-  var filterDescendants = function (scope, predicate) {
-    var result = [];
-    var dom = scope.dom();
-    var children = $_fkvon5rnje5nve9i.map(dom.childNodes, $_17ej7trqje5nve9r.fromDom);
-    $_fkvon5rnje5nve9i.each(children, function (x) {
-      if (predicate(x)) {
-        result = result.concat([x]);
-      }
-      result = result.concat(filterDescendants(x, predicate));
-    });
-    return result;
-  };
-  var findParentElm = function (elm, rootElm) {
-    while (elm.parentNode) {
-      if (elm.parentNode === rootElm) {
-        return elm;
-      }
-      elm = elm.parentNode;
-    }
-  };
-  var replaceWithSpans = function (html) {
-    return html.replace($_2agcm6rlje5nve9c.regExpGlobal, $_1l7w4ertje5nve9y.wrapCharWithSpan);
-  };
-  var $_caz5p5rmje5nve9d = {
-    isMatch: isMatch,
-    filterDescendants: filterDescendants,
-    findParentElm: findParentElm,
-    replaceWithSpans: replaceWithSpans
-  };
-
-  var show = function (editor, rootElm) {
-    var node, div;
-    var nodeList = $_caz5p5rmje5nve9d.filterDescendants($_17ej7trqje5nve9r.fromDom(rootElm), $_caz5p5rmje5nve9d.isMatch);
-    $_fkvon5rnje5nve9i.each(nodeList, function (n) {
-      var withSpans = $_caz5p5rmje5nve9d.replaceWithSpans($_affifyrrje5nve9v.value(n));
-      div = editor.dom.create('div', null, withSpans);
-      while (node = div.lastChild) {
-        editor.dom.insertAfter(node, n.dom());
-      }
-      editor.dom.remove(n.dom());
-    });
-  };
-  var hide = function (editor, body) {
-    var nodeList = editor.dom.select($_2agcm6rlje5nve9c.selector, body);
-    $_fkvon5rnje5nve9i.each(nodeList, function (node) {
-      editor.dom.remove(node, 1);
-    });
-  };
-  var toggle = function (editor) {
-    var body = editor.getBody();
-    var bookmark = editor.selection.getBookmark();
-    var parentNode = $_caz5p5rmje5nve9d.findParentElm(editor.selection.getNode(), body);
-    parentNode = parentNode !== undefined ? parentNode : body;
-    hide(editor, parentNode);
-    show(editor, parentNode);
-    editor.selection.moveToBookmark(bookmark);
-  };
-  var $_19u9cbrkje5nve95 = {
-    show: show,
-    hide: hide,
-    toggle: toggle
-  };
-
-  var toggleVisualChars = function (editor, toggleState) {
-    var body = editor.getBody();
-    var selection = editor.selection;
-    var bookmark;
-    toggleState.set(!toggleState.get());
-    $_2j2k01rjje5nve95.fireVisualChars(editor, toggleState.get());
-    bookmark = selection.getBookmark();
-    if (toggleState.get() === true) {
-      $_19u9cbrkje5nve95.show(editor, body);
-    } else {
-      $_19u9cbrkje5nve95.hide(editor, body);
-    }
-    selection.moveToBookmark(bookmark);
-  };
-  var $_djd7gprije5nve94 = { toggleVisualChars: toggleVisualChars };
-
-  var register = function (editor, toggleState) {
-    editor.addCommand('mceVisualChars', function () {
-      $_djd7gprije5nve94.toggleVisualChars(editor, toggleState);
-    });
-  };
-  var $_y5t9hrhje5nve93 = { register: register };
-
-  var Delay = tinymce.util.Tools.resolve('tinymce.util.Delay');
-
-  var setup = function (editor, toggleState) {
-    var debouncedToggle = Delay.debounce(function () {
-      $_19u9cbrkje5nve95.toggle(editor);
-    }, 300);
-    if (editor.settings.forced_root_block !== false) {
-      editor.on('keydown', function (e) {
-        if (toggleState.get() === true) {
-          e.keyCode === 13 ? $_19u9cbrkje5nve95.toggle(editor) : debouncedToggle();
+    /*
+     * ClassList is IE10 minimum:
+     * https://developer.mozilla.org/en-US/docs/Web/API/Element.classList
+     *
+     * Note that IE doesn't support the second argument to toggle (at all).
+     * If it did, the toggler could be better.
+     */
+    const add = (element, clazz) => {
+        if (supports(element)) {
+            element.dom.classList.add(clazz);
         }
-      });
-    }
-  };
-  var $_1vpclhruje5nve9z = { setup: setup };
-
-  var toggleActiveState = function (editor) {
-    return function (e) {
-      var ctrl = e.control;
-      editor.on('VisualChars', function (e) {
-        ctrl.active(e.state);
-      });
+        else {
+            add$1(element, clazz);
+        }
     };
-  };
-  var register$1 = function (editor) {
-    editor.addButton('visualchars', {
-      active: false,
-      title: 'Show invisible characters',
-      cmd: 'mceVisualChars',
-      onPostRender: toggleActiveState(editor)
-    });
-    editor.addMenuItem('visualchars', {
-      text: 'Show invisible characters',
-      cmd: 'mceVisualChars',
-      onPostRender: toggleActiveState(editor),
-      selectable: true,
-      context: 'view',
-      prependToContext: true
-    });
-  };
+    const cleanClass = (element) => {
+        const classList = supports(element) ? element.dom.classList : get(element);
+        // classList is a "live list", so this is up to date already
+        if (classList.length === 0) {
+            // No more classes left, remove the class attribute as well
+            remove$3(element, 'class');
+        }
+    };
+    const remove = (element, clazz) => {
+        if (supports(element)) {
+            const classList = element.dom.classList;
+            classList.remove(clazz);
+        }
+        else {
+            remove$1(element, clazz);
+        }
+        cleanClass(element);
+    };
 
-  PluginManager.add('visualchars', function (editor) {
-    var toggleState = Cell(false);
-    $_y5t9hrhje5nve93.register(editor, toggleState);
-    register$1(editor);
-    $_1vpclhruje5nve9z.setup(editor, toggleState);
-    return $_huyojrgje5nve92.get(toggleState);
-  });
-  function Plugin () {
-  }
+    const getRaw = (element) => element.dom.contentEditable;
 
-  return Plugin;
+    const charMap = {
+        '\u00a0': 'nbsp',
+        '\u00ad': 'shy'
+    };
+    const charMapToRegExp = (charMap, global) => {
+        let regExp = '';
+        each(charMap, (_value, key) => {
+            regExp += key;
+        });
+        return new RegExp('[' + regExp + ']', global ? 'g' : '');
+    };
+    const charMapToSelector = (charMap) => {
+        let selector = '';
+        each(charMap, (value) => {
+            if (selector) {
+                selector += ',';
+            }
+            selector += 'span.mce-' + value;
+        });
+        return selector;
+    };
+    const regExp = charMapToRegExp(charMap);
+    const regExpGlobal = charMapToRegExp(charMap, true);
+    const selector = charMapToSelector(charMap);
+    const nbspClass = 'mce-nbsp';
 
-}());
+    const wrapCharWithSpan = (value) => '<span data-mce-bogus="1" class="mce-' + charMap[value] + '">' + value + '</span>';
+
+    const isWrappedNbsp = (node) => node.nodeName.toLowerCase() === 'span' && node.classList.contains('mce-nbsp-wrap');
+    const isMatch = (n) => {
+        const value$1 = value(n);
+        return isText(n) &&
+            isString(value$1) &&
+            regExp.test(value$1);
+    };
+    const isContentEditableFalse = (node) => isHTMLElement(node) && getRaw(node) === 'false';
+    const isChildEditable = (node, currentState) => {
+        if (isHTMLElement(node) && !isWrappedNbsp(node.dom)) {
+            const value = getRaw(node);
+            if (value === 'true') {
+                return true;
+            }
+            else if (value === 'false') {
+                return false;
+            }
+        }
+        return currentState;
+    };
+    // inlined sugars PredicateFilter.descendants for file size but also make it only act on editable nodes it changes the current editable state when it traveses down
+    const filterEditableDescendants = (scope, predicate, editable) => {
+        let result = [];
+        const dom = scope.dom;
+        const children = map(dom.childNodes, SugarElement.fromDom);
+        const isEditable = (node) => isWrappedNbsp(node.dom) || !isContentEditableFalse(node);
+        each$1(children, (x) => {
+            if (editable && isEditable(x) && predicate(x)) {
+                result = result.concat([x]);
+            }
+            result = result.concat(filterEditableDescendants(x, predicate, isChildEditable(x, editable)));
+        });
+        return result;
+    };
+    const findParentElm = (elm, rootElm) => {
+        while (elm.parentNode) {
+            if (elm.parentNode === rootElm) {
+                return rootElm;
+            }
+            elm = elm.parentNode;
+        }
+        return undefined;
+    };
+    const replaceWithSpans = (text) => text.replace(regExpGlobal, wrapCharWithSpan);
+
+    const show = (editor, rootElm) => {
+        const dom = editor.dom;
+        const nodeList = filterEditableDescendants(SugarElement.fromDom(rootElm), isMatch, editor.dom.isEditable(rootElm));
+        each$1(nodeList, (n) => {
+            var _a;
+            const parent = n.dom.parentNode;
+            if (isWrappedNbsp(parent)) {
+                add(SugarElement.fromDom(parent), nbspClass);
+            }
+            else {
+                const withSpans = replaceWithSpans(dom.encode((_a = value(n)) !== null && _a !== void 0 ? _a : ''));
+                const div = dom.create('div', {}, withSpans);
+                let node;
+                while ((node = div.lastChild)) {
+                    dom.insertAfter(node, n.dom);
+                }
+                editor.dom.remove(n.dom);
+            }
+        });
+    };
+    const hide = (editor, rootElm) => {
+        const nodeList = editor.dom.select(selector, rootElm);
+        each$1(nodeList, (node) => {
+            if (isWrappedNbsp(node)) {
+                remove(SugarElement.fromDom(node), nbspClass);
+            }
+            else {
+                editor.dom.remove(node, true);
+            }
+        });
+    };
+    const toggle = (editor) => {
+        const body = editor.getBody();
+        const bookmark = editor.selection.getBookmark();
+        let parentNode = findParentElm(editor.selection.getNode(), body);
+        // if user does select all the parentNode will be undefined
+        parentNode = parentNode !== undefined ? parentNode : body;
+        hide(editor, parentNode);
+        show(editor, parentNode);
+        editor.selection.moveToBookmark(bookmark);
+    };
+
+    const applyVisualChars = (editor, toggleState) => {
+        fireVisualChars(editor, toggleState.get());
+        const body = editor.getBody();
+        if (toggleState.get() === true) {
+            show(editor, body);
+        }
+        else {
+            hide(editor, body);
+        }
+    };
+    // Toggle state and save selection bookmark before applying visualChars
+    const toggleVisualChars = (editor, toggleState) => {
+        toggleState.set(!toggleState.get());
+        const bookmark = editor.selection.getBookmark();
+        applyVisualChars(editor, toggleState);
+        editor.selection.moveToBookmark(bookmark);
+    };
+
+    const register$2 = (editor, toggleState) => {
+        editor.addCommand('mceVisualChars', () => {
+            toggleVisualChars(editor, toggleState);
+        });
+    };
+
+    const option = (name) => (editor) => editor.options.get(name);
+    const register$1 = (editor) => {
+        const registerOption = editor.options.register;
+        registerOption('visualchars_default_state', {
+            processor: 'boolean',
+            default: false
+        });
+    };
+    const isEnabledByDefault = option('visualchars_default_state');
+
+    const setup$1 = (editor, toggleState) => {
+        /*
+          Note: applyVisualChars does not place a bookmark before modifying the DOM on init.
+          This will cause a loss of selection if the following conditions are met:
+            - Autofocus enabled, or editor is manually focused on init
+            - The first piece of text in the editor must be a nbsp
+            - Integrator has manually set the selection before init
+      
+          Another improvement would be to ensure DOM elements aren't destroyed/recreated,
+          but rather wrapped/unwrapped when applying styling for visualchars so that selection
+          is not lost.
+        */
+        editor.on('init', () => {
+            applyVisualChars(editor, toggleState);
+        });
+    };
+
+    const setup = (editor, toggleState) => {
+        const debouncedToggle = first(() => {
+            toggle(editor);
+        }, 300);
+        editor.on('keydown', (e) => {
+            if (toggleState.get() === true) {
+                e.keyCode === 13 ? toggle(editor) : debouncedToggle.throttle();
+            }
+        });
+        editor.on('remove', debouncedToggle.cancel);
+    };
+
+    const toggleActiveState = (editor, enabledStated) => (api) => {
+        api.setActive(enabledStated.get());
+        const editorEventCallback = (e) => api.setActive(e.state);
+        editor.on('VisualChars', editorEventCallback);
+        return () => editor.off('VisualChars', editorEventCallback);
+    };
+    const register = (editor, toggleState) => {
+        const onAction = () => editor.execCommand('mceVisualChars');
+        editor.ui.registry.addToggleButton('visualchars', {
+            tooltip: 'Show invisible characters',
+            icon: 'visualchars',
+            onAction,
+            onSetup: toggleActiveState(editor, toggleState),
+            context: 'any'
+        });
+        editor.ui.registry.addToggleMenuItem('visualchars', {
+            text: 'Show invisible characters',
+            icon: 'visualchars',
+            onAction,
+            onSetup: toggleActiveState(editor, toggleState),
+            context: 'any'
+        });
+    };
+
+    var Plugin = () => {
+        global.add('visualchars', (editor) => {
+            register$1(editor);
+            const toggleState = Cell(isEnabledByDefault(editor));
+            register$2(editor, toggleState);
+            register(editor, toggleState);
+            setup(editor, toggleState);
+            setup$1(editor, toggleState);
+            return get$2(toggleState);
+        });
+    };
+
+    Plugin();
+    /** *****
+     * DO NOT EXPORT ANYTHING
+     *
+     * IF YOU DO ROLLUP WILL LEAVE A GLOBAL ON THE PAGE
+     *******/
+
 })();

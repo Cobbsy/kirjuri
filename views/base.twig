@@ -32,15 +32,18 @@
       width: 5em;
       }
     </style>
-    <script src="views/js/jquery-3.1.1.min.js"></script>
+    <meta name="csrf-token" content="{{ session.user.token }}">
+    <script src="views/js/kirjuri.js"></script>
+    <script src="views/js/jquery-3.7.1.min.js"></script>
     <script src="views/jquery-ui/jquery-ui.min.js"></script>
     <script src="views/js/Chart.js"></script>
     <script src="vendor/twbs/bootstrap/dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="vendor/tinymce/tinymce/tinymce.min.js"></script>
     <script>
       tinymce.init({
-        mode: "textareas",
-        editor_deselector: "mceNoEditor",
+        selector: "textarea:not(.mceNoEditor)",
+        license_key: "gpl",
+        promotion: false,
         width : "100%"
       });
 
@@ -173,7 +176,7 @@
 
           {% if session.user.username %}
           <ul class="nav nav-sidebar">
-            <li><a href="submit.php?type=logout&token={{session.user.token}}"><i class="fa fa-user"></i> {{ lang.log_out }} {{ session.user.name }} </a></li>
+            <li><a href="submit.php?type=logout" data-post><i class="fa fa-user"></i> {{ lang.log_out }} {{ session.user.name }} </a></li>
           </ul>
           {% else %}
           <ul class="nav nav-sidebar">

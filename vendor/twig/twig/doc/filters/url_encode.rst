@@ -1,10 +1,10 @@
 ``url_encode``
 ==============
 
-The ``url_encode`` filter percent encodes a given string as URL segment
-or an array as query string:
+The ``url_encode`` filter percent encodes a given string as URL segment or a
+mapping as query string:
 
-.. code-block:: jinja
+.. code-block:: twig
 
     {{ "path-seg*ment"|url_encode }}
     {# outputs "path-seg%2Ament" #}
@@ -12,11 +12,12 @@ or an array as query string:
     {{ "string with spaces"|url_encode }}
     {# outputs "string%20with%20spaces" #}
 
-    {{ {'param': 'value', 'foo': 'bar'}|url_encode }}
-    {# outputs "param=value&foo=bar" #}
+    {{ {'name': 'Fabien', 'city': 'Paris'}|url_encode }}
+    {# outputs "name=Fabien&city=Paris" #}
 
 .. note::
 
-    Internally, Twig uses the PHP ``rawurlencode``.
+    Internally, Twig uses the PHP `rawurlencode`_ or the `http_build_query`_ function.
 
-.. _`rawurlencode`:     http://php.net/rawurlencode
+.. _`rawurlencode`: https://www.php.net/rawurlencode
+.. _`http_build_query`: https://www.php.net/http_build_query

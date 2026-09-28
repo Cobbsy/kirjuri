@@ -4,22 +4,25 @@ Tags
 .. toctree::
     :maxdepth: 1
 
+    apply
     autoescape
     block
+    cache
+    deprecated
     do
     embed
     extends
-    filter
     flush
     for
     from
+    guard
     if
     import
     include
     macro
     sandbox
     set
-    spaceless
+    types
     use
     verbatim
     with

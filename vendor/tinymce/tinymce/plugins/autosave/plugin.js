@@ -1,226 +1,252 @@
+/**
+ * TinyMCE version 7.9.3 (2026-05-19)
+ */
+
 (function () {
-var autosave = (function () {
-  'use strict';
+    'use strict';
 
-  var Cell = function (initial) {
-    var value = initial;
-    var get = function () {
-      return value;
-    };
-    var set = function (v) {
-      value = v;
-    };
-    var clone = function () {
-      return Cell(get());
-    };
-    return {
-      get: get,
-      set: set,
-      clone: clone
-    };
-  };
+    var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
-  var PluginManager = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-  var LocalStorage = tinymce.util.Tools.resolve('tinymce.util.LocalStorage');
-
-  var Tools = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-  var fireRestoreDraft = function (editor) {
-    return editor.fire('RestoreDraft');
-  };
-  var fireStoreDraft = function (editor) {
-    return editor.fire('StoreDraft');
-  };
-  var fireRemoveDraft = function (editor) {
-    return editor.fire('RemoveDraft');
-  };
-  var $_e9knqi8kje5nvbi7 = {
-    fireRestoreDraft: fireRestoreDraft,
-    fireStoreDraft: fireStoreDraft,
-    fireRemoveDraft: fireRemoveDraft
-  };
-
-  var parse = function (time, defaultTime) {
-    var multiples = {
-      s: 1000,
-      m: 60000
-    };
-    time = /^(\d+)([ms]?)$/.exec('' + (time || defaultTime));
-    return (time[2] ? multiples[time[2]] : 1) * parseInt(time, 10);
-  };
-  var $_32iu1r8mje5nvbi9 = { parse: parse };
-
-  var shouldAskBeforeUnload = function (editor) {
-    return editor.getParam('autosave_ask_before_unload', true);
-  };
-  var getAutoSavePrefix = function (editor) {
-    var prefix = editor.getParam('autosave_prefix', 'tinymce-autosave-{path}{query}{hash}-{id}-');
-    prefix = prefix.replace(/\{path\}/g, document.location.pathname);
-    prefix = prefix.replace(/\{query\}/g, document.location.search);
-    prefix = prefix.replace(/\{hash\}/g, document.location.hash);
-    prefix = prefix.replace(/\{id\}/g, editor.id);
-    return prefix;
-  };
-  var shouldRestoreWhenEmpty = function (editor) {
-    return editor.getParam('autosave_restore_when_empty', false);
-  };
-  var getAutoSaveInterval = function (editor) {
-    return $_32iu1r8mje5nvbi9.parse(editor.settings.autosave_interval, '30s');
-  };
-  var getAutoSaveRetention = function (editor) {
-    return $_32iu1r8mje5nvbi9.parse(editor.settings.autosave_retention, '20m');
-  };
-  var $_1ti0pj8lje5nvbi8 = {
-    shouldAskBeforeUnload: shouldAskBeforeUnload,
-    getAutoSavePrefix: getAutoSavePrefix,
-    shouldRestoreWhenEmpty: shouldRestoreWhenEmpty,
-    getAutoSaveInterval: getAutoSaveInterval,
-    getAutoSaveRetention: getAutoSaveRetention
-  };
-
-  var isEmpty = function (editor, html) {
-    var forcedRootBlockName = editor.settings.forced_root_block;
-    html = Tools.trim(typeof html === 'undefined' ? editor.getBody().innerHTML : html);
-    return html === '' || new RegExp('^<' + forcedRootBlockName + '[^>]*>((\xA0|&nbsp;|[ \t]|<br[^>]*>)+?|)</' + forcedRootBlockName + '>|<br>$', 'i').test(html);
-  };
-  var hasDraft = function (editor) {
-    var time = parseInt(LocalStorage.getItem($_1ti0pj8lje5nvbi8.getAutoSavePrefix(editor) + 'time'), 10) || 0;
-    if (new Date().getTime() - time > $_1ti0pj8lje5nvbi8.getAutoSaveRetention(editor)) {
-      removeDraft(editor, false);
-      return false;
-    }
-    return true;
-  };
-  var removeDraft = function (editor, fire) {
-    var prefix = $_1ti0pj8lje5nvbi8.getAutoSavePrefix(editor);
-    LocalStorage.removeItem(prefix + 'draft');
-    LocalStorage.removeItem(prefix + 'time');
-    if (fire !== false) {
-      $_e9knqi8kje5nvbi7.fireRemoveDraft(editor);
-    }
-  };
-  var storeDraft = function (editor) {
-    var prefix = $_1ti0pj8lje5nvbi8.getAutoSavePrefix(editor);
-    if (!isEmpty(editor) && editor.isDirty()) {
-      LocalStorage.setItem(prefix + 'draft', editor.getContent({
-        format: 'raw',
-        no_events: true
-      }));
-      LocalStorage.setItem(prefix + 'time', new Date().getTime().toString());
-      $_e9knqi8kje5nvbi7.fireStoreDraft(editor);
-    }
-  };
-  var restoreDraft = function (editor) {
-    var prefix = $_1ti0pj8lje5nvbi8.getAutoSavePrefix(editor);
-    if (hasDraft(editor)) {
-      editor.setContent(LocalStorage.getItem(prefix + 'draft'), { format: 'raw' });
-      $_e9knqi8kje5nvbi7.fireRestoreDraft(editor);
-    }
-  };
-  var startStoreDraft = function (editor, started) {
-    var interval = $_1ti0pj8lje5nvbi8.getAutoSaveInterval(editor);
-    if (!started.get()) {
-      setInterval(function () {
-        if (!editor.removed) {
-          storeDraft(editor);
+    /* eslint-disable @typescript-eslint/no-wrapper-object-types */
+    const hasProto = (v, constructor, predicate) => {
+        var _a;
+        if (predicate(v, constructor.prototype)) {
+            return true;
         }
-      }, interval);
-      started.set(true);
-    }
-  };
-  var restoreLastDraft = function (editor) {
-    editor.undoManager.transact(function () {
-      restoreDraft(editor);
-      removeDraft(editor);
-    });
-    editor.focus();
-  };
-  var $_69kz9a8hje5nvbi4 = {
-    isEmpty: isEmpty,
-    hasDraft: hasDraft,
-    removeDraft: removeDraft,
-    storeDraft: storeDraft,
-    restoreDraft: restoreDraft,
-    startStoreDraft: startStoreDraft,
-    restoreLastDraft: restoreLastDraft
-  };
-
-  var curry = function (f, editor) {
-    return function () {
-      var args = Array.prototype.slice.call(arguments);
-      return f.apply(null, [editor].concat(args));
+        else {
+            // String-based fallback time
+            return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
+        }
     };
-  };
-  var get = function (editor) {
-    return {
-      hasDraft: curry($_69kz9a8hje5nvbi4.hasDraft, editor),
-      storeDraft: curry($_69kz9a8hje5nvbi4.storeDraft, editor),
-      restoreDraft: curry($_69kz9a8hje5nvbi4.restoreDraft, editor),
-      removeDraft: curry($_69kz9a8hje5nvbi4.removeDraft, editor),
-      isEmpty: curry($_69kz9a8hje5nvbi4.isEmpty, editor)
+    const typeOf = (x) => {
+        const t = typeof x;
+        if (x === null) {
+            return 'null';
+        }
+        else if (t === 'object' && Array.isArray(x)) {
+            return 'array';
+        }
+        else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
+            return 'string';
+        }
+        else {
+            return t;
+        }
     };
-  };
-  var $_4jgvbi8gje5nvbi2 = { get: get };
+    const isType = (type) => (value) => typeOf(value) === type;
+    const eq = (t) => (a) => t === a;
+    const isString = isType('string');
+    const isUndefined = eq(undefined);
 
-  var EditorManager = tinymce.util.Tools.resolve('tinymce.EditorManager');
+    var global$3 = tinymce.util.Tools.resolve('tinymce.util.Delay');
 
-  EditorManager._beforeUnloadHandler = function () {
-    var msg;
-    Tools.each(EditorManager.get(), function (editor) {
-      if (editor.plugins.autosave) {
-        editor.plugins.autosave.storeDraft();
-      }
-      if (!msg && editor.isDirty() && $_1ti0pj8lje5nvbi8.shouldAskBeforeUnload(editor)) {
-        msg = editor.translate('You have unsaved changes are you sure you want to navigate away?');
-      }
-    });
-    return msg;
-  };
-  var setup = function (editor) {
-    window.onbeforeunload = EditorManager._beforeUnloadHandler;
-  };
-  var $_d2mth48nje5nvbib = { setup: setup };
+    var global$2 = tinymce.util.Tools.resolve('tinymce.util.LocalStorage');
 
-  var postRender = function (editor, started) {
-    return function (e) {
-      var ctrl = e.control;
-      ctrl.disabled(!$_69kz9a8hje5nvbi4.hasDraft(editor));
-      editor.on('StoreDraft RestoreDraft RemoveDraft', function () {
-        ctrl.disabled(!$_69kz9a8hje5nvbi4.hasDraft(editor));
-      });
-      $_69kz9a8hje5nvbi4.startStoreDraft(editor, started);
+    var global$1 = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    const fireRestoreDraft = (editor) => editor.dispatch('RestoreDraft');
+    const fireStoreDraft = (editor) => editor.dispatch('StoreDraft');
+    const fireRemoveDraft = (editor) => editor.dispatch('RemoveDraft');
+
+    const parse = (timeString) => {
+        const multiples = {
+            s: 1000,
+            m: 60000
+        };
+        const parsedTime = /^(\d+)([ms]?)$/.exec(timeString);
+        return (parsedTime && parsedTime[2] ? multiples[parsedTime[2]] : 1) * parseInt(timeString, 10);
     };
-  };
-  var register = function (editor, started) {
-    editor.addButton('restoredraft', {
-      title: 'Restore last draft',
-      onclick: function () {
-        $_69kz9a8hje5nvbi4.restoreLastDraft(editor);
-      },
-      onPostRender: postRender(editor, started)
+
+    const option = (name) => (editor) => editor.options.get(name);
+    const register$1 = (editor) => {
+        const registerOption = editor.options.register;
+        const timeProcessor = (value) => {
+            const valid = isString(value);
+            if (valid) {
+                return { value: parse(value), valid };
+            }
+            else {
+                return { valid: false, message: 'Must be a string.' };
+            }
+        };
+        registerOption('autosave_ask_before_unload', {
+            processor: 'boolean',
+            default: true
+        });
+        registerOption('autosave_prefix', {
+            processor: 'string',
+            default: 'tinymce-autosave-{path}{query}{hash}-{id}-'
+        });
+        registerOption('autosave_restore_when_empty', {
+            processor: 'boolean',
+            default: false
+        });
+        registerOption('autosave_interval', {
+            processor: timeProcessor,
+            default: '30s'
+        });
+        registerOption('autosave_retention', {
+            processor: timeProcessor,
+            default: '20m'
+        });
+    };
+    const shouldAskBeforeUnload = option('autosave_ask_before_unload');
+    const shouldRestoreWhenEmpty = option('autosave_restore_when_empty');
+    const getAutoSaveInterval = option('autosave_interval');
+    const getAutoSaveRetention = option('autosave_retention');
+    const getAutoSavePrefix = (editor) => {
+        const location = document.location;
+        return editor.options.get('autosave_prefix').replace(/{path}/g, location.pathname)
+            .replace(/{query}/g, location.search)
+            .replace(/{hash}/g, location.hash)
+            .replace(/{id}/g, editor.id);
+    };
+
+    const isEmpty = (editor, html) => {
+        if (isUndefined(html)) {
+            return editor.dom.isEmpty(editor.getBody());
+        }
+        else {
+            const trimmedHtml = global$1.trim(html);
+            if (trimmedHtml === '') {
+                return true;
+            }
+            else {
+                const fragment = new DOMParser().parseFromString(trimmedHtml, 'text/html');
+                return editor.dom.isEmpty(fragment);
+            }
+        }
+    };
+    const hasDraft = (editor) => {
+        var _a;
+        const time = parseInt((_a = global$2.getItem(getAutoSavePrefix(editor) + 'time')) !== null && _a !== void 0 ? _a : '0', 10) || 0;
+        if (new Date().getTime() - time > getAutoSaveRetention(editor)) {
+            removeDraft(editor, false);
+            return false;
+        }
+        return true;
+    };
+    const removeDraft = (editor, fire) => {
+        const prefix = getAutoSavePrefix(editor);
+        global$2.removeItem(prefix + 'draft');
+        global$2.removeItem(prefix + 'time');
+        if (fire !== false) {
+            fireRemoveDraft(editor);
+        }
+    };
+    const storeDraft = (editor) => {
+        const prefix = getAutoSavePrefix(editor);
+        if (!isEmpty(editor) && editor.isDirty()) {
+            global$2.setItem(prefix + 'draft', editor.getContent({ format: 'raw', no_events: true }));
+            global$2.setItem(prefix + 'time', new Date().getTime().toString());
+            fireStoreDraft(editor);
+        }
+    };
+    const restoreDraft = (editor) => {
+        var _a;
+        const prefix = getAutoSavePrefix(editor);
+        if (hasDraft(editor)) {
+            editor.setContent((_a = global$2.getItem(prefix + 'draft')) !== null && _a !== void 0 ? _a : '', { format: 'raw' });
+            fireRestoreDraft(editor);
+        }
+    };
+    const startStoreDraft = (editor) => {
+        const interval = getAutoSaveInterval(editor);
+        global$3.setEditorInterval(editor, () => {
+            storeDraft(editor);
+        }, interval);
+    };
+    const restoreLastDraft = (editor) => {
+        editor.undoManager.transact(() => {
+            restoreDraft(editor);
+            removeDraft(editor);
+        });
+        editor.focus();
+    };
+
+    const get = (editor) => ({
+        hasDraft: () => hasDraft(editor),
+        storeDraft: () => storeDraft(editor),
+        restoreDraft: () => restoreDraft(editor),
+        removeDraft: (fire) => removeDraft(editor, fire),
+        isEmpty: (html) => isEmpty(editor, html)
     });
-    editor.addMenuItem('restoredraft', {
-      text: 'Restore last draft',
-      onclick: function () {
-        $_69kz9a8hje5nvbi4.restoreLastDraft(editor);
-      },
-      onPostRender: postRender(editor, started),
-      context: 'file'
-    });
-  };
-  var $_5dhnmz8pje5nvbid = { register: register };
 
-  PluginManager.add('autosave', function (editor) {
-    var started = Cell(false);
-    $_d2mth48nje5nvbib.setup(editor);
-    $_5dhnmz8pje5nvbid.register(editor, started);
-    return $_4jgvbi8gje5nvbi2.get(editor);
-  });
-  function Plugin () {
-  }
+    var global = tinymce.util.Tools.resolve('tinymce.EditorManager');
 
-  return Plugin;
+    const setup = (editor) => {
+        editor.editorManager.on('BeforeUnload', (e) => {
+            let msg;
+            global$1.each(global.get(), (editor) => {
+                // Store a draft for each editor instance
+                if (editor.plugins.autosave) {
+                    editor.plugins.autosave.storeDraft();
+                }
+                // Setup a return message if the editor is dirty
+                if (!msg && editor.isDirty() && shouldAskBeforeUnload(editor)) {
+                    msg = editor.translate('You have unsaved changes are you sure you want to navigate away?');
+                }
+            });
+            if (msg) {
+                e.preventDefault();
+                e.returnValue = msg;
+            }
+        });
+    };
 
-}());
+    const makeSetupHandler = (editor) => (api) => {
+        const shouldEnable = () => hasDraft(editor) && !editor.mode.isReadOnly();
+        api.setEnabled(shouldEnable());
+        const editorEventCallback = () => api.setEnabled(shouldEnable());
+        editor.on('StoreDraft RestoreDraft RemoveDraft', editorEventCallback);
+        return () => editor.off('StoreDraft RestoreDraft RemoveDraft', editorEventCallback);
+    };
+    const register = (editor) => {
+        // TODO: This was moved from makeSetupHandler as it would only be called when the menu item was rendered?
+        //       Is it safe to start this process when the plugin is registered?
+        startStoreDraft(editor);
+        const onAction = () => {
+            restoreLastDraft(editor);
+        };
+        editor.ui.registry.addButton('restoredraft', {
+            tooltip: 'Restore last draft',
+            icon: 'restore-draft',
+            onAction,
+            onSetup: makeSetupHandler(editor)
+        });
+        editor.ui.registry.addMenuItem('restoredraft', {
+            text: 'Restore last draft',
+            icon: 'restore-draft',
+            onAction,
+            onSetup: makeSetupHandler(editor)
+        });
+    };
+
+    /**
+     * This class contains all core logic for the autosave plugin.
+     *
+     * @class tinymce.autosave.Plugin
+     * @private
+     */
+    var Plugin = () => {
+        global$4.add('autosave', (editor) => {
+            register$1(editor);
+            setup(editor);
+            register(editor);
+            editor.on('init', () => {
+                if (shouldRestoreWhenEmpty(editor) && editor.dom.isEmpty(editor.getBody())) {
+                    restoreDraft(editor);
+                }
+            });
+            return get(editor);
+        });
+    };
+
+    Plugin();
+    /** *****
+     * DO NOT EXPORT ANYTHING
+     *
+     * IF YOU DO ROLLUP WILL LEAVE A GLOBAL ON THE PAGE
+     *******/
+
 })();

@@ -4,11 +4,17 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c
+class ComposerStaticInit0dd35b96caca5b2c6b219964622dd653
 {
     public static $files = array (
+        '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        '320cde22f66dd4f5d3fd621d3e88b98f' => __DIR__ . '/..' . '/symfony/polyfill-ctype/bootstrap.php',
         '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
         '2cffec82183ee1cea088009cef9a6fc3' => __DIR__ . '/..' . '/ezyang/htmlpurifier/library/HTMLPurifier.composer.php',
+        '89efb1254ef2d1c5d80096acd12c4098' => __DIR__ . '/..' . '/twig/twig/src/Resources/core.php',
+        'ffecb95d45175fd40f75be8a23b34f90' => __DIR__ . '/..' . '/twig/twig/src/Resources/debug.php',
+        'c7baa00073ee9c61edf148c51917cfb4' => __DIR__ . '/..' . '/twig/twig/src/Resources/escaper.php',
+        'f844ccf1d25df8663951193c3fc307c8' => __DIR__ . '/..' . '/twig/twig/src/Resources/string_loader.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -19,6 +25,7 @@ class ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c
         'S' => 
         array (
             'Symfony\\Polyfill\\Mbstring\\' => 26,
+            'Symfony\\Polyfill\\Ctype\\' => 23,
         ),
         'P' => 
         array (
@@ -35,6 +42,10 @@ class ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
         ),
+        'Symfony\\Polyfill\\Ctype\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/polyfill-ctype',
+        ),
         'Picqer\\Barcode\\' => 
         array (
             0 => __DIR__ . '/..' . '/picqer/php-barcode-generator/src',
@@ -42,13 +53,6 @@ class ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c
     );
 
     public static $prefixesPsr0 = array (
-        'T' => 
-        array (
-            'Twig_' => 
-            array (
-                0 => __DIR__ . '/..' . '/twig/twig/lib',
-            ),
-        ),
         'H' => 
         array (
             'HTMLPurifier' => 
@@ -58,12 +62,17 @@ class ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c
         ),
     );
 
+    public static $classMap = array (
+        'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+    );
+
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c::$prefixDirsPsr4;
-            $loader->prefixesPsr0 = ComposerStaticInite54a6234c79051d6a2b13fe99db3c71c::$prefixesPsr0;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit0dd35b96caca5b2c6b219964622dd653::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit0dd35b96caca5b2c6b219964622dd653::$prefixDirsPsr4;
+            $loader->prefixesPsr0 = ComposerStaticInit0dd35b96caca5b2c6b219964622dd653::$prefixesPsr0;
+            $loader->classMap = ComposerStaticInit0dd35b96caca5b2c6b219964622dd653::$classMap;
 
         }, null, ClassLoader::class);
     }

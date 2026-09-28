@@ -1,4 +1,6 @@
 {
+    "blacklist_not_a_valid_ip": "Virheellinen IP-osoite estetyiss\u00e4 osoitteissa",
+    "device": "laite",
     "notice_duplicate_request": "HUOM! Ilmoitusnumerolla on kirjattu tutkintapyynt\u00f6",
     "access": "P\u00e4\u00e4sy",
     "access_control": "P\u00e4\u00e4synhallinta",
@@ -279,6 +281,7 @@
     "owner": "omistaja",
     "owner_info_missing": "Omistajatieto puuttuu",
     "password": "Salasana",
+    "password_too_short": "Salasanan on oltava v\u00e4hint\u00e4\u00e4n %d merkki\u00e4 pitk\u00e4.",
     "passwords": "Salasanat",
     "pick_examiner": "Valitse listasta tutkija merkit\u00e4ksesi jutun vastaanotetuksi ja aloitetuksi. Voit sulkea t\u00e4m\u00e4n ikkunan Sulje-painikkeesta, jolloin tutkintaa ei merkit\u00e4 aloitetuksi.",
     "pick_mobile_examiner": "Valitse puhelintutkinnan suorittaja listalta. Jos pyynn\u00f6ss\u00e4 on vain mobiililaitteita, valitse teknisen tutkijan tilalle infoteksti.",

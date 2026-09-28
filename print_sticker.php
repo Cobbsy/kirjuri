@@ -1,5 +1,13 @@
 <?php
 require_once './include_functions.php';
+ksess_verify(2); // View only or higher
+
+function sticker_text($value) {
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
+$sticker_type = isset($_GET['type']) ? $_GET['type'] : '';
+$sticker_uid = isset($_GET['uid']) ? filter_numbers($_GET['uid']) : '';
 ?>
 <html>
   <head>
@@ -12,40 +20,35 @@ require_once './include_functions.php';
 <!-- <body onload="window.print()"> -->
 <body>
 <?php
-if ($_GET['type'] === 'examination_request') {
-    $query = $kirjuri_database->prepare('select * FROM exam_requests WHERE id=:id AND parent_id=id');
-    $query->execute(array(':id' => $_GET['uid']));
-    $row = $query->fetch(PDO::FETCH_ASSOC);
+if ($sticker_type === 'examination_request') {
+    $row = kirjuri_find_case($kirjuri_database, $sticker_uid);
+    if ($row === null) {
+        exit;
+    }
+    verify_case_ownership($row['id']);
     $generator = new \Picqer\Barcode\BarcodeGeneratorSVG();
     echo $generator->getBarcode('UID'.$row['id'], $generator::TYPE_CODE_128);
-    echo '<br><b>[UID'.$row['id'].'] '.$row['case_id'].'/'.date('Y', strtotime($row['case_added_date'])).', '.$row['case_file_number'].'</b>';
-    echo '<br><b>'.$row['case_name'].' '.$row['case_suspect'].'</b>';
-    echo '<br>' . $row['case_investigator'].' ' .$row['case_investigator_unit'];
+    echo '<br><b>[UID'.sticker_text($row['id']).'] '.sticker_text($row['case_id']).'/'.date('Y', strtotime($row['case_added_date'])).', '.sticker_text($row['case_file_number']).'</b>';
+    echo '<br><b>'.sticker_text($row['case_name']).' '.sticker_text($row['case_suspect']).'</b>';
+    echo '<br>' . sticker_text($row['case_investigator']).' ' .sticker_text($row['case_investigator_unit']);
     exit;
 }
 
 
-if ($_GET['type'] === 'device') {
-    $query = $kirjuri_database->prepare('select parent_id FROM exam_requests WHERE id=:uid');
-    $query->execute(array(
-            ':uid' => $_GET['uid'],
-        ));
-    $parentrow = $query->fetch(PDO::FETCH_ASSOC);
-    $parent = $parentrow['parent_id'];
-    $query = $kirjuri_database->prepare('select * FROM exam_requests WHERE id=:uid AND id = parent_id LIMIT 1');
-    $query->execute(array(
-            ':uid' => $parent,
-        ));
-    $parentrow = $query->fetch(PDO::FETCH_ASSOC);
-    $query = $kirjuri_database->prepare('select * FROM exam_requests WHERE id=:uid AND id != parent_id LIMIT 1');
-    $query->execute(array(
-            ':uid' => $_GET['uid'],
-        ));
-    $row = $query->fetch(PDO::FETCH_ASSOC);
+if ($sticker_type === 'device') {
+    $row = kirjuri_find_device($kirjuri_database, $sticker_uid, true);
+    if ($row === null) {
+        exit;
+    }
+    verify_case_ownership($row['parent_id']);
+    $parentrow = kirjuri_find_case($kirjuri_database, $row['parent_id']);
+    if ($parentrow === null) {
+        exit;
+    }
     $generator = new \Picqer\Barcode\BarcodeGeneratorSVG();
     echo $generator->getBarcode('UID'.$row['id'], $generator::TYPE_CODE_128);
-    echo '<br><b>[UID'.$row['id'].'] '.$parentrow['case_id'].'/'.date('Y', strtotime($parentrow['case_added_date'])).', '.$parentrow['case_file_number'].'</b>';
-    echo '<br>'.$row['device_type'].' '.$row['device_manuf'].' '.$row['device_model'].'<br>';
+    echo '<br><b>[UID'.sticker_text($row['id']).'] '.sticker_text($parentrow['case_id']).'/'.date('Y', strtotime($parentrow['case_added_date'])).', '.sticker_text($parentrow['case_file_number']).'</b>';
+    echo '<br>'.sticker_text($row['device_type']).' '.sticker_text($row['device_manuf']).' '.sticker_text($row['device_model']).'<br>';
     exit;
 }
 

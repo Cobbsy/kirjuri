@@ -4,9 +4,9 @@
 When a template uses inheritance, it's possible to render the contents of the
 parent block when overriding a block by using the ``parent`` function:
 
-.. code-block:: jinja
+.. code-block:: html+twig
 
-    {% extends "base.html" %}
+    {% extends "base.html.twig" %}
 
     {% block sidebar %}
         <h3>Table Of Contents</h3>
@@ -15,6 +15,8 @@ parent block when overriding a block by using the ``parent`` function:
     {% endblock %}
 
 The ``parent()`` call will return the content of the ``sidebar`` block as
-defined in the ``base.html`` template.
+defined in the ``base.html.twig`` template.
 
-.. seealso:: :doc:`extends<../tags/extends>`, :doc:`block<../functions/block>`, :doc:`block<../tags/block>`
+.. seealso::
+
+    :doc:`extends<../tags/extends>`, :doc:`block<../functions/block>`, :doc:`block<../tags/block>`

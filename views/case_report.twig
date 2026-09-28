@@ -55,7 +55,7 @@
   <div class="page">
     <h1>{{ lang.forensic_examination_report }}</h1>
     <hr>
-    {{ entry.report_notes|raw }}
+    {{ entry.report_notes|purify }}
   </div>
   {% endif %}
   <div class="page">
@@ -91,7 +91,7 @@
   {% for entry in mediarow %}
   {% if (entry.is_removed == "0") and (entry.report_notes) and (entry.device_include_in_report == "1")%}
   <h4 class="label label-default" style="font-size:2em;">[UID{{ entry.id }}] {{ entry.device_type }}, {{ entry.device_manuf }} {{ entry.device_model }} {% if entry.device_size_in_gb %}({{ entry.device_size_in_gb }} GB){% endif %} {% if entry.device_identifier %}[{{ entry.device_identifier }}]{% endif %}</h4>
-  {{ entry.report_notes|raw }}
+  {{ entry.report_notes|purify }}
   {% endif %}
   {% endfor %}
   </div>

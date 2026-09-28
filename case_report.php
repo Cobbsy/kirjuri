@@ -6,20 +6,14 @@ $id = filter_numbers($_GET['case']);
 verify_case_ownership($id);
 
 
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id=:id AND parent_id=:id LIMIT 1');
-$query->execute(array(
-        ':id' => $id,
-    ));
-$caserow = $query->fetchAll(PDO::FETCH_ASSOC);
-$query = $kirjuri_database->prepare('SELECT * FROM exam_requests WHERE id != :id AND parent_id=:id ORDER BY device_type');
-$query->execute(array(
-        ':id' => $id,
-    ));
-$mediarow = $query->fetchAll(PDO::FETCH_ASSOC);
-echo $twig->render('case_report.twig', array(
-        'session' => $_SESSION,
+$case = kirjuri_find_case($kirjuri_database, $id);
+if ($case === null) {
+    header('Location: index.php');
+    die;
+}
+$caserow = array($case);
+$mediarow = kirjuri_case_devices($kirjuri_database, $id, true, 'device_type'); // The template leaves out removed devices.
+echo kirjuri_render('case_report.twig', array(
         'caserow' => $caserow,
-        'mediarow' => $mediarow,
-        'settings' => $prefs['settings'],
-        'lang' => $_SESSION['lang'],
+        'mediarow' => $mediarow
     ));

@@ -53,7 +53,7 @@
                 <th class="text-center">{{ lang.active|capitalize }}</th>
                 <th class="text-center">{{ lang.comment|capitalize }}</th>
             </thead>
-            {% for tool in session.all_tools if 'I' in tool.flags == false %}
+            {% for tool in session.all_tools|filter(tool => 'I' not in tool.flags) %}
                 <tr {% if (fields is not empty) and (fields.id == tool.id) %} class="info" {% endif %}>
                     <td>
                         <a href="tools.php?populate={{ tool.id }}">{{ tool.product_name }}</a>
@@ -82,7 +82,7 @@
                     <td></td>
                 </tr>
             {% endfor %}
-            {% for tool in session.all_tools if 'I' in tool.flags == true %}
+            {% for tool in session.all_tools|filter(tool => 'I' in tool.flags) %}
                 <tr {% if fields is not empty and fields.id == tool.id %} class="info" {% else %} class="warning" {% endif %}>
                     <td>
                         <a href="tools.php?populate={{ tool.id }}">{{ tool.product_name }}</a>
@@ -181,7 +181,7 @@
                             <td style="width:1px;" class="text-center">
                                 {% if (session.user.name == entry.reserved_for)
                                     or(session.user.access == "0") %}
-                                    <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}&token={{ session.user.token }}">
+                                    <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}" data-post>
                                         <i class="fa fa-times" style="color:red;"></i>
                                     </a>
                                 {% endif %}
@@ -275,11 +275,11 @@
                                         {% set evcolor = evcolors[tool_key] %}
                                         {% for res_key, entry in res_value %}
                                             {
-                                                title: '{{ tool.product_name }}: {{ entry.comment }} ({{ entry.reserved_for }})',
+                                                title: '{{ tool.product_name|e('js') }}: {{ entry.comment|e('js') }} ({{ entry.reserved_for|e('js') }})',
                                                 url: 'tools.php?populate={{ tool.id }}&highlight={{ res_key }}',
-                                                start: '{{ entry.reserve_start }}',
-                                                end: '{{ entry.reserve_end }}',
-                                                color: '{{ evcolor }}'
+                                                start: '{{ entry.reserve_start|e('js') }}',
+                                                end: '{{ entry.reserve_end|e('js') }}',
+                                                color: '{{ evcolor|e('js') }}'
                                             },
                                         {% endfor %}
                                     {% endif %}

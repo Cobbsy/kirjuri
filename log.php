@@ -1,3 +1,8 @@
+<?php
+// Authenticate before any output so that the redirect headers can still be sent.
+require_once './include_functions.php';
+ksess_verify(0);
+?>
 <html>
 <head>
 </head>
@@ -5,12 +10,10 @@
 	<h1>kirjuri.log</h1>
 <pre>
 <?php
-require_once './include_functions.php';
-ksess_verify(0);
-$log = file('logs/kirjuri.log');
+$log = file_exists('logs/kirjuri.log') ? file('logs/kirjuri.log') : array();
 $log = array_reverse($log);
 foreach ($log as $line) {
-    echo str_replace(";", " ", $line);
+    echo htmlspecialchars(str_replace(";", " ", $line));
 }
 ?>
 </pre>

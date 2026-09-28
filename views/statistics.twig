@@ -66,7 +66,7 @@
       value: {% for entry in all_cases %}{% if entry.classification == classification %}{% set laskuri = laskuri + 1 %}{% endif %}{% if loop.last == true %}{{ laskuri }}{% endif %}{% endfor %},
       color:"#{{ random(['B7','C4','E8','D1','CF','E7']) }}{{ random(['B7','C4','E8','D1','CF','E7']) }}{{ random(['B7','C4','E8','D1','CF','E7']) }}",
       highlight: "#FF5A5E",
-      label: "{{ classification }}"
+      label: "{{ classification|e('js') }}"
     }{% if loop.last == true %}{% else %},{% endif %}
     {% endfor %}
     ]
@@ -281,7 +281,7 @@
   <script>
     var ctx = document.getElementById("data_visualization3").getContext("2d");
     var data = {
-      labels: [{% for unit in inv_units %}"{{unit}}"{% if not loop.last %},{% endif %}{% endfor %}],
+      labels: [{% for unit in inv_units %}"{{ unit|e('js') }}"{% if not loop.last %},{% endif %}{% endfor %}],
       datasets: [
       {
         label: "Kumulatiivinen data",
@@ -304,7 +304,7 @@
   <script>
     var ctx = document.getElementById("data_visualization4").getContext("2d");
     var data = {
-      labels: [{% for unit in inv_units %}"{{unit}}"{% if not loop.last %},{% endif %}{% endfor %}],
+      labels: [{% for unit in inv_units %}"{{ unit|e('js') }}"{% if not loop.last %},{% endif %}{% endfor %}],
       datasets: [
       {
         label: "Kumulatiivinen data",
@@ -395,7 +395,7 @@
   <script>
     var ctx = document.getElementById("devicespiderweb").getContext("2d");
     var data = {
-      labels: [{% for devtype in devices %}"{{ lang.device }}: {{ devtype }} ", {% endfor %}{% for media in media_objs %}"{{ lang.media }}: {{ media }} ", {% endfor %}],
+      labels: [{% for devtype in devices %}"{{ lang.device|e('js') }}: {{ devtype|e('js') }} ", {% endfor %}{% for media in media_objs %}"{{ lang.media|e('js') }}: {{ media|e('js') }} ", {% endfor %}],
       datasets: [
       {
         label: "devices",

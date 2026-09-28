@@ -62,7 +62,7 @@
       <td class="text-center">{% if user.attr_2|length > 26 %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-remove"></i>{% endif %}</td>
 
       <td class="text-center">{% if 'I' in user.flags == true %}<i style="color:red;" class="fa fa-remove"></i>{% else %}<i style="color:green;" class="fa fa-check"></i>{% endif %}</td>
-      <td><a href="submit.php?type=force_logout&user={{user.username|url_encode}}&token={{session.user.token}}"><i class="fa fa-sign-out"></i> {{ lang.log_out }}</a></td>
+      <td><a href="submit.php?type=force_logout&user={{user.username|url_encode}}" data-post><i class="fa fa-sign-out"></i> {{ lang.log_out }}</a></td>
     </tr>
     {% endfor %}
     <tr><td></td><td colspan="999"><button type="button" class="btn btn-primary btn-md" data-toggle="modal" data-target="#add_user_modal"><i class="fa fa-plus"></i> <i class="fa fa-user"></i> {{ lang.add_a_new_local_user }}</button></td></tr>
@@ -199,7 +199,7 @@
       <p {% if session_content.last_activity_sec > "259200" %}style="color:red;"{% endif %}>Last activity: {{ session_content.last_activity }}</p>
     </td>
     <td class="text-center">
-      <a href="submit.php?type=drop_session&user={{fields.username|url_encode}}&user_id={{ fields.id }}&session={{ session_file|replace({".txt": "", "session_": ""}) }}&token={{ session.user.token }}"><i style="color:red;" class="fa fa-times"></i></a>
+      <a href="submit.php?type=drop_session&user={{fields.username|url_encode}}&user_id={{ fields.id }}&session={{ session_file|replace({".txt": "", "session_": ""}) }}" data-post><i style="color:red;" class="fa fa-times"></i></a>
     </td>
   </tr>
 {% endfor %}
