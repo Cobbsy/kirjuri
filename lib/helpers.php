@@ -33,13 +33,28 @@ function login_throttle_file($username) {
 }
 
 
+/**
+ * The times of the failures counted for $key within the last LOGIN_FAILURE_WINDOW seconds, oldest first,
+ * from a state file's contents. Each failure expires on its own, a window after it happened. Files from
+ * before this format hold a count and the time of the last failure.
+ */
+function login_throttle_times($json) {
+    $state = json_decode((string) $json, true);
+    if (is_array($state) && isset($state['failures'], $state['last_failure'])) {
+        $state = array('times' => array_fill(0, max(0, (int) $state['failures']), (int) $state['last_failure']));
+    }
+    $times = (is_array($state) && isset($state['times']) && is_array($state['times'])) ? $state['times'] : array();
+    return array_values(array_filter(array_map('intval', $times), function ($time) {
+        return (time() - $time) <= LOGIN_FAILURE_WINDOW;
+    }));
+}
+
+
+/** The failures counted for $username: array('failures' => count, 'last_failure' => time of the newest, or 0). */
 function login_throttle_state($username) {
     $file = login_throttle_file($username);
-    $state = file_exists($file) ? json_decode(file_get_contents($file), true) : null;
-    if (!is_array($state) || (time() - $state['last_failure']) > LOGIN_FAILURE_WINDOW) {
-        return array('failures' => 0, 'last_failure' => 0);
-    }
-    return $state;
+    $times = login_throttle_times(file_exists($file) ? file_get_contents($file) : '');
+    return array('failures' => count($times), 'last_failure' => empty($times) ? 0 : max($times));
 }
 
 
@@ -60,21 +75,17 @@ function login_throttle_ip_key($ip) {
 
 
 /**
- * Change the state of $key under an exclusive lock, so that parallel requests do not count over each
- * other. $change gets the current state and returns the new one, or null to keep it.
+ * Change the failure times of $key under an exclusive lock, so that parallel requests do not count over
+ * each other. $change gets the current times and returns the new ones, or null to keep them.
  */
 function login_throttle_update($key, callable $change) {
     $handle = fopen(login_throttle_file($key), 'c+');
     flock($handle, LOCK_EX);
-    $state = json_decode((string) stream_get_contents($handle), true);
-    if (!is_array($state) || !isset($state['failures'], $state['last_failure']) || (time() - $state['last_failure']) > LOGIN_FAILURE_WINDOW) {
-        $state = array('failures' => 0, 'last_failure' => 0);
-    }
-    $new = $change($state);
+    $new = $change(login_throttle_times(stream_get_contents($handle)));
     if ($new !== null) {
         ftruncate($handle, 0);
         rewind($handle);
-        fwrite($handle, json_encode($new));
+        fwrite($handle, json_encode(array('times' => array_values($new))));
         fflush($handle);
     }
     flock($handle, LOCK_UN);
@@ -83,8 +94,9 @@ function login_throttle_update($key, callable $change) {
 
 
 function login_throttle_record_failure($username) {
-    login_throttle_update($username, function ($state) {
-        return array('failures' => $state['failures'] + 1, 'last_failure' => time());
+    login_throttle_update($username, function ($times) {
+        $times[] = time();
+        return $times;
     });
 }
 
@@ -95,26 +107,47 @@ function login_throttle_record_failure($username) {
  * false, counting nothing, once $max_failures are counted. login_throttle_release() gives an attempt back.
  */
 function login_throttle_attempt($key, $max_failures) {
+    if (random_int(1, 100) === 1) {
+        login_throttle_prune(); // Now and then, so that the folder does not grow with every name tried.
+    }
     $allowed = false;
-    login_throttle_update($key, function ($state) use ($max_failures, &$allowed) {
-        if ($state['failures'] >= $max_failures) {
+    login_throttle_update($key, function ($times) use ($max_failures, &$allowed) {
+        if (count($times) >= $max_failures) {
             return null;
         }
         $allowed = true;
-        return array('failures' => $state['failures'] + 1, 'last_failure' => time());
+        $times[] = time();
+        return $times;
     });
     return $allowed;
 }
 
 
-/** Give back an attempt taken with login_throttle_attempt() that did not fail. A null key does nothing. */
+/**
+ * Give back an attempt taken with login_throttle_attempt() that did not fail: its time is removed, and the
+ * earlier failures keep expiring when they would have. A null key does nothing.
+ */
 function login_throttle_release($key) {
     if ($key === null) {
         return;
     }
-    login_throttle_update($key, function ($state) {
-        return ($state['failures'] > 0) ? array('failures' => $state['failures'] - 1, 'last_failure' => $state['last_failure']) : null;
+    login_throttle_update($key, function ($times) {
+        if (empty($times)) {
+            return null;
+        }
+        array_pop($times); // The newest, which is this attempt's or one made at the same moment.
+        return $times;
     });
+}
+
+
+/** Delete state files with nothing counted: no change within the window means every failure in it expired. */
+function login_throttle_prune() {
+    foreach (glob('cache/login_throttle/*.json') ?: array() as $file) {
+        if ((time() - (int) @filemtime($file)) > LOGIN_FAILURE_WINDOW) {
+            @unlink($file);
+        }
+    }
 }
 
 
@@ -183,6 +216,7 @@ function kirjuri_clear_cache() {
         delete_directory('cache/' . $entry);
         $removed++;
     }
+    login_throttle_prune();
     return $removed;
 }
 

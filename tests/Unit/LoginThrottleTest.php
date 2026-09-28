@@ -92,4 +92,35 @@ final class LoginThrottleTest extends TestCase
         login_throttle_release('bob');
         $this->assertTrue(login_throttle_attempt('bob', LOGIN_MAX_FAILURES), 'A successful attempt gives its place back.');
     }
+
+    public function testGivingBackAnAttemptKeepsEarlierFailuresExpiring(): void
+    {
+        // Giving an attempt back used to leave the time of the last failure at "now", so logins that
+        // succeeded kept an address's old failures from ever expiring.
+        $old = time() - LOGIN_FAILURE_WINDOW + 60;
+        file_put_contents(login_throttle_file('bob'), json_encode(array('times' => array($old, $old))));
+        $this->assertTrue(login_throttle_attempt('bob', LOGIN_MAX_FAILURES));
+        login_throttle_release('bob');
+        $this->assertSame(array('failures' => 2, 'last_failure' => $old), login_throttle_state('bob'));
+    }
+
+    public function testEachFailureExpiresOnItsOwn(): void
+    {
+        $expired = time() - LOGIN_FAILURE_WINDOW - 1;
+        file_put_contents(login_throttle_file('bob'), json_encode(array('times' => array($expired, $expired, time()))));
+        $this->assertSame(1, login_throttle_state('bob')['failures']);
+    }
+
+    public function testExpiredStateFilesArePruned(): void
+    {
+        // A file was kept for every username and address ever tried.
+        $expired = login_throttle_file('expired');
+        $recent = login_throttle_file('recent');
+        file_put_contents($expired, json_encode(array('times' => array(time() - LOGIN_FAILURE_WINDOW - 5))));
+        touch($expired, time() - LOGIN_FAILURE_WINDOW - 5);
+        login_throttle_record_failure('recent');
+        $this->assertSame(0, kirjuri_clear_cache(), 'The throttle folder itself is kept.');
+        $this->assertFileDoesNotExist($expired);
+        $this->assertFileExists($recent);
+    }
 }
