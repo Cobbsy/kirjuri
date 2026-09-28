@@ -1241,3 +1241,704 @@ body.login-page {
   font-size: 13px;
   color: var(--k-text-muted);
 }
+
+/*
+ * Cards (generic)
+ */
+
+.card {
+  background: var(--k-surface);
+  border: 1px solid var(--k-border);
+  border-radius: var(--k-radius);
+  box-shadow: var(--k-shadow);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--k-border);
+  background: var(--k-surface-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--k-text-muted);
+}
+
+.card-header .fa {
+  margin-right: 6px;
+}
+
+.card-body {
+  padding: 16px;
+}
+
+.card > .table {
+  margin-bottom: 0;
+}
+
+.rich-text > :last-child {
+  margin-bottom: 0;
+}
+
+.text-alert {
+  color: var(--k-danger);
+  font-weight: 600;
+}
+
+.text-faint {
+  color: var(--k-text-faint);
+}
+
+.empty-state {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--k-text-muted);
+  background: var(--k-surface);
+  border: 1px dashed var(--k-border-strong);
+  border-radius: var(--k-radius);
+}
+
+.empty-state .fa {
+  font-size: 36px;
+  color: var(--k-text-faint);
+  margin-bottom: 10px;
+}
+
+/* Status chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--k-border);
+  background: var(--k-surface-muted);
+  color: var(--k-text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.chip-new { background: var(--k-danger-soft); border-color: #f1c2c2; color: var(--k-danger); }
+.chip-open { background: var(--k-primary-soft); border-color: #c4d7f7; color: var(--k-primary); }
+.chip-ready { background: var(--k-success-soft); border-color: #b7e2c4; color: var(--k-success); }
+.chip-urgent { background: var(--k-danger); border-color: var(--k-danger); color: #fff; }
+.chip-locked { background: var(--k-warning-soft); border-color: #f1d6a8; color: var(--k-warning); }
+
+/*
+ * Case page: overview
+ */
+
+.case-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  margin-bottom: 18px;
+}
+
+.case-header-main {
+  min-width: 0;
+  flex: 1 1 420px;
+}
+
+.case-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.case-number {
+  font-family: var(--k-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--k-text-muted);
+  margin-right: 4px;
+}
+
+.case-title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  overflow-wrap: anywhere;
+}
+
+.case-subtitle {
+  color: var(--k-text-muted);
+  font-size: 14px;
+}
+
+.case-progress {
+  flex: 0 1 280px;
+  min-width: 220px;
+}
+
+.case-progress-label {
+  font-size: 13px;
+  color: var(--k-text-muted);
+  margin-bottom: 6px;
+}
+
+.case-progress-label strong {
+  color: var(--k-text);
+  font-size: 15px;
+  margin-right: 6px;
+}
+
+.case-progress .progress {
+  height: 10px;
+  margin-bottom: 4px;
+}
+
+.case-progress-reload {
+  font-size: 12.5px;
+}
+
+.case-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 20px;
+  background: var(--k-surface);
+  border: 1px solid var(--k-border);
+  border-radius: var(--k-radius);
+  box-shadow: var(--k-shadow);
+}
+
+.case-actions-group,
+.case-actions-primary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.case-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 20px;
+  align-items: start;
+}
+
+.case-grid {
+  margin-bottom: 20px;
+}
+
+.case-grid > .card {
+  margin-bottom: 0;
+}
+
+.case-facts dl,
+.case-dates dl {
+  margin: 0;
+}
+
+.case-facts dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.case-facts dl > div,
+.case-dates dl > div {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--k-border);
+}
+
+.case-facts dl > div:nth-child(odd):not(.case-facts-wide) {
+  border-right: 1px solid var(--k-border);
+}
+
+.case-facts dl > .case-facts-wide {
+  grid-column: 1 / -1;
+}
+
+.case-facts dl > div:last-child,
+.case-dates dl > div:last-child {
+  border-bottom: 0;
+}
+
+.case-facts dt,
+.case-dates dt {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--k-text-muted);
+  margin-bottom: 3px;
+}
+
+.case-facts dd,
+.case-dates dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.case-dates dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.attachment-table td .fa {
+  color: var(--k-text-muted);
+  margin-right: 4px;
+}
+
+.attachment-remove {
+  margin-left: 8px;
+  color: var(--k-danger);
+}
+
+.attachment-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--k-border);
+  background: var(--k-surface-muted);
+}
+
+.attachment-limits {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--k-text-muted);
+}
+
+.attachment-failure {
+  padding: 8px 16px;
+  color: var(--k-danger);
+  border-top: 1px solid var(--k-border);
+}
+
+.device-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.device-progress-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--k-border);
+  border-right: 1px solid var(--k-border);
+  color: var(--k-text);
+}
+
+.device-progress-item:hover,
+.device-progress-item:focus {
+  background: var(--k-surface-muted);
+  color: var(--k-text);
+  text-decoration: none;
+}
+
+.device-progress-item img {
+  flex: 0 0 32px;
+  opacity: 0.85;
+}
+
+.device-progress-body {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.device-progress-name {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-progress-name .text-muted {
+  font-weight: 400;
+}
+
+.device-progress-status {
+  display: block;
+  font-size: 12.5px;
+  color: var(--k-text-muted);
+  margin-bottom: 4px;
+}
+
+.device-progress-body .progress {
+  display: block;
+  height: 6px;
+  margin: 0;
+}
+
+.device-progress-body .progress-bar {
+  display: block;
+  height: 100%;
+}
+
+.case-delete {
+  margin-top: -6px;
+}
+
+.btn-danger-link,
+.btn-danger-link:hover,
+.btn-danger-link:focus {
+  color: var(--k-danger);
+  padding-left: 0;
+}
+
+/*
+ * Case page: devices
+ */
+
+.devices-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.devices-toolbar h1 {
+  margin: 0;
+}
+
+.devices-toolbar .badge {
+  vertical-align: middle;
+  font-size: 13px;
+}
+
+.sort-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.sort-bar-label {
+  margin-right: 6px;
+  color: var(--k-text-muted);
+  font-weight: 600;
+}
+
+.sort-bar a,
+.sort-bar b {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--k-border);
+  background: var(--k-surface);
+  color: var(--k-text-muted);
+  font-weight: 500;
+}
+
+.sort-bar a:hover {
+  border-color: var(--k-primary);
+  color: var(--k-primary);
+  text-decoration: none;
+}
+
+.sort-bar b {
+  background: var(--k-primary);
+  border-color: var(--k-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.sort-bar b .fa {
+  display: none;
+}
+
+body.app .main .table.device-card {
+  border: 1px solid var(--k-border);
+  border-left: 4px solid var(--k-border-strong);
+  border-radius: var(--k-radius);
+  border-collapse: separate;
+  border-spacing: 0;
+  box-shadow: var(--k-shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+body.app .main .table.device-card-highlight {
+  border-color: #f1c2c2;
+  border-left-color: var(--k-danger);
+  box-shadow: 0 0 0 3px var(--k-danger-soft);
+}
+
+.device-card > tbody > tr > td {
+  padding: 14px 12px;
+  vertical-align: middle;
+  border-top: 1px solid var(--k-border);
+}
+
+.device-card > tbody > tr:first-child > td {
+  border-top: 0;
+}
+
+.device-card .device-row-host > td {
+  background: var(--k-surface);
+}
+
+.device-card .device-row-media > td {
+  background: var(--k-surface-muted);
+}
+
+.device-card .device-row-media > td.device-icon {
+  padding-left: 36px;
+}
+
+.device-card tr.has-evidence > td {
+  background: #f1faf3;
+}
+
+.device-card tr.has-evidence > td.device-icon {
+  box-shadow: inset 3px 0 0 var(--k-success);
+}
+
+.device-card .device-row-footer > td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: var(--k-surface);
+}
+
+.device-icon {
+  width: 72px;
+  text-align: center;
+}
+
+.device-icon img {
+  opacity: 0.85;
+}
+
+.device-title {
+  min-width: 260px;
+}
+
+.device-title h4 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.device-title h4 small {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--k-text-muted);
+}
+
+.device-info {
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.device-info .fa {
+  width: 16px;
+  color: var(--k-text-faint);
+  text-align: center;
+}
+
+.device-flag { font-weight: 500; }
+.device-flag-ok { color: var(--k-success); }
+.device-flag-bad { color: var(--k-danger); }
+.device-flag-warn { color: var(--k-warning); }
+.device-info .device-flag-bad .fa { color: var(--k-danger); }
+
+.device-controls {
+  width: 230px;
+}
+
+.device-controls form + form {
+  margin-top: 6px;
+}
+
+.device-select {
+  width: 210px;
+  max-width: 100%;
+}
+
+.device-select.is-missing {
+  border-color: var(--k-danger);
+  background-color: var(--k-danger-soft);
+}
+
+.device-status-text {
+  font-weight: 600;
+}
+
+.device-progress-frame {
+  display: block;
+  width: 210px;
+  height: 10px;
+  margin-top: 10px;
+  border: 0;
+  overflow: hidden;
+}
+
+.device-attach {
+  display: flex;
+  gap: 6px;
+  max-width: 320px;
+  margin-top: 4px;
+}
+
+body.progress-frame {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+body.progress-frame .progress {
+  height: 10px;
+  margin: 0;
+}
+
+@media (max-width: 991px) {
+  .case-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .case-dates dl {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .case-dates dl > div {
+    border-bottom: 0;
+    border-right: 1px solid var(--k-border);
+  }
+
+  .case-dates dl > div:last-child {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .case-title {
+    font-size: 22px;
+  }
+
+  .case-progress {
+    flex-basis: 100%;
+  }
+
+  .case-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .case-actions-primary .btn {
+    width: 100%;
+  }
+
+  .case-facts dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .case-facts dl > div:nth-child(odd):not(.case-facts-wide) {
+    border-right: 0;
+  }
+
+  .case-dates dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .case-dates dl > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--k-border);
+  }
+
+  .attachment-limits {
+    margin-left: 0;
+  }
+
+  /* Device cards stack their cells instead of scrolling sideways. */
+  body.app .main .table.device-card,
+  .device-card > tbody,
+  .device-card > tbody > tr,
+  .device-card > tbody > tr > td {
+    display: block;
+    width: 100%;
+  }
+
+  body.app .main .table.device-card {
+    overflow: hidden;
+  }
+
+  .device-card > tbody > tr > td {
+    border-top: 0;
+    padding: 6px 14px;
+  }
+
+  .device-card > tbody > tr > td.device-icon {
+    text-align: left;
+    padding-top: 14px;
+  }
+
+  .device-card .device-row-media > td.device-icon {
+    padding-left: 14px;
+    border-top: 1px solid var(--k-border);
+  }
+
+  .device-card > tbody > tr > td.device-controls {
+    padding-bottom: 14px;
+  }
+
+  .device-card .device-row-footer > td:first-child {
+    display: none;
+  }
+
+  .device-title {
+    min-width: 0;
+    white-space: normal !important;
+  }
+
+  .device-select,
+  .device-progress-frame {
+    width: 100%;
+  }
+}
+
+@media print {
+  .case-actions,
+  .attachment-upload,
+  .case-delete,
+  .sort-bar,
+  .devices-toolbar .btn {
+    display: none !important;
+  }
+}
+
+.case-dates .case-urgency dd {
+  font-weight: 400;
+}
+
+.bulk-update {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 4px 0 20px;
+}
+
+.bulk-update .form-control {
+  width: auto;
+  min-width: 170px;
+}
+
+@media (max-width: 767px) {
+  .bulk-update .form-control,
+  .bulk-update .btn {
+    width: 100%;
+  }
+}

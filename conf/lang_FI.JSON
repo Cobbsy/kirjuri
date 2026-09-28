@@ -1,6 +1,8 @@
 {
+    "attachments": "Liitteet",
     "blacklist_not_a_valid_ip": "Virheellinen IP-osoite estetyiss\u00e4 osoitteissa",
     "device": "laite",
+    "device_progress": "Laitteiden eteneminen",
     "menu": "Valikko",
     "notice_duplicate_request": "HUOM! Ilmoitusnumerolla on kirjattu tutkintapyynt\u00f6",
     "access": "P\u00e4\u00e4sy",
