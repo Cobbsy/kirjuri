@@ -250,6 +250,25 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testNumericSettingsStayTextFieldsAtZero(): void
+    {
+        // The page showed any setting whose value was 0 or 1 as Yes/No buttons, so a limit set to 0 could
+        // not be set to another number again.
+        $admin = $this->admin();
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
+            'settings' => array('login_max_failures_per_ip' => '0', 'session_idle_timeout' => '1') + $defaults['settings'],
+            'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+        try {
+            $page = $admin->get('settings.php')->body;
+            $this->assertStringContainsString('<input type="text" class="form-control" name="settings[login_max_failures_per_ip]" value="0"', $page);
+            $this->assertStringContainsString('<input type="text" class="form-control" name="settings[session_idle_timeout]" value="1"', $page);
+            $this->assertStringContainsString('<input type="radio" name="settings[show_log]"', $page, 'Yes/No settings keep their buttons.');
+        } finally {
+            $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
+        }
+    }
+
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void
     {
         $admin = $this->admin();

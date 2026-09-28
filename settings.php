@@ -48,6 +48,7 @@ echo kirjuri_render('settings.twig', array(
         'mysql_timezone' => $mysql_timezone,
         'langfiles' => $langfiles,
         'settings_contents' => $prefs,
+        'default_settings' => $default_settings['settings'],
         'diff' => $diff,
         'apikey' => api_key_for(kirjuri_session_user_credentials()),
         'settings_file' => $settings_file
