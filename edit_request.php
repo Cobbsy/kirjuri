@@ -73,6 +73,7 @@ if (file_exists('attachments/'.$case_number.'/')) {
     foreach ($case_attachments as $file) {
         if ($file[0] !== '.') {
             $filelist[$i]['filename'] = $file;
+            $filelist[$i]['token'] = kirjuri_legacy_attachment_token($file); // For get_file.php.
             $filelist[$i]['filesize'] = filesize('attachments/'.$case_number.'/'.$file);
             $filelist[$i]['filetype'] = mime_content_type('attachments/'.$case_number.'/'.$file);
             ++$i;

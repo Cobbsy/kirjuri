@@ -18,7 +18,7 @@ function send_attachment($name, $type, $content) {
     die;
 }
 
-if (isset($_GET['case'], $_GET['name'])) {
+if (isset($_GET['case'], $_GET['legacy'])) {
     // A file that an old version stored in attachments/<case UID>/, which the web server must not serve itself.
     $case_id = kirjuri_uid_param($_GET['case']);
     if (kirjuri_find_case($kirjuri_database, $case_id) === null) {
@@ -26,7 +26,7 @@ if (isset($_GET['case'], $_GET['name'])) {
         die;
     }
     verify_case_ownership($case_id);
-    $path = kirjuri_legacy_attachment_path($case_id, $_GET['name']);
+    $path = kirjuri_legacy_attachment_path($case_id, kirjuri_legacy_attachment_name($_GET['legacy']));
     if ($path === null) {
         echo "File not found.";
         die;

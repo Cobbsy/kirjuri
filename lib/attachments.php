@@ -84,6 +84,21 @@ function kirjuri_import_attachment(PDO $db, $case_id, array $row) {
 
 
 /**
+ * The name of an old attachment file for a URL, base64url encoded: include_functions.php strips < > ' ; from
+ * every GET value, and file names may contain them. kirjuri_legacy_attachment_name() decodes it.
+ */
+function kirjuri_legacy_attachment_token($name) {
+    return rtrim(strtr(base64_encode((string) $name), '+/', '-_'), '=');
+}
+
+
+function kirjuri_legacy_attachment_name($token) {
+    $name = base64_decode(strtr((string) $token, '-_', '+/'), true);
+    return ($name === false) ? '' : $name;
+}
+
+
+/**
  * The path of a file that an old Kirjuri version stored in attachments/<case UID>/, or null. Only a
  * plain file directly in that folder: no other folder, hidden file or symbolic link.
  */

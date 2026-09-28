@@ -86,24 +86,28 @@ final class AttachmentTest extends IntegrationTestCase
         $caseId = $this->createCase($admin, $this->uniqueName('Legacy '));
         $folder = $this->server->dir . '/attachments/' . $caseId;
         mkdir($folder, 0777, true);
-        file_put_contents($folder . '/old report.txt', "legacy evidence\n");
+        // The name is passed encoded: the GET filter strips ' and ; which file names may contain.
+        $name = "O'Brien; old report.txt";
+        file_put_contents($folder . '/' . $name, "legacy evidence\n");
+        $url = 'get_file.php?case=' . $caseId . '&legacy=' . kirjuri_legacy_attachment_token($name);
 
         $page = $admin->get('edit_request.php?case=' . $caseId)->body;
-        $this->assertStringContainsString('get_file.php?case=' . $caseId . '&name=old%20report.txt', $page);
+        $this->assertStringContainsString($url, $page);
         $this->assertStringNotContainsString('href="attachments/', $page);
-        $download = $admin->get('get_file.php?case=' . $caseId . '&name=old+report.txt');
+        $download = $admin->get($url);
         $this->assertSame("legacy evidence\n", $download->body);
         $this->assertStringContainsString('attachment;', $download->header('Content-Disposition'));
 
-        foreach (array('../../conf/mysql_credentials.php', '.htaccess', '..', '') as $name) {
-            $this->assertSame('File not found.', $admin->get('get_file.php?case=' . $caseId . '&name=' . rawurlencode($name))->body, $name);
+        foreach (array('../../conf/mysql_credentials.php', '.htaccess', '..', '') as $other) {
+            $this->assertSame('File not found.', $admin->get('get_file.php?case=' . $caseId . '&legacy=' . kirjuri_legacy_attachment_token($other))->body, $other);
         }
-        $this->assertSame('login.php', $this->client()->get('get_file.php?case=' . $caseId . '&name=old+report.txt')->location());
+        $this->assertSame('File not found.', $admin->get('get_file.php?case=' . $caseId . '&legacy=%%%')->body, 'Not base64.');
+        $this->assertSame('login.php', $this->client()->get($url)->location());
 
         $admin->post('submit.php?type=case_access&id=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'access' => array('admin_only' => 'admin_only')));
         $username = $this->uniqueName('legacyuser');
         $this->createUser($username, 'password1', 1);
-        $response = $this->login($username, 'password1')->get('get_file.php?case=' . $caseId . '&name=old+report.txt');
+        $response = $this->login($username, 'password1')->get($url);
         $this->assertStringNotContainsString('legacy evidence', $response->body);
         $this->assertSame('index.php', $response->location());
     }
