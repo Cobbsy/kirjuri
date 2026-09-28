@@ -51,6 +51,28 @@ final class ErrorHandlingTest extends IntegrationTestCase
         });
     }
 
+    public function testFatalErrorsDoNotStoreRequestDataInTheSession(): void
+    {
+        // The error page ends the request inside a shutdown function, which skipped the later one that
+        // keeps the user list and language strings out of the session file.
+        $this->expectLoggedError('Allowed memory size');
+        $admin = $this->admin();
+        $page = $this->server->dir . '/fatal_error_test.php';
+        file_put_contents($page, "<?php require './include_functions.php'; ini_set('memory_limit', '48M'); \$x = str_repeat('x', 96 * 1024 * 1024);");
+        try {
+            $response = $admin->get('fatal_error_test.php');
+            $this->assertSame(500, $response->status);
+            $this->assertStringContainsString('request-id', $response->body);
+            $this->assertStringNotContainsString('Allowed memory size', $response->body, 'PHP\'s own message, with the file path, is not shown.');
+        } finally {
+            unlink($page);
+        }
+        foreach ($this->server->sessionFiles() as $session) {
+            $this->assertStringNotContainsString('all_users', $session);
+            $this->assertStringNotContainsString('lang|', $session);
+        }
+    }
+
     public function testAdminsSeeTheErrorWhenShowErrorsIsOn(): void
     {
         $this->expectLoggedError('Uncaught PDOException');

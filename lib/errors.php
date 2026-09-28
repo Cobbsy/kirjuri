@@ -74,6 +74,10 @@ function kirjuri_shutdown_handler() {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR), true)) {
         kirjuri_log_error('Fatal error', $error['message'], $error['file'], $error['line']);
+        // The error page exits, which skips the shutdown functions registered after this one.
+        if (function_exists('kirjuri_drop_request_data_from_session')) {
+            kirjuri_drop_request_data_from_session();
+        }
         kirjuri_error_page(null);
     }
 }
@@ -137,6 +141,11 @@ function kirjuri_error_page($throwable) {
 function kirjuri_register_error_handlers() {
     set_exception_handler('kirjuri_exception_handler');
     register_shutdown_function('kirjuri_shutdown_handler');
+    if (PHP_SAPI !== 'cli') {
+        // Errors are logged and shown on Kirjuri's own page. PHP's display would print messages and file
+        // paths to visitors (display_errors defaults to on without a php.ini, as in the Docker image).
+        ini_set('display_errors', '0');
+    }
     if (PHP_SAPI !== 'cli' && !headers_sent()) {
         header('X-Request-Id: ' . kirjuri_request_id());
     }

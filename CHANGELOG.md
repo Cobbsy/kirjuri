@@ -7,7 +7,7 @@ Unreleased
 * Added a test suite in tests/ (PHPUnit unit tests and HTTP integration tests against a real database), run by GitHub Actions. See the README.
 * Added bin/kirjuri, a command line tool: doctor (environment and configuration checks), migrate, user management and password resets, error and event log viewers, audit log decryption and cache clearing. See the README.
 * Database changes are now versioned migrations (lib/migrations.php), applied automatically after an upgrade. Rerunning install.php is no longer needed. New indexes speed up case, device, attachment and message lookups.
-* Errors are logged to logs/error.log with a stack trace and a request ID, which is shown on the error page and sent in the X-Request-Id header. Database errors are no longer shown to visitors.
+* Errors are logged to logs/error.log with a stack trace and a request ID, which is shown on the error page and sent in the X-Request-Id header. Database errors are no longer shown to visitors. PHP's own error display is switched off, so a fatal error no longer prints its message and file path above the error page (display_errors is on without a php.ini, as in the Docker image), and the page is sent with status 500.
 * Restructured the code: shared functions moved from include_functions.php into lib/, and submit.php's actions into actions/. PHPStan (level 5) runs in CI.
 * Security fixes:
 * - import_krf.php required no login and built SQL from unchecked keys in the uploaded file. It now requires a login and a CSRF token, and every key is validated before anything is written.
@@ -90,7 +90,7 @@ Unreleased
 * - The statistics page ran one query per case per unit; it now uses a few grouped queries. Units still match as the database compares them, ignoring letter case and trailing spaces.
 * - A case with no status (an old row, or a KRF file that left it empty) made the statistics page log a PHP warning.
 * - The sender of a message could archive or delete the recipient's copy, and the recipient the sender's.
-* - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes.
+* - Session files stored the language strings and every user's record: about 26 KB each, now about 450 bytes. After a fatal error they still did, as the error page ended the request before the cleanup ran.
 * - Saving an emoji or another character outside the Basic Multilingual Plane (common in text pasted from phones) failed with an error page, as MySQL's "utf8" holds only three bytes a character. Tables and the connection now use utf8mb4, converted by a migration.
 * - Passwords typed in web forms went through the HTML purifier, which stored "&" as "&amp;" and changed or removed < and >. Such passwords did not match the same password set by the installer or bin/kirjuri, and failed against LDAP. Passwords are now used as typed; hashes stored the old way still match and are replaced at the next login (except for accounts with API access, whose key derives from the hash).
 * - The case page, timeline, CSV and KRF exports and attachment uploads cut the case UID to five digits. Cases and devices share UIDs, so once they passed 99999 these pages opened, exported or attached files to the wrong case, or to none.

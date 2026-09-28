@@ -31,11 +31,15 @@ function kirjuri_keep_request_data_out_of_session() {
     // request, where pages and templates expect them. Drop them before PHP writes the session file:
     // they were 90% of its size, and the user list put every user's record in everyone's session.
     // Shutdown functions run before the session is written.
-    register_shutdown_function(function () {
-        if (session_status() === PHP_SESSION_ACTIVE) { // ksess_destroy() nulls $_SESSION, but also ends the session.
-            unset($_SESSION['lang'], $_SESSION['all_users'], $_SESSION['all_tools'], $_SESSION['unread']);
-        }
-    });
+    register_shutdown_function('kirjuri_drop_request_data_from_session');
+}
+
+
+/** The cleanup kirjuri_keep_request_data_out_of_session() registers; kirjuri_shutdown_handler() calls it too. */
+function kirjuri_drop_request_data_from_session() {
+    if (session_status() === PHP_SESSION_ACTIVE) { // ksess_destroy() nulls $_SESSION, but also ends the session.
+        unset($_SESSION['lang'], $_SESSION['all_users'], $_SESSION['all_tools'], $_SESSION['unread']);
+    }
 }
 
 
