@@ -76,6 +76,7 @@ Unreleased
 * - Imported cases showed 0 devices until the front page was opened.
 * - The device form lost its input after a validation error.
 * - A user's "modified at" note used the month where the minutes belong.
+* - Front page search results listed the type, make, model, identifier and owner of matching devices in cases the user may not open. Those devices are now left out.
 * - The front page showed the crime and suspect of cases restricted to users whose names contain the viewer's name (bob saw cases restricted to bobby).
 * - verify_case_ownership() checked the access group of the row it was given, so a device UID was checked against the device's empty group instead of its case's.
 * - The case page never showed its warning about other requests with the same case file number.

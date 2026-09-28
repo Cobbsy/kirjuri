@@ -75,6 +75,18 @@ final class DeviceAccessTest extends IntegrationTestCase
         $this->assertStringNotContainsString($mine, $this->admin()->get('device_memo.php?uid=' . $this->restrictedDevice)->body);
     }
 
+    public function testSearchLeavesOutDevicesOfRestrictedCases(): void
+    {
+        // The search box repeats the term; the device row is what must not appear.
+        $model = $this->row($this->restrictedDevice)['device_model'];
+        $admin = $this->admin()->get('index.php?search=' . urlencode($model))->body;
+        $this->assertStringContainsString('device_memo.php?uid=' . $this->restrictedDevice . '"', $admin);
+        $this->assertStringContainsString('SN-' . $model, $admin);
+        $user = $this->user->get('index.php?search=' . urlencode($model))->body;
+        $this->assertStringNotContainsString('device_memo.php?uid=' . $this->restrictedDevice . '"', $user);
+        $this->assertStringNotContainsString('SN-' . $model, $user);
+    }
+
     public function testDetachAndAttachStayWithinTheCase(): void
     {
         $this->server->pdo()->exec('UPDATE exam_requests SET device_host_id = 42 WHERE id = ' . $this->restrictedDevice);
