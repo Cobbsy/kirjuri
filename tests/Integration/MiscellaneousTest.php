@@ -269,6 +269,43 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testFailedBackupsAreReportedNotDownloaded(): void
+    {
+        // The backup sent its download headers before running mysqldump and never checked how it ended,
+        // so a failed dump downloaded as an empty file and was logged as a backup.
+        $this->expectLoggedError('mysqldump failed');
+        $admin = $this->admin();
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $failing = $this->server->dir . '/cache/failing-mysqldump';
+        file_put_contents($failing, "#!/bin/sh\necho 'Access denied for user' >&2\nexit 2\n");
+        $working = $this->server->dir . '/cache/working-mysqldump';
+        file_put_contents($working, "#!/bin/sh\necho '-- dump of' \"\$5\"\n");
+        chmod($failing, 0755);
+        chmod($working, 0755);
+        $save = function (string $binary) use ($admin, $defaults) {
+            $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
+                'settings' => array('mysqldump_location' => $binary) + $defaults['settings'],
+                'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+        };
+        try {
+            $backups = fn () => count(array_filter($this->server->eventLog(), fn ($line) => strpos($line, 'Backed up database') !== false));
+            $save($failing);
+            $before = $backups();
+            $response = $admin->get('backup.php');
+            $this->assertSame('settings.php', $response->location());
+            $this->assertNull($response->header('Content-Disposition'));
+            $this->assertSame($before, $backups(), 'A failed dump is not logged as a backup.');
+            $this->assertNotEmpty(array_filter($this->server->eventLog(), fn ($line) => strpos($line, 'Access denied for user') !== false), 'mysqldump\'s error is logged.');
+
+            $save($working);
+            $response = $admin->get('backup.php');
+            $this->assertStringContainsString('attachment;', (string) $response->header('Content-Disposition'));
+            $this->assertStringStartsWith('-- dump of', $response->body);
+        } finally {
+            $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
+        }
+    }
+
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void
     {
         $admin = $this->admin();
