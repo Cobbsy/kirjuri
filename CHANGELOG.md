@@ -69,6 +69,7 @@ Unreleased
 * - Tool reservations with missing dates were saved, as the empty-field check tested strings that always contained a space.
 * - Importing a KRF file when no cases existed yet that year raised a PHP deprecation shown to the user.
 * - upload.php passed its 16MB limit to file_get_contents() as the include path flag. The max_attachment_size check before it is what enforces the limit.
+* - Saving a language file in the language editor added empty flag1 to flag4 entries to it.
 * - Removed demo PHP scripts bundled with the vis and FullCalendar libraries, which could be requested without logging in.
 * - Two cases created at the same moment could get the same case number. Case creation (web form, API and KRF import) now shares one locked function.
 * - The front page recounted and rewrote every case's device count on every view. Counts are now kept up to date where devices change; a migration corrects existing counts once.

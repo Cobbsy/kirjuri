@@ -159,6 +159,14 @@ function login_throttle_clear($username) {
 }
 
 
+/** Unchecked checkboxes are not sent at all: set the named $_POST fields to '' when missing. */
+function kirjuri_default_checkboxes(array $names) {
+    foreach ($names as $name) {
+        $_POST[$name] = isset($_POST[$name]) ? $_POST[$name] : '';
+    }
+}
+
+
 function ini_value($value) {
     // Make a value safe to write inside double quotes in an ini file.
     return str_replace(array('"', "\r", "\n"), array("'", ' ', ' '), (string) $value);

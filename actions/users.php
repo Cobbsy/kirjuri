@@ -12,6 +12,7 @@ switch ($action) {
 case 'create_user':
     ksess_verify(0);
     ksess_validate($_POST['token']);
+    kirjuri_default_checkboxes(array('flag1', 'flag2', 'flag3', 'flag4'));
     foreach (array('allow' => 'ip_whitelist', 'deny' => 'ip_blacklist') as $list => $field) {
         try {
             $ip_access_control[$list] = kirjuri_parse_ip_list($_POST[$field]);

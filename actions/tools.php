@@ -85,6 +85,7 @@ case 'reserve_tool':
 case 'add_tool':
     ksess_verify(0);
     ksess_validate($_POST['token']);
+    kirjuri_default_checkboxes(array('flag1', 'flag2'));
     if (!empty($_POST['product_name'])) {
         kirjuri_add_tool($kirjuri_database, array(
                 'product_name' => $_POST['product_name'],
@@ -107,6 +108,7 @@ case 'add_tool':
 case 'update_tool':
     ksess_verify(0);
     ksess_validate($_POST['token']);
+    kirjuri_default_checkboxes(array('flag1', 'flag2'));
     if ($_POST['drop_tool'] === "yes") {
         kirjuri_delete_tool($kirjuri_database, $_POST['tool_id']);
         event_log_write('0', 'Remove', 'tool ID ' . $_POST['tool_id'] . ' removed: ' . trim(substr($_POST['product_name'], 0, 128)));

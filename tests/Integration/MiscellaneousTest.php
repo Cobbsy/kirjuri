@@ -236,6 +236,20 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testLanguageFilesKeepOnlyTheirStrings(): void
+    {
+        // submit.php added empty flag1 to flag4 to every form for the user and tool checkboxes, and the
+        // language editor saves every field it is sent.
+        $admin = $this->admin();
+        $file = $this->server->dir . '/conf/lang_ZZ.JSON';
+        try {
+            $admin->post('submit.php?type=save_langfile', array('token' => $this->token($admin), 'countrycode' => 'ZZ', 'hello' => 'Hello there'));
+            $this->assertSame(array('hello' => 'Hello there'), json_decode(file_get_contents($file), true));
+        } finally {
+            @unlink($file);
+        }
+    }
+
     public function testSettingsCannotBeUsedToInjectIniDirectives(): void
     {
         $admin = $this->admin();

@@ -36,10 +36,6 @@ foreach ($default_to_zero as $key) {
     }
 }
 
-// Unchecked checkboxes are not sent at all, so default the user and tool flag checkboxes to unset.
-foreach (array('flag1', 'flag2', 'flag3', 'flag4') as $flag) {
-    $_POST[$flag] = isset($_POST[$flag]) ? $_POST[$flag] : '';
-}
 
 if ( (isset($_POST['phone_investigator'])) && (empty($_POST['phone_investigator']) )) {
     $_POST['phone_investigator'] = "-";
