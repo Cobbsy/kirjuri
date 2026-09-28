@@ -308,6 +308,27 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertSame('login.php', $user->get('index.php')->location());
     }
 
+    public function testGlobalIpListsApplyToAccountsWithoutTheirOwn(): void
+    {
+        // Accounts store an empty list as array(''), and the global entries were appended after that
+        // empty first entry, which switched both checks off.
+        $username = $this->uniqueName('global');
+        $this->createUser($username, 'password1', 1);
+        $file = $this->server->dir . '/conf/access_list.php';
+        $shipped = file_get_contents($file);
+        try {
+            foreach (array("'allow' => array('10.0.0.0/8'), 'deny' => array()", "'allow' => array(), 'deny' => array('127.0.0.1/32')") as $lists) {
+                file_put_contents($file, "<?php return array($lists);");
+                $response = $this->client()->post('submit.php?type=login', array('username' => $username, 'password' => 'password1', 'auth_type' => 'local'));
+                $this->assertSame('login.php', $response->location(), $lists);
+            }
+            file_put_contents($file, "<?php return array('allow' => array('127.0.0.0/8'), 'deny' => array());");
+            $this->login($username, 'password1');
+        } finally {
+            file_put_contents($file, $shipped);
+        }
+    }
+
     public function testIdleSessionsExpire(): void
     {
         $username = $this->uniqueName('idle');

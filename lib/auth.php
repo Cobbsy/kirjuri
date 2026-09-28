@@ -179,7 +179,13 @@ function ip_allowed() {
         }
         unset($global_ip_access_list);
     }
-    if (!empty($ip_access_list['allow'][0])) {
+    // Accounts without a list of their own store array(''); an empty entry must not switch a list off.
+    foreach (array('allow', 'deny') as $list) {
+        $ip_access_list[$list] = array_values(array_filter((array) $ip_access_list[$list], function ($ip) {
+            return trim((string) $ip) !== '';
+        }));
+    }
+    if (!empty($ip_access_list['allow'])) {
         foreach ($ip_access_list['allow'] as $ip) {
             if (ip_in_range($_SERVER['REMOTE_ADDR'], $ip)) {
                 $access_allowed_from_ip = true;
@@ -188,7 +194,7 @@ function ip_allowed() {
     } else {
         $access_allowed_from_ip = true; // No whitelist set, default to allow.
     }
-    if (!empty($ip_access_list['deny'][0])) {
+    if (!empty($ip_access_list['deny'])) {
         foreach ($ip_access_list['deny'] as $ip) {
             if (ip_in_range($_SERVER['REMOTE_ADDR'], $ip)) {
                 $access_allowed_from_ip = false; // If IP is on blacklist, deny.
