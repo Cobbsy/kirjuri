@@ -66,6 +66,9 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
   `prefers-color-scheme: dark` block. The accents (`--k-primary` and so on) are fills with white text
   on them; coloured text uses the `-text` variants (`--k-primary-text`), which dark mode lightens.
   Printouts and the case report (`<html class="paper">`) stay light.
+- Charts take series colours from `--k-chart-1` to `--k-chart-8` in that order, never cycled, and
+  name their series in a legend or labels. Counts per category are labelled bars in one colour, not
+  pie charts.
 - Pages must not scroll sideways at 390px wide. Wide tables scroll inside their own box. The
   browser tests check this.
 - Forms: labels go above the fields in a `.field-grid` of `.field` elements. Required fields get

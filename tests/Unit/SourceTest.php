@@ -206,6 +206,14 @@ final class SourceTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/style=\\\\?["\'][^"\']*(?:color|background)\s*:/i', file_get_contents($file), 'Use a class from views/css/kirjuri.css.');
     }
 
+    /** The statistics charts take their colours from the theme's --k-chart-* palette, which has light and dark values. */
+    public function testStatisticsChartsUseTheThemePalette(): void
+    {
+        $source = file_get_contents(KIRJURI_ROOT . '/views/statistics.twig');
+        $this->assertDoesNotMatchRegularExpression('/["\']#[0-9a-fA-F{]|rgba?\(\d|\brandom\(/', $source, 'Use themeColour("--k-chart-N").');
+        $this->assertStringContainsString('--k-chart-', $source);
+    }
+
     /** Every stylesheet, script and image a template loads from the application exists. */
     #[DataProvider('templates')]
     public function testTemplateLoadsOnlyFilesThatExist(string $template): void

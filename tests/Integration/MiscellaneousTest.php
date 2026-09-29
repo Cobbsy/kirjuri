@@ -258,7 +258,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
         $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
             'settings' => array('login_max_failures_per_ip' => '0', 'session_idle_timeout' => '1') + $defaults['settings'],
-            'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+            'inv_units' => implode(', ', $defaults['inv_units'])));
         try {
             $page = $admin->get('settings.php')->body;
             $this->assertStringContainsString('<input type="text" class="form-control" name="settings[login_max_failures_per_ip]" value="0"', $page);
@@ -285,7 +285,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $save = function (string $binary) use ($admin, $defaults) {
             $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
                 'settings' => array('mysqldump_location' => $binary) + $defaults['settings'],
-                'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+                'inv_units' => implode(', ', $defaults['inv_units'])));
         };
         try {
             $backups = fn () => count(array_filter($this->server->eventLog(), fn ($line) => strpos($line, 'Backed up database') !== false));
@@ -316,7 +316,6 @@ final class MiscellaneousTest extends IntegrationTestCase
                 'token' => $this->token($admin),
                 'settings' => $settings,
                 'inv_units' => implode(', ', $defaults['inv_units']),
-                'chart' => $defaults['statistics_chart_colors'],
             ));
         $this->assertSame('settings.php', $response->location());
 

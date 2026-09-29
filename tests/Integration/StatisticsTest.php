@@ -27,7 +27,10 @@ final class StatisticsTest extends IntegrationTestCase
         $this->assertSame($before['device_data_by_unit']['Unit 3'], $after['device_data_by_unit']['Unit 3']);
         $this->assertSame(array('Unit 1', 'Unit 2', 'Unit 3'), array_keys($after['device_data_by_unit']), 'Units keep the settings order.');
 
-        $this->assertSame(200, $admin->get('statistics.php')->status);
+        $page = $admin->get('statistics.php');
+        $this->assertSame(200, $page->status);
+        // The unit card lists each unit with cases as a labelled bar with its count.
+        $this->assertMatchesRegularExpression('/<span class="bar-list-label">Unit 2<\/span>\s*<span class="bar-list-value">\d+<\/span>/', $page->body);
         $this->assertNull(kirjuri_statistics($db, 1999, $units));
         $this->assertSame('index.php', $admin->get('statistics.php?year=1999')->location());
     }
