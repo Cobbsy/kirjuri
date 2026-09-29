@@ -189,9 +189,21 @@ final class SourceTest extends TestCase
         $this->assertSame(1, preg_match('/prefers-color-scheme: dark\) \{\s*:root:not\(\.paper\) \{(.*?)^  \}/ms', $css, $dark));
         preg_match_all('/(--k-[\w-]+):\s*(?:#|rgba?\()/', $light[1], $colours);
         preg_match_all('/(--k-[\w-]+):/', $dark[1], $darkValues);
-        $sameInBoth = array('--k-sidebar-text', '--k-sidebar-muted'); // The sidebar is dark in both modes.
+        // The sidebar is dark in both modes, and calendar events have pale colours in both.
+        $sameInBoth = array('--k-sidebar-text', '--k-sidebar-muted', '--k-event-text');
         $this->assertGreaterThan(40, count($colours[1]));
         $this->assertSame(array(), array_values(array_diff($colours[1], $darkValues[1], $sameInBoth)));
+    }
+
+    /** The same for HTML that PHP pages print themselves. install.php runs before the theme exists. */
+    #[DataProvider('phpFiles')]
+    public function testPhpPrintsNoColoursOfItsOwn(string $file): void
+    {
+        if (basename($file) === 'install.php') {
+            $this->assertTrue(true);
+            return;
+        }
+        $this->assertDoesNotMatchRegularExpression('/style=\\\\?["\'][^"\']*(?:color|background)\s*:/i', file_get_contents($file), 'Use a class from views/css/kirjuri.css.');
     }
 
     /** Every stylesheet, script and image a template loads from the application exists. */

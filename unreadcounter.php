@@ -9,7 +9,7 @@ session_start(); // Keep valid session alive.
 if (!isset($_SESSION['user']['username'], $_SESSION['user']['token']) || !file_exists('cache/user_' . $_SESSION['user']['username'] . "/session_" . $_SESSION['user']['token'] . ".txt" )) { // Drop session if sessionfile has been removed.
     $_SESSION = array();
     session_destroy();
-    echo '<i style="color:red;" class="fa fa-ban"></i><script>window.location.href = "login.php";</script>';
+    echo '<i class="fa fa-ban text-danger"></i><script>window.location.href = "login.php";</script>';
     die;
 }
 // Update session file timestamp
@@ -30,5 +30,5 @@ try { // Check inbox
 }
 $_SESSION['unread'] = array('new' => (string) kirjuri_unread_count($kirjuri_database, $_SESSION['user']['username']));
 if ($_SESSION['unread']['new'] > 0) {
-    echo '<span style="color:white;" class="label label-danger">' . $_SESSION['unread']['new'] . '</span>';
+    echo '<span class="label label-danger">' . $_SESSION['unread']['new'] . '</span>';
 }

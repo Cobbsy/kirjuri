@@ -44,7 +44,8 @@ foreach ($_SESSION['all_tools'] as $tool) {
 
 $i = 0;
 while ($i < 100) {
-    $evcolors[] = "#" . substr(str_shuffle("5566778899AABBCC"), 0, 6);
+    // Pale colours only, so the calendar's dark text reads on every one of them.
+    $evcolors[] = "#" . substr(str_shuffle("AABBCCDDEEFF"), 0, 6);
     $i++;
 }
 
