@@ -62,6 +62,10 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
 
 - Use the CSS variables in `kirjuri.css` (`--k-primary`, `--k-danger`, `--k-border` and so on)
   instead of hard-coded colours or inline `style=` colours.
+- Dark mode follows the operating system. Every colour variable gets a dark value in the
+  `prefers-color-scheme: dark` block. The accents (`--k-primary` and so on) are fills with white text
+  on them; coloured text uses the `-text` variants (`--k-primary-text`), which dark mode lightens.
+  Printouts and the case report (`<html class="paper">`) stay light.
 - Pages must not scroll sideways at 390px wide. Wide tables scroll inside their own box. The
   browser tests check this.
 - Forms: labels go above the fields in a `.field-grid` of `.field` elements. Required fields get

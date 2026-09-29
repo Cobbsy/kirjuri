@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html{% block html_class %}{% endblock %}>
   <head>
     {% block title %}
     <title>{{ settings.title_text }}</title>
@@ -34,10 +34,13 @@
     <script src="vendor/twbs/bootstrap/dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="vendor/tinymce/tinymce/tinymce.min.js"></script>
     <script>
+      var darkMode = window.matchMedia("(prefers-color-scheme: dark)").matches && !document.documentElement.classList.contains("paper");
       tinymce.init({
         selector: "textarea:not(.mceNoEditor)",
         license_key: "gpl",
         promotion: false,
+        skin: darkMode ? "oxide-dark" : "oxide",
+        content_css: darkMode ? "dark" : "default",
         width : "100%"
       });
 

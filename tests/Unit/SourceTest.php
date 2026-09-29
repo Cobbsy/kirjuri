@@ -181,6 +181,19 @@ final class SourceTest extends TestCase
         $this->assertSame(array(), $found, 'Use a class from views/css/kirjuri.css.');
     }
 
+    /** Every colour variable in kirjuri.css has a dark mode value, so a new colour cannot stay light in dark mode. */
+    public function testEveryThemeColourHasADarkModeValue(): void
+    {
+        $css = file_get_contents(KIRJURI_ROOT . '/views/css/kirjuri.css');
+        $this->assertSame(1, preg_match('/^:root \{(.*?)^\}/ms', $css, $light));
+        $this->assertSame(1, preg_match('/prefers-color-scheme: dark\) \{\s*:root:not\(\.paper\) \{(.*?)^  \}/ms', $css, $dark));
+        preg_match_all('/(--k-[\w-]+):\s*(?:#|rgba?\()/', $light[1], $colours);
+        preg_match_all('/(--k-[\w-]+):/', $dark[1], $darkValues);
+        $sameInBoth = array('--k-sidebar-text', '--k-sidebar-muted'); // The sidebar is dark in both modes.
+        $this->assertGreaterThan(40, count($colours[1]));
+        $this->assertSame(array(), array_values(array_diff($colours[1], $darkValues[1], $sameInBoth)));
+    }
+
     /** Every stylesheet, script and image a template loads from the application exists. */
     #[DataProvider('templates')]
     public function testTemplateLoadsOnlyFilesThatExist(string $template): void

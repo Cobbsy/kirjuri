@@ -5,6 +5,19 @@
 <div class="col-sm-9 col-sm-offset-3
   col-md-10 col-md-offset-2 main">
 <h1 class="page-header">{{ lang.statistics }} {{ dateStart|date("Y") }} <a href='statistics.php?year={{ (dateStart|date("Y") - 1 ) }}'><i class="fa fa-caret-left"></i></a> <a href='statistics.php?year={{ (dateStart|date("Y") + 1 ) }}'><i class="fa fa-caret-right"></i></a> </h1>
+<script>
+  // The charts draw on a canvas, so they take the theme's colours from its CSS variables.
+  var themeStyle = getComputedStyle(document.documentElement);
+  function themeColour(name) { return themeStyle.getPropertyValue(name).trim(); }
+  Chart.defaults.global.scaleFontColor = themeColour("--k-text-muted");
+  Chart.defaults.global.scaleLineColor = themeColour("--k-border-strong");
+  Chart.defaults.Doughnut.segmentStrokeColor = themeColour("--k-surface");
+  Chart.defaults.Line.scaleGridLineColor = themeColour("--k-border");
+  Chart.defaults.Bar.scaleGridLineColor = themeColour("--k-border");
+  Chart.defaults.Radar.scaleLineColor = themeColour("--k-border");
+  Chart.defaults.Radar.angleLineColor = themeColour("--k-border");
+  Chart.defaults.Radar.pointLabelFontColor = themeColour("--k-text-muted");
+</script>
 <div class="col-md-3 col-sm-3 text-center">
   <h4>{{ lang.status_of_requests }}</h4>
   <canvas id="status_visualization" style="width:200px;height:200px;"></canvas>
@@ -13,19 +26,19 @@
     var data = [
     {
       value: {{ count_finished }},
-      color: "#22A35A",
+      color: themeColour("--k-success"),
       highlight: "#FF5A5E",
       label: "{{ lang.ready }}"
     },
     {
       value: {{ count_open }},
-      color: "#F0A626",
+      color: themeColour("--k-amber-light"),
       highlight: "#FF5A5E",
       label: "{{ lang.open }}"
     },
     {
       value: {{ count_new }},
-      color: "#DC4545",
+      color: themeColour("--k-danger"),
       highlight: "#FF5A5E",
       label: "{{ lang.new }}"
     }
@@ -47,7 +60,7 @@
     },
     {
       value: {{ (100 - (count_phones / (count_new + count_open + count_finished) * 100)|round) }},
-      color:"#F0F0F0",
+      color: themeColour("--k-neutral-soft"),
       highlight: "#FF5A5E",
       label: "{{ lang.no_mobile_examination }}"
     },
