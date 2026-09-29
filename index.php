@@ -8,7 +8,7 @@ if ($_SESSION['user']['access'] === "3") {
 
 $sort_j = isset($_GET['j']) ? $_GET['j'] : '';
 $sort_d = isset($_GET['d']) ? $_GET['d'] : '';
-$sort_s = isset($_GET['s']) ? $_GET['s'] : '';
+$sort_s = isset($_GET['s']) && is_string($_GET['s']) && isset(KIRJURI_STATUS_FILTERS[$_GET['s']]) ? $_GET['s'] : '';
 $search_term = '';
 
 if (empty($_GET['year'])) {
@@ -38,11 +38,13 @@ if (isset($_GET['search']) && (!empty($_GET['search']))) {
         header('Location: device_memo.php?uid='.$get_uid_result['id']); // Jump to device.
         die;
     }
-    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $year, $sort_j, $ascending, $sort_s);
+    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $year, $sort_j, $ascending);
 }
 else {
-    $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending, $sort_s);
+    $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending);
 }
+$stalled_before = strtotime((string) ($prefs['settings']['stalled_case'] ?? ''));
+list($row_cases, $status_counts) = kirjuri_filter_case_list($row_cases, $sort_s, $_SESSION['user']['name'] ?? '', $stalled_before === false ? null : $stalled_before);
 $case_owners = array();
 foreach ($row_cases as $key => $case) {
     // The template hides details of cases the user may not open. Search results can include
@@ -79,5 +81,6 @@ echo kirjuri_render('index.twig', array(
         'order_by' => $order_by,
         'dateStart' => $dateRange['start'],
         'row_cases' => $row_cases,
+        'status_counts' => $status_counts,
         'row_devices' => $row_devices
     ));

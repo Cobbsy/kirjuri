@@ -233,8 +233,8 @@ function kirjuri_find_uid(PDO $db, $uid) {
 
 
 /**
- * The front page sort orders by column number (the j parameter), and the status filters (s).
- * Anything else falls back to the default order and no filter.
+ * The front page sort orders by column number (the j parameter). Anything else falls back to the
+ * default order.
  */
 function kirjuri_case_list_order($sort, $ascending) {
     $columns = array('1' => 'case_id', '2' => 'case_name', '3' => 'case_file_number', '4' => 'case_crime', '5' => 'case_suspect',
@@ -243,14 +243,65 @@ function kirjuri_case_list_order($sort, $ascending) {
 }
 
 
-function kirjuri_case_status_filter($status) {
-    return in_array((string) $status, array('1', '2', '3'), true) ? ' AND case_status = "' . $status . '"' : '';
+/** The front page's status filters by the value of its s parameter. 1 to 3 are the case statuses. */
+const KIRJURI_STATUS_FILTERS = array('1' => 'new', '2' => 'open', '4' => 'mine', '5' => 'stalled', '3' => 'ready');
+
+
+/**
+ * Where a case stands on the front page for the user called $user_name: its status ('new', 'open' or
+ * 'ready', or 'mine' for an open case with the user as an examiner), and whether it is stalled: open
+ * with no update since $stalled_before, a Unix time (null when stalling is not tracked).
+ */
+function kirjuri_case_standing(array $case, $user_name, $stalled_before) {
+    $status = array('1' => 'new', '2' => 'open', '3' => 'ready')[(string) $case['case_status']] ?? '';
+    $examiners = array($case['forensic_investigator'] ?? '', $case['phone_investigator'] ?? '');
+    if ($status === 'open' && (string) $user_name !== '' && in_array((string) $user_name, $examiners, true)) {
+        $status = 'mine';
+    }
+    $updated = strtotime((string) ($case['last_updated'] ?? ''));
+    $stalled = ($status === 'open' || $status === 'mine') && $stalled_before !== null && $updated !== false && $updated < $stalled_before;
+    return array('status' => $status, 'stalled' => $stalled);
 }
 
 
-/** The cases added in $year for the front page, sorted and filtered as kirjuri_case_list_order() describes. */
-function kirjuri_list_cases(PDO $db, $year, $sort, $ascending, $status) {
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = parent_id' . kirjuri_case_status_filter($status) . ' AND is_removed = "0"
+/**
+ * Mark each front page row with where it stands (see kirjuri_case_standing()), count the cases for
+ * each status filter and keep the rows the filter $filter (a KIRJURI_STATUS_FILTERS key, anything else
+ * shows all) lets through. Search results can include devices: they share their case's status, and are
+ * filtered but not counted.
+ */
+function kirjuri_filter_case_list(array $rows, $filter, $user_name, $stalled_before) {
+    $counts = array('all' => 0, 'new' => 0, 'open' => 0, 'mine' => 0, 'stalled' => 0, 'ready' => 0);
+    $shown = KIRJURI_STATUS_FILTERS[(string) $filter] ?? 'all';
+    $kept = array();
+    foreach ($rows as $row) {
+        $standing = kirjuri_case_standing($row, $user_name, $stalled_before);
+        $row['standing'] = $standing['status'];
+        $row['stalled'] = $standing['stalled'];
+        $matches = array(
+            'all' => true,
+            'new' => $standing['status'] === 'new',
+            'open' => $standing['status'] === 'open' || $standing['status'] === 'mine',
+            'mine' => $standing['status'] === 'mine',
+            'stalled' => $standing['stalled'],
+            'ready' => $standing['status'] === 'ready',
+        );
+        if ((string) $row['id'] === (string) $row['parent_id']) {
+            foreach (array_keys(array_filter($matches)) as $name) {
+                $counts[$name]++;
+            }
+        }
+        if ($matches[$shown]) {
+            $kept[] = $row;
+        }
+    }
+    return array($kept, $counts);
+}
+
+
+/** The cases added in $year for the front page, sorted as kirjuri_case_list_order() describes. */
+function kirjuri_list_cases(PDO $db, $year, $sort, $ascending) {
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = parent_id AND is_removed = "0"
         AND case_added_date BETWEEN :start AND :stop ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
     $query->execute(kirjuri_year_range($year));
     return $query->fetchAll(PDO::FETCH_ASSOC);
@@ -317,9 +368,9 @@ function kirjuri_fulltext_query($search) {
 
 
 /** Full text search over the cases and devices added in $year. */
-function kirjuri_search_cases(PDO $db, $term, $year, $sort, $ascending, $status) {
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"' . kirjuri_case_status_filter($status)
-        . ' AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
+function kirjuri_search_cases(PDO $db, $term, $year, $sort, $ascending) {
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"
+        AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
         AND case_added_date BETWEEN :start AND :stop ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
     $term = kirjuri_fulltext_query($term);
     $query->execute(array(':cases' => $term, ':devices' => $term) + kirjuri_year_range($year));
