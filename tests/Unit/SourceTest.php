@@ -137,6 +137,16 @@ final class SourceTest extends TestCase
         $this->assertSame(array(), array_values(array_diff(array_unique($matches[1]), $defined, $builtins)));
     }
 
+    /** A label names the field it belongs to: its "for" points at an id on the same page. */
+    #[DataProvider('templates')]
+    public function testLabelsPointAtFieldsOnTheSamePage(string $template): void
+    {
+        $source = file_get_contents(KIRJURI_ROOT . '/views/' . $template);
+        preg_match_all('/\\bid="([^"{}]+)"/', $source, $ids);
+        preg_match_all('/<label[^>]*\\bfor="([^"{}]+)"/', $source, $labels);
+        $this->assertSame(array(), array_values(array_diff(array_unique($labels[1]), $ids[1])));
+    }
+
     /** CSRF and case tokens are sent in POST bodies only: URLs end up in logs, history and Referer headers. */
     #[DataProvider('templates')]
     public function testTemplateLinksCarryNoTokens(string $template): void

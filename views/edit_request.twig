@@ -791,85 +791,20 @@ $(function() {
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         <h4 class="modal-title" id="myModalLabel">{{ lang.add_media }} | {{ entry.device_type }} {{ entry.device_manuf }} {{ entry.device_model }}</h4>
       </div>
+      <form class="form" role="form" method="post" action="submit.php?type=device" data-validate novalidate>
       <div class="modal-body">
-        <form class="form" role="form" method="post" action="submit.php?type=device">
           <input type="hidden" name="token" value="{{session.user.token}}">
           <input type="hidden" name="ct" value="{{ct}}">
-          <div class="form-group">
-            <select style="text-align:left;" class="btn btn-default" name="device_type" id="device_type_2">
-              <option selected disabled>{{ lang.choose_media_type }}:</option>
-              {% for entry in media_objs %}
-              <option value="{{ entry }}">{{ entry }}</option>
-              {% endfor %}
-            </select><span style="color:red;font-size:1.2em">&nbsp;*</span>
-          </div>
-          <div class="form-group">
-            <select style="text-align:left;" class="btn btn-default" name="device_action" id="device_action">
-              <option selected disabled>{{ lang.action_status }}</option>
-              {% for entry in device_actions %}
-              {% if entry == ""%}
-              <option disabled>----</option>
-              {% else %}
-              <option value="{{ entry }}">{% set jutun_vaihe = entry|split('|') %}{{ jutun_vaihe.1 }}</option>
-              {% endif %}
-              {% endfor %}
-            </select><span style="color:red;font-size:1.2em">&nbsp;*</span>
-          </div>
-          <div class="form-group">
-            <select style="text-align:left;" class="btn btn-default" name="device_location" id="device_location">
-              <option selected disabled>{{ lang.location }}</option>
-              {% for entry in device_locations %}
-              <option value="{{ entry }}">{{ entry }}</option>
-              {% endfor %}
-            </select><span style="color:red;font-size:1.2em">&nbsp;*</span>
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_manuf">{{ lang.sort_label_brand }}</label>
-            <input type="text" class="form-control" id="device_manuf" name="device_manuf" placeholder="{{ lang.sort_label_brand }}" value="{% if session_cache %}{{ session_cache.device_manuf }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_model">{{ lang.sort_label_model }}</label>
-            <input type="text" class="form-control" id="device_model" name="device_model" placeholder="{{ lang.sort_label_model }}" value="{% if session_cache %}{{ session_cache.device_model }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_size_in_gb">{{ lang.size_in_gb_long }}</label>
-            <input type="text" class="form-control" id="device_size_in_gb" name="device_size_in_gb" placeholder="{{ lang.size_in_gb_long }}" value="{% if session_cache %}{{ session_cache.device_size_in_gb }}{% endif %}" onKeyPress="return numbersonly(this, event)">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_owner">{{ lang.sort_label_owner }}</label>
-            <input type="text" class="form-control" id="device_owner" name="device_owner" placeholder="{{ lang.sort_label_owner }}" value="{{ entry.device_owner }}" value="{% if session_cache %}{{ session_cache.device_owner }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_os" name="device_os" placeholder="{{ lang.operating_system_long }}" value="{% if session_cache %}{{ session_cache.device_os }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_time_deviation" name="device_time_deviation" placeholder="{{ lang.time_deviation }}" value="{% if session_cache %}{{ session_cache.device_time_deviation }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="case_request_description">Kuvaus</label>
-            <input type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.device_description }}" value="{% if session_cache %}{{ session_cache.case_request_description }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_identifier">{{ lang.device_identifier }}</label>
-            <input type="text" class="form-control" id="device_identifier" name="device_identifier" placeholder="{{ lang.device_identifier }}" value="{% if session_cache %}{{ session_cache.device_identifier }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_item_number" name="device_item_number" placeholder="{{ lang.device_item_number }}" value="{% if session_cache %}{{ session_cache.device_item_number }}{% endif %}" onKeyPress="return numbersonly(this, event)" value="{{ entry.device_item_number }}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_document" name="device_document" placeholder="{{ lang.device_document }}" value="{% if session_cache %}{{ session_cache.device_document }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="hidden" name="parent_id" value="{{ caserow.0.id }}">
-            <input type="hidden" name="is_removed" value="0">
-            <input type="hidden" value="{% if entry.id %}{{ entry.id }}{% else %}0{% endif %}" name="device_host_id">
-          </div>
+          {% include 'device_fields.twig' with {fid: "media_" ~ entry.id, media_only: true, owner_default: entry.device_owner, item_default: entry.device_item_number} %}
+          <input type="hidden" name="parent_id" value="{{ caserow.0.id }}">
+          <input type="hidden" name="is_removed" value="0">
+          <input type="hidden" name="device_host_id" value="{% if entry.id %}{{ entry.id }}{% else %}0{% endif %}">
       </div>
       <div class="modal-footer">
       <button type="button" class="btn btn-default" data-dismiss="modal">{{ lang.close }}</button>
-      <button id="save_button_2" type="submit" class="btn btn-success"><i class="fa fa-save"></i> {{ lang.save }}</button>
-      </form>
+      <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> {{ lang.save }}</button>
       </div>
+      </form>
     </div>
   </div>
 </div>
@@ -884,89 +819,20 @@ $(function() {
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         <h4 class="modal-title" id="myModalLabel">{{ lang.add_new_device_or_media }}</h4>
       </div>
+      <form class="form" role="form" method="post" action="submit.php?type=device" data-validate novalidate>
       <div class="modal-body">
-        <form class="form" role="form" method="post" action="submit.php?type=device">
           <input type="hidden" name="token" value="{{session.user.token}}">
           <input type="hidden" name="ct" value="{{ct}}">
-          <div class="form-group">
-            <select style="text-align:left;" class="btn btn-default" name="device_type" id="device_type_1">
-              <option selected disabled>{{ lang.device_type }}</option>
-              {% for entry in devices %}
-              <option value="{{ entry }}">{{ entry }}</option>
-              {% endfor %}
-              <option disabled value="">&nbsp;&nbsp;{{ lang.medias }}:</option>
-              {% for entry in media_objs %}
-              <option value="{{ entry }}">{{ entry }}</option>
-              {% endfor %}
-            </select><span style="color:red;font-size:1.2em">&nbsp;*</span>
-          </div>
-          <div class="form-group">
-            <select style="text-align:left;" class="btn btn-default" name="device_action" id="device_action">
-              <option selected disabled>{{ lang.action_status }}</option>
-              {% for entry in device_actions %}
-              {% if entry == ""%}
-              <option disabled>----</option>
-              {% else %}
-              <option value="{{ entry }}">{% set jutun_vaihe = entry|split('|') %}{{ jutun_vaihe.1 }}</option>
-              {% endif %}
-              {% endfor %}
-            </select><span style="color:red;font-size:1.2em">&nbsp;*</span>
-          </div>
-          <div class="form-group">
-            <select style="text-align:left;" class="btn btn-default" name="device_location" id="device_location">
-              <option selected disabled>{{ lang.device_location }}</option>
-              {% for entry in device_locations %}
-              <option value="{{ entry }}">{{ entry }}</option>
-              {% endfor %}
-            </select><span style="color:red;font-size:1.2em">&nbsp;*</span>
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_manuf">{{ lang.sort_label_brand }}</label>
-            <input type="text" class="form-control" id="device_manuf" name="device_manuf" placeholder="{{ lang.sort_label_brand }}" value="{% if session_cache %}{{ session_cache.device_manuf }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_model">{{ lang.sort_label_model }}</label>
-            <input type="text" class="form-control" id="device_model" name="device_model" placeholder="{{ lang.sort_label_model }}" value="{% if session_cache %}{{ session_cache.device_model }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_size_in_gb">{{ lang.size_in_gb_long }}</label>
-            <input type="text" class="form-control" id="device_size_in_gb" name="device_size_in_gb" placeholder="{{ lang.size_in_gb_long }}" value="{% if session_cache %}{{ session_cache.device_size_in_gb }}{% endif %}" onKeyPress="return numbersonly(this, event)">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_identifier">{{ lang.sort_label_owner }}</label>
-            <input type="text" class="form-control" id="device_owner" name="device_owner" placeholder="{{ lang.sort_label_owner }}" value="{{ caserow.0.case_suspect }}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_os" name="device_os" placeholder="{{ lang.operating_system_long }}" value="{% if session_cache %}{{ session_cache.device_os }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_time_deviation" name="device_time_deviation" placeholder="{{ lang.time_deviation }}" value="{% if session_cache %}{{ session_cache.device_time_deviation }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="case_request_description">{{ lang.description }}</label>
-            <input type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.device_description }}" value="{% if session_cache %}{{ session_cache.case_request_description }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <label class="sr-only" for="device_identifier">{{ lang.device_identifier }}</label>
-            <input type="text" class="form-control" id="device_identifier" name="device_identifier" placeholder="{{ lang.device_identifier_serial }}" value="{% if session_cache %}{{ session_cache.device_identifier }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_item_number" name="device_item_number" placeholder="{{ lang.device_item_number }}" onKeyPress="return numbersonly(this, event)" value="{% if session_cache %}{{ session_cache.device_item_number }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="text" class="form-control" id="device_document" name="device_document" placeholder="{{ lang.device_document }}" value="{% if session_cache %}{{ session_cache.device_document }}{% endif %}">
-          </div>
-          <div class="form-group">
-            <input type="hidden" name="parent_id" value="{{ caserow.0.id }}">
-            <input type="hidden" name="is_removed" value="0">
-            <input type="hidden" name="device_host_id" value="0">
-          </div>
+          {% include 'device_fields.twig' with {fid: "device", media_only: false, owner_default: caserow.0.case_suspect, item_default: ""} %}
+          <input type="hidden" name="parent_id" value="{{ caserow.0.id }}">
+          <input type="hidden" name="is_removed" value="0">
+          <input type="hidden" name="device_host_id" value="0">
       </div>
       <div class="modal-footer">
       <button type="button" class="btn btn-default" data-dismiss="modal">{{ lang.close }}</button>
-      <button id="save_button_1" type="submit" class="btn btn-success"><i class="fa fa-save"></i> {{ lang.save }}</button>
-      </form>
+      <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> {{ lang.save }}</button>
       </div>
+      </form>
     </div>
   </div>
 </div>

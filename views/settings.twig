@@ -26,7 +26,7 @@
       </div>
 {% if "A" in session.user.flags %}
       <div class="form-group">
-        <label for="password" class="col-md-2 control-label">API <i class="fa fa-key"></i></label>
+        <label class="col-md-2 control-label">API <i class="fa fa-key"></i></label>
         <div class="col-md-10">
           <input type="text" class="form-control" id="apikey" value="{{ apikey }}" readonly>
         </div>
@@ -34,13 +34,13 @@
 {% endif %}
 {% if session.user.attr_3 != "LDAP_AUTH_ONLY" %}
       <div class="form-group">
-        <label for="password" class="col-md-2 control-label">{{ lang.current_password }}</label>
+        <label class="col-md-2 control-label">{{ lang.current_password }}</label>
         <div class="col-md-10">
           <input type="password" class="form-control" id="current_password" name="current_password" placeholder="{{ lang.password }}">
         </div>
       </div>
       <div class="form-group">
-        <label for="password" class="col-md-2 control-label">{{ lang.new_password }}</label>
+        <label class="col-md-2 control-label">{{ lang.new_password }}</label>
         <div class="col-md-10">
           <input type="password" class="form-control" id="new_password" name="new_password" placeholder="{{ lang.password }}">
         </div>
@@ -74,7 +74,7 @@
       {% for key, value in settings_contents.settings %}
       {% if (key != "self") and (key != "release") and (key != "report_notes_footer") %}
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label">{% if key == "lang" %}<a href="lang_editor.php"><i class="fa fa-edit"></i> {% endif %}{{ key|replace({"_": " "})|capitalize }}{% if key == "lang" %}</a>{% endif %}</label>
+        <label class="col-md-2 control-label">{% if key == "lang" %}<a href="lang_editor.php"><i class="fa fa-edit"></i> {% endif %}{{ key|replace({"_": " "})|capitalize }}{% if key == "lang" %}</a>{% endif %}</label>
         <div class="col-md-10">
           {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. #}
           <input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> Yes &nbsp;&nbsp;<input type="radio" name="settings[{{key}}]" value="0" {% if value == "0" %}checked{% endif %}> No
@@ -97,7 +97,7 @@
       {% for key, value in diff %}
       {% if (key != "self") and (key != "release") and (key != "report_notes_footer") %}
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label" style="color:red;">{{ key|replace({"_": " "})|capitalize }}</label>
+        <label class="col-md-2 control-label" style="color:red;">{{ key|replace({"_": " "})|capitalize }}</label>
         <div class="col-md-10">
           {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. #}
           <input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> Yes &nbsp;&nbsp;<input type="radio" name="settings[{{key}}]" value="0" {% if value == "0" %}checked{% endif %}> No
@@ -113,7 +113,7 @@
       <h4>{{ lang.investigation_units }}</h4>
       </div>
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label">{{ lang.list_units }}</label>
+        <label class="col-md-2 control-label">{{ lang.list_units }}</label>
         <div class="col-md-10">
           <input type="text" class="form-control" name="inv_units" value="{% for value in settings_contents.inv_units %}{{ value }}{% if not loop.last %}, {% endif %}{% endfor %}" placeholder="{% for value in settings_contents.inv_units %}{{ value }}, {% endfor %}">
         </div>
@@ -124,7 +124,7 @@
       </div>
       {% for key, value in settings_contents.statistics_chart_colors %}
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label">{{ lang.chart_color }} {{ key }} <i style="color:{{value}};" class="fa fa-square"></i></label>
+        <label class="col-md-2 control-label">{{ lang.chart_color }} {{ key }} <i style="color:{{value}};" class="fa fa-square"></i></label>
         <div class="col-md-10">
           <input type="text" class="form-control" name="chart[{{ key }}]" value="{{ value }}" placeholder="{{ value }}">
         </div>

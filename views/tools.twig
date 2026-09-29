@@ -361,7 +361,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="name" class="col-md-2 control-label">{{ lang.hardware_version|capitalize }}</label>
+                                <label class="col-md-2 control-label">{{ lang.hardware_version|capitalize }}</label>
                                 <div class="col-md-10">
                                     <input type="hidden" name="hw_version_old" value="{{ fields.hw_version }}">
                                     <input type="text" class="form-control" id="hw_version" name="hw_version" value="{% if fields is not empty %}{{ fields.hw_version }}{% endif %}">
@@ -369,7 +369,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="name" class="col-md-2 control-label">{{ lang.software_version|capitalize }}</label>
+                                <label class="col-md-2 control-label">{{ lang.software_version|capitalize }}</label>
                                 <div class="col-md-10">
                                   <input type="hidden" name="sw_version_old" value="{{ fields.sw_version }}">
                                   <input type="text" class="form-control" id="sw_version" name="sw_version" value="{% if fields is not empty %}{{ fields.sw_version }}{% endif %}">
@@ -377,7 +377,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="name" class="col-md-2 control-label">{{ lang.serial_no|capitalize }}</label>
+                                <label class="col-md-2 control-label">{{ lang.serial_no|capitalize }}</label>
                                 <div class="col-md-10">
                                     <input type="hidden" name="serialno" value="{{ fields.serialno }}">
                                     <input type="text" {% if fields is not empty %}disabled {% endif %}class="form-control" id="serialno" name="serialno" value="{% if fields is not empty %}{{ fields.serialno }}{% endif %}">
@@ -385,7 +385,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="name" class="col-md-2 control-label">{{ lang.comment|capitalize }}</label>
+                                <label class="col-md-2 control-label">{{ lang.comment|capitalize }}</label>
                                 <div class="col-md-10">
                                   <input type="hidden" name="comment_old" value="{{ fields.attr_3 }}">
                                     <input type="text" class="form-control" id="comment" name="comment" value="{% if fields is not empty %}{{ fields.attr_3 }}{% endif %}">
@@ -393,7 +393,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="flags" class="col-md-2 control-label">&nbsp;</label>
+                                <label class="col-md-2 control-label">&nbsp;</label>
                                 <div class="col-md-10">
                                     <div class="checkbox">
                                         <label class="col-md-12">
@@ -406,7 +406,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="flags" class="col-md-2 control-label">&nbsp;</label>
+                                <label class="col-md-2 control-label">&nbsp;</label>
                                 <div class="col-md-10">
                                     <div class="checkbox">
                                         <label class="col-md-12">

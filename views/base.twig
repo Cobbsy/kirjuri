@@ -49,6 +49,30 @@
           var sidebar = $(this).closest(".sidebar").toggleClass("nav-open");
           $(this).attr("aria-expanded", sidebar.hasClass("nav-open") ? "true" : "false");
         });
+        // Forms marked data-validate show which required fields are missing instead of submitting.
+        var requiredText = "{{ lang.field_required|e('js') }}";
+        function checkField(field) {
+          var value = $.trim(field.val() || ""), min = parseInt(field.attr("data-min-length"), 10) || 1;
+          var missing = value.length < min, box = field.closest(".field");
+          box.toggleClass("has-error", missing);
+          field.attr("aria-invalid", missing ? "true" : "false");
+          if (missing && !box.find(".field-error").length) {
+            box.append($("<span class='field-error'></span>").text(requiredText));
+          }
+          return !missing;
+        }
+        $(document).on("submit", "form[data-validate]", function(event) {
+          var first = null;
+          $(this).find("[required]").each(function() {
+            if (!checkField($(this)) && !first) { first = $(this); }
+          });
+          if (first) { event.preventDefault(); first.trigger("focus"); }
+        });
+        $(document).on("input change", "form[data-validate] .has-error [required]", function() { checkField($(this)); });
+        $(document).on("reset", "form[data-validate]", function() {
+          $(this).find(".has-error").removeClass("has-error");
+          $(this).find("[aria-invalid]").attr("aria-invalid", "false");
+        });
         $(".sidebar-nav a[data-toggle='tab']").on("click", function() {
           $(".sidebar").removeClass("nav-open");
           $(".sidebar-toggle").attr("aria-expanded", "false");

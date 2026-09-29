@@ -1,0 +1,87 @@
+{# Fields of the add device and add media dialogs. fid keeps ids unique when several dialogs are on the page. #}
+<div class="field-grid field-grid-3">
+  <div class="field">
+    <label for="{{ fid }}_type">{{ lang.device_type }} <span class="req" aria-hidden="true">*</span></label>
+    <select class="form-control" name="device_type" id="{{ fid }}_type" required>
+      <option value="" selected disabled>{{ media_only ? lang.choose_media_type : lang.device_type }}</option>
+      {% if not media_only %}
+      <optgroup label="{{ lang.device|capitalize }}">
+      {% for option in devices %}
+      <option value="{{ option }}">{{ option }}</option>
+      {% endfor %}
+      </optgroup>
+      <optgroup label="{{ lang.medias }}">
+      {% endif %}
+      {% for option in media_objs %}
+      <option value="{{ option }}">{{ option }}</option>
+      {% endfor %}
+      {% if not media_only %}
+      </optgroup>
+      {% endif %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_action">{{ lang.action_status }} <span class="req" aria-hidden="true">*</span></label>
+    <select class="form-control" name="device_action" id="{{ fid }}_action" required>
+      <option value="" selected disabled>{{ lang.action_status }}</option>
+      {% for option in device_actions %}
+      {% if option == "" %}
+      <option disabled>----</option>
+      {% else %}
+      <option value="{{ option }}">{% set step = option|split('|') %}{{ step.1 }}</option>
+      {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_location">{{ lang.device_location }} <span class="req" aria-hidden="true">*</span></label>
+    <select class="form-control" name="device_location" id="{{ fid }}_location" required>
+      <option value="" selected disabled>{{ lang.device_location }}</option>
+      {% for option in device_locations %}
+      <option value="{{ option }}">{{ option }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+<div class="field-grid field-grid-2">
+  <div class="field">
+    <label for="{{ fid }}_manuf">{{ lang.sort_label_brand }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_manuf" name="device_manuf" value="{% if session_cache %}{{ session_cache.device_manuf }}{% endif %}">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_model">{{ lang.sort_label_model }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_model" name="device_model" value="{% if session_cache %}{{ session_cache.device_model }}{% endif %}">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_size">{{ lang.size_in_gb_long }}</label>
+    <input type="text" inputmode="decimal" class="form-control" id="{{ fid }}_size" name="device_size_in_gb" value="{% if session_cache %}{{ session_cache.device_size_in_gb }}{% endif %}" onKeyPress="return numbersonly(this, event)">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_os">{{ lang.operating_system_long }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_os" name="device_os" value="{% if session_cache %}{{ session_cache.device_os }}{% endif %}">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_owner">{{ lang.sort_label_owner }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_owner" name="device_owner" value="{% if session_cache and session_cache.device_owner %}{{ session_cache.device_owner }}{% else %}{{ owner_default }}{% endif %}">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_identifier">{{ lang.device_identifier }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_identifier" name="device_identifier" placeholder="{{ lang.device_identifier_serial }}" value="{% if session_cache %}{{ session_cache.device_identifier }}{% endif %}">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_document">{{ lang.device_document }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_document" name="device_document" value="{% if session_cache %}{{ session_cache.device_document }}{% endif %}">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_item">{{ lang.device_item_number }}</label>
+    <input type="text" inputmode="numeric" class="form-control" id="{{ fid }}_item" name="device_item_number" onKeyPress="return numbersonly(this, event)" value="{% if session_cache and session_cache.device_item_number %}{{ session_cache.device_item_number }}{% else %}{{ item_default }}{% endif %}">
+  </div>
+  <div class="field">
+    <label for="{{ fid }}_deviation">{{ lang.time_deviation }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_deviation" name="device_time_deviation" value="{% if session_cache %}{{ session_cache.device_time_deviation }}{% endif %}">
+  </div>
+  <div class="field field-wide">
+    <label for="{{ fid }}_description">{{ lang.device_description }}</label>
+    <input type="text" class="form-control" id="{{ fid }}_description" name="case_request_description" value="{% if session_cache %}{{ session_cache.case_request_description }}{% endif %}">
+  </div>
+</div>
