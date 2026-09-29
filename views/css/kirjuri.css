@@ -93,6 +93,9 @@
   --k-btn-active: #e6ebf1;
   --k-save-bar: rgba(255, 255, 255, 0.96);
 
+  /* Text on the pale colours the tools calendar picks for each tool, in both modes. */
+  --k-event-text: #1e293b;
+
   /* Device icons are black drawings; dark mode turns them light. */
   --k-icon-filter: none;
 
@@ -1621,6 +1624,45 @@ body.login-page {
   margin-bottom: 0;
 }
 
+.card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--k-border);
+  background: var(--k-surface-muted);
+}
+
+.card-footer-end {
+  margin-left: auto;
+}
+
+.card-header-split {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.card-header-aside {
+  font-family: var(--k-mono);
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* A table as the body of a card scrolls sideways inside it on narrow screens. */
+.card > .table-responsive {
+  margin: 0;
+  border: 0;
+}
+
+.card > .table-responsive > .table {
+  margin-bottom: 0;
+}
+
 .rich-text > :last-child {
   margin-bottom: 0;
 }
@@ -1671,10 +1713,31 @@ img[src^="views/img/svg/"] {
   background: linear-gradient(to right, var(--k-success-soft), var(--k-surface-muted));
 }
 
-/* Messages: the opened message under its row. */
+/* Messages: the opened message under its row, with its reply form or actions. */
 .message-body {
   border: 1px solid var(--k-border);
   background: var(--k-surface-muted);
+  padding: 16px !important;
+}
+
+.message-reply {
+  margin-top: 16px;
+}
+
+.message-reply > .field {
+  margin-bottom: 12px;
+}
+
+.message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.card-header a:not([class]) {
+  color: inherit;
 }
 
 /* Tools: the reservation calendar. */
@@ -1753,6 +1816,11 @@ img[src^="views/img/svg/"] {
 
 .fc.fc-unthemed td.fc-today {
   background: var(--k-warning-soft);
+}
+
+.fc .fc-event,
+.fc .fc-event:hover {
+  color: var(--k-event-text);
 }
 
 .fc .fc-nonbusiness {
@@ -2458,6 +2526,31 @@ body.progress-frame .progress {
   margin: 0;
 }
 
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* A date and a time side by side under one label. */
+.field-pair {
+  display: flex;
+  gap: 8px;
+}
+
+.field-pair > .form-control[type="time"] {
+  flex: 0 0 auto;
+  width: 140px;
+}
+
+.reserve-form {
+  border-bottom: 1px solid var(--k-border);
+}
+
+.reserve-actions {
+  margin-top: 14px;
+}
+
 .krf-import {
   display: flex;
   flex-wrap: wrap;
@@ -2524,6 +2617,63 @@ body.progress-frame .progress {
   font-size: 13.5px;
   font-weight: 600;
   color: var(--k-text);
+}
+
+/* A fieldset in a field grid: its legend looks like the other fields' labels. */
+fieldset.field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+fieldset.field > legend {
+  margin-bottom: 6px;
+  padding: 0;
+  border: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--k-text);
+}
+
+.field-link {
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+/* Radio buttons or checkboxes side by side, each with its own label. */
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  min-height: 38px;
+  align-items: center;
+}
+
+.choice-group > label,
+.check-list > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.server-clock {
+  margin: 0 0 16px;
 }
 
 .field .req {

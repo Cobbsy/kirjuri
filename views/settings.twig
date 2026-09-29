@@ -3,158 +3,148 @@
 {% endblock title %}
 {% block content %}
 <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-<h1>{{ lang.settings }}</h1>
+<div class="page-title-row">
+  <h1 class="h3">{{ lang.settings }}</h1>
+</div>
 
-<form class="form-horizontal" role="form" method="post" action="submit.php?type=update_password">
+<div class="form-sections">
+<form class="card form-section" role="form" method="post" action="submit.php?type=update_password">
   <input type="hidden" name="token" value="{{session.user.token}}">
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <h3 class="panel-title">{{ lang.user_settings }}</h3>
-    </div>
-    <div class="panel-body">
-      <div class="form-group">
-        <label for="username" class="col-md-2 control-label">{{ lang.username }}</label>
-        <div class="col-md-10">
-          <input type="text" class="form-control" id="username" value="{{session.user.username}}" readonly>
-        </div>
+  <div class="card-header"><i class="fa fa-user" aria-hidden="true"></i> {{ lang.user_settings }}</div>
+  <div class="card-body">
+    <div class="field-grid">
+      <div class="field">
+        <label for="username">{{ lang.username }}</label>
+        <input type="text" class="form-control" id="username" value="{{session.user.username}}" readonly>
       </div>
-      <div class="form-group">
-        <label for="name" class="col-md-2 control-label">{{ lang.name }}</label>
-        <div class="col-md-10">
-          <input type="text" class="form-control" id="name" value="{{session.user.name}}" readonly>
-        </div>
+      <div class="field">
+        <label for="name">{{ lang.name }}</label>
+        <input type="text" class="form-control" id="name" value="{{session.user.name}}" readonly>
       </div>
 {% if "A" in session.user.flags %}
-      <div class="form-group">
-        <label class="col-md-2 control-label">API <i class="fa fa-key"></i></label>
-        <div class="col-md-10">
-          <input type="text" class="form-control" id="apikey" value="{{ apikey }}" readonly>
-        </div>
+      <div class="field field-wide">
+        <label for="apikey"><i class="fa fa-key" aria-hidden="true"></i> {{ lang.api_key }}</label>
+        <input type="text" class="form-control" id="apikey" value="{{ apikey }}" readonly>
       </div>
 {% endif %}
 {% if session.user.attr_3 != "LDAP_AUTH_ONLY" %}
-      <div class="form-group">
-        <label class="col-md-2 control-label">{{ lang.current_password }}</label>
-        <div class="col-md-10">
-          <input type="password" class="form-control" id="current_password" name="current_password" placeholder="{{ lang.password }}">
-        </div>
+      <div class="field">
+        <label for="current_password">{{ lang.current_password }}</label>
+        <input type="password" class="form-control" id="current_password" name="current_password" autocomplete="current-password">
       </div>
-      <div class="form-group">
-        <label class="col-md-2 control-label">{{ lang.new_password }}</label>
-        <div class="col-md-10">
-          <input type="password" class="form-control" id="new_password" name="new_password" placeholder="{{ lang.password }}">
-        </div>
+      <div class="field">
+        <label for="new_password">{{ lang.new_password }}</label>
+        <input type="password" class="form-control" id="new_password" name="new_password" autocomplete="new-password">
       </div>
 {% endif %}
-
-        <div class="col-md-2"></div>
-        <div class="col-md-10">{% if "F" in session.user.flags %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-times text-danger"></i>{% endif %} {{ lang.forensic_examiner_long }}&nbsp;&nbsp;&nbsp;{% if "M" in session.user.flags %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-times text-danger"></i>{% endif %} {{ lang.mobile_examiner_long }}</div>
-      </div>
-
-    <div class="panel-footer">
-      <button id="user_save_button" type="submit" class="btn btn-success">{{ lang.change_password }}</button> <a class="btn btn-danger" href="submit.php?type=force_logout&user={{session.user.username|url_encode}}" data-post>{{ lang.log_out_all_sessions }}</a>
-      {% if session.user.access == "0" %}<a class="btn btn-default" href="backup.php" target="_BLANK"><i class="fa fa-download"></i> Back up database...</a>{% endif %}
     </div>
+    <div class="role-chips">
+      <span class="chip{% if "F" in session.user.flags %} chip-ready{% endif %}"><i class="fa {% if "F" in session.user.flags %}fa-check{% else %}fa-times{% endif %}" aria-hidden="true"></i> {{ lang.forensic_examiner_long }}</span>
+      <span class="chip{% if "M" in session.user.flags %} chip-ready{% endif %}"><i class="fa {% if "M" in session.user.flags %}fa-check{% else %}fa-times{% endif %}" aria-hidden="true"></i> {{ lang.mobile_examiner_long }}</span>
+    </div>
+  </div>
+  <div class="card-footer">
+    {% if session.user.attr_3 != "LDAP_AUTH_ONLY" %}<button id="user_save_button" type="submit" class="btn btn-primary">{{ lang.change_password }}</button>{% endif %}
+    <a class="btn btn-default" href="submit.php?type=force_logout&user={{session.user.username|url_encode}}" data-post><i class="fa fa-sign-out" aria-hidden="true"></i> {{ lang.log_out_all_sessions }}</a>
+    {% if session.user.access == "0" %}<a class="btn btn-default card-footer-end" href="backup.php" target="_BLANK"><i class="fa fa-download" aria-hidden="true"></i> {{ lang.back_up_database }}</a>{% endif %}
   </div>
 </form>
 
 {% if session.user.access == "0" %}
-<form class="form-horizontal" role="form" method="post" action="submit.php?type=save_settings">
+
+{% import _self as fields %}
+<form role="form" method="post" action="submit.php?type=save_settings">
   <input type="hidden" name="token" value="{{session.user.token}}">
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <h3 class="panel-title">{{ lang.global_settings }}<span class="pull-right"><i class="fa fa-file"></i> {{ settings_file }}</span></h3>
-    </div>
-    <div class="panel-body">
-      <div class="form-group">
-
-      <div class="col-md-10 col-md-offset-2">{{ lang.server_time_is }} <code>{{ php_servertime|date('Y-m-d H:i') }}</code> PHP {{ lang.timezone }}: <code>{{ php_timezone }}</code> MySQL {{ lang.timezone }}: <code>{{ mysql_timezone }}</code></div>
-
-</div>
+  <section class="card form-section">
+    <div class="card-header card-header-split"><span><i class="fa fa-cogs" aria-hidden="true"></i> {{ lang.global_settings }}</span> <span class="card-header-aside"><i class="fa fa-file-o" aria-hidden="true"></i> {{ settings_file }}</span></div>
+    <div class="card-body">
+      <p class="field-hint server-clock">{{ lang.server_time_is }} <code>{{ php_servertime|date('Y-m-d H:i') }}</code> &middot; PHP {{ lang.timezone }} <code>{{ php_timezone }}</code> &middot; MySQL {{ lang.timezone }} <code>{{ mysql_timezone }}</code></p>
+      <div class="field-grid">
       {% for key, value in settings_contents.settings %}
       {% if (key != "self") and (key != "release") and (key != "report_notes_footer") %}
-      <div class="form-group">
-        <label class="col-md-2 control-label">{% if key == "lang" %}<a href="lang_editor.php"><i class="fa fa-edit"></i> {% endif %}{{ key|replace({"_": " "})|capitalize }}{% if key == "lang" %}</a>{% endif %}</label>
-        <div class="col-md-10">
-          {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. #}
-          <input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> Yes &nbsp;&nbsp;<input type="radio" name="settings[{{key}}]" value="0" {% if value == "0" %}checked{% endif %}> No
-
-          {% elseif key == "lang" %}
-          <select name="settings[lang]">
-            {% for ccode in langfiles %}
-            <option value="lang_{{ ccode }}" {% if ccode in settings_contents.settings.lang %}selected{% endif %}>{{ ccode }}</option>
-            {% endfor %}
-          </select>
-
-
-          {% else %}
-          <input type="text" class="form-control" name="settings[{{ key }}]" value="{{ value }}" placeholder="{{ value }}">
-          {% endif %}
-        </div>
+      {% if key == "lang" %}
+      <div class="field">
+        <label for="setting_lang">{{ key|capitalize }} <a href="lang_editor.php" class="field-link"><i class="fa fa-edit" aria-hidden="true"></i> {{ lang.edit_language_file }}</a></label>
+        <select class="form-control" id="setting_lang" name="settings[lang]">
+          {% for ccode in langfiles %}
+          <option value="lang_{{ ccode }}" {% if ccode in settings_contents.settings.lang %}selected{% endif %}>{{ ccode }}</option>
+          {% endfor %}
+        </select>
       </div>
+      {% else %}
+      {{ fields.setting_field(key, value, default_settings, false, lang) }}
+      {% endif %}
       {% endif %}
       {% endfor %}
       {% for key, value in diff %}
       {% if (key != "self") and (key != "release") and (key != "report_notes_footer") %}
-      <div class="form-group">
-        <label class="col-md-2 control-label text-danger">{{ key|replace({"_": " "})|capitalize }}</label>
-        <div class="col-md-10">
-          {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. #}
-          <input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> Yes &nbsp;&nbsp;<input type="radio" name="settings[{{key}}]" value="0" {% if value == "0" %}checked{% endif %}> No
-          {% else %}
-          <input type="text" class="form-control" name="settings[{{ key }}]" value="{{ value }}" placeholder="{{ value }}">
-          {% endif %}
-        </div>
-      </div>
+      {{ fields.setting_field(key, value, default_settings, true, lang) }}
       {% endif %}
       {% endfor %}
-      <hr>
-      <div class="col-md-offset-2 col-md-10">
-      <h4>{{ lang.investigation_units }}</h4>
       </div>
-      <div class="form-group">
-        <label class="col-md-2 control-label">{{ lang.list_units }}</label>
-        <div class="col-md-10">
-          <input type="text" class="form-control" name="inv_units" value="{% for value in settings_contents.inv_units %}{{ value }}{% if not loop.last %}, {% endif %}{% endfor %}" placeholder="{% for value in settings_contents.inv_units %}{{ value }}, {% endfor %}">
-        </div>
+    </div>
+  </section>
+
+  <section class="card form-section">
+    <div class="card-header"><i class="fa fa-building-o" aria-hidden="true"></i> {{ lang.investigation_units }}</div>
+    <div class="card-body field-grid">
+      <div class="field field-wide">
+        <label for="inv_units">{{ lang.list_units }}</label>
+        <input type="text" class="form-control" id="inv_units" name="inv_units" value="{% for value in settings_contents.inv_units %}{{ value }}{% if not loop.last %}, {% endif %}{% endfor %}">
       </div>
-      <hr>
-      <div class="col-md-offset-2 col-md-10">
-      <h4>{{ lang.statistics_chart_colors }}</h4>
-      </div>
+    </div>
+  </section>
+
+  <section class="card form-section">
+    <div class="card-header"><i class="fa fa-pie-chart" aria-hidden="true"></i> {{ lang.statistics_chart_colors }}</div>
+    <div class="card-body field-grid">
       {% for key, value in settings_contents.statistics_chart_colors %}
-      <div class="form-group">
-        <label class="col-md-2 control-label">{{ lang.chart_color }} {{ key }} <i style="color:{{value}};" class="fa fa-square"></i></label>
-        <div class="col-md-10">
-          <input type="text" class="form-control" name="chart[{{ key }}]" value="{{ value }}" placeholder="{{ value }}">
-        </div>
+      <div class="field">
+        <label for="chart_{{ key }}">{{ lang.chart_color }} {{ key }} <i style="color:{{value}};" class="fa fa-square" aria-hidden="true"></i></label>
+        <input type="text" class="form-control" id="chart_{{ key }}" name="chart[{{ key }}]" value="{{ value }}">
       </div>
       {% endfor %}
     </div>
-    <div class="panel-footer">
-      <button id="user_save_button" type="submit" class="btn btn-success">{{ lang.save }}</button> <a class="btn btn-warning" href="submit.php?type=reset_default_settings" data-post>{{ lang.reset_default_settings }}</a>
-    </div>
+  </section>
+
+  <div class="form-actions">
+    <a class="btn btn-default" href="submit.php?type=reset_default_settings" data-post>{{ lang.reset_default_settings }}</a>
+    <button type="submit" class="btn btn-primary"><i class="fa fa-save" aria-hidden="true"></i> {{ lang.save }}</button>
   </div>
 </form>
 
-<form class="form-horizontal" role="form" method="post" action="submit.php?type=save_template&template=report_notes">
+<form class="card form-section" role="form" method="post" action="submit.php?type=save_template&template=report_notes">
   <input type="hidden" name="token" value="{{session.user.token}}">
-  <div class="panel panel-default">
-  <div class="panel-heading">
-    <h3 class="panel-title">{{ lang.edit_template }}</h3>
+  <div class="card-header"><i class="fa fa-file-text-o" aria-hidden="true"></i> {{ lang.edit_template }}</div>
+  <div class="card-body">
+    <textarea id="richeditor" class="textarea form-control" rows="25" name="templatefile" aria-label="{{ lang.report_notes_template }}">{{ template_report_notes }}</textarea>
   </div>
-  <div class="panel-body">
-<input type="hidden" name="token" value="{{session.user.token}}">
-<textarea id="richeditor" class="textarea form-control" rows="25" style="height:500px;" name="templatefile">{{ template_report_notes }}</textarea>
-</div>
-<div class="panel-footer">
-  <button type="submit" class="btn btn-success">{{ lang.save }} {{ lang.report_notes_template }}</button>
-</div>
-</div>
+  <div class="card-footer">
+    <button type="submit" class="btn btn-primary">{{ lang.save }} {{ lang.report_notes_template }}</button>
+  </div>
 </form>
 {% endif %}
+</div>
 
 </div>
-</div>
-</div>
 {% endblock %}
+
+{# One global setting: Yes/No buttons, or a text field. Unknown settings (not in the shipped defaults) are marked. #}
+{% macro setting_field(key, value, default_settings, unknown, lang) %}
+  {% set id = 'setting_' ~ key %}
+  {% set label = key|replace({"_": " "})|capitalize %}
+  {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. #}
+  <fieldset class="field">
+    <legend{% if unknown %} class="text-danger"{% endif %}>{{ label }}</legend>
+    <div class="choice-group">
+      <label><input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> {{ lang.yes }}</label>
+      <label><input type="radio" name="settings[{{key}}]" value="0" {% if value == "0" %}checked{% endif %}> {{ lang.no }}</label>
+    </div>
+  </fieldset>
+  {% else %}
+  <div class="field">
+    <label for="{{ id }}"{% if unknown %} class="text-danger"{% endif %}>{{ label }}</label>
+    <input type="text" class="form-control" name="settings[{{ key }}]" value="{{ value }}" id="{{ id }}">
+  </div>
+  {% endif %}
+{% endmacro %}

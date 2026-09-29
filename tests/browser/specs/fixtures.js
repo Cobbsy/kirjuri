@@ -94,7 +94,8 @@ async function findReadabilityProblems(page, minContrast = 3) {
       if (dark) {
         const c = parse(getComputedStyle(el).backgroundColor);
         const rect = el.getBoundingClientRect();
-        if (c && c.a > 0.5 && luminance(c) > 0.4 && rect.width * rect.height > 400) problems.push(`${describe(el)}: light background ${getComputedStyle(el).backgroundColor}`);
+        // An inline background is data, such as a tool's colour on the calendar; its text is still checked above.
+        if (c && c.a > 0.5 && luminance(c) > 0.4 && rect.width * rect.height > 400 && !el.style.backgroundColor) problems.push(`${describe(el)}: light background ${getComputedStyle(el).backgroundColor}`);
       }
     }
     return [...new Set(problems)];

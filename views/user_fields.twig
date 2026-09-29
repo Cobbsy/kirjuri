@@ -1,0 +1,70 @@
+{#
+  The fields of the add user dialog and the edit user form on users.php. Both can be on the page at
+  once, so every id starts with prefix. user is the user being edited, or empty for a new one.
+#}
+{% set editing = user is not empty %}
+<div class="field-grid">
+  <div class="field">
+    <label for="{{ prefix }}username">{{ lang.username }}</label>
+    {% if editing %}
+    <input type="text" class="form-control" id="{{ prefix }}username" name="username" value="{{ user.username }}" readonly>
+    {% else %}
+    <input type="text" class="form-control" id="{{ prefix }}username" name="username" placeholder="{{ lang.username_hint }}" autocomplete="off">
+    {% endif %}
+  </div>
+  <div class="field">
+    <label for="{{ prefix }}name">{{ lang.real_name }}</label>
+    <input type="text" class="form-control" id="{{ prefix }}name" name="name" value="{{ user.name }}" placeholder="{{ lang.name }}">
+  </div>
+  {% if not editing or user.attr_3 != "LDAP_AUTH_ONLY" %}
+  <div class="field">
+    <label for="{{ prefix }}password">{{ lang.password }}</label>
+    <input type="password" class="form-control" id="{{ prefix }}password" name="password" placeholder="{% if editing %}{{ lang.enter_new_to_change }}{% else %}{{ lang.new_user_password }}{% endif %}" autocomplete="new-password">
+  </div>
+  {% endif %}
+  {% if not editing or user.id != 2 %}
+  <div class="field">
+    <label for="{{ prefix }}access">{{ lang.access_level }}</label>
+    <select class="form-control" name="access" id="{{ prefix }}access">
+      <option value="A" {% if user.access == "0" %}selected{% endif %}>{{ lang.level_admin }} [0]</option>
+      <option value="1" {% if user.access == "1" or not editing %}selected{% endif %}>{{ lang.level_user }} [1]</option>
+      <option value="2" {% if user.access == "2" %}selected{% endif %}>{{ lang.level_viewonly }} [2]</option>
+      <option value="3" {% if user.access == "3" %}selected{% endif %}>{{ lang.level_addonly }} [3]</option>
+    </select>
+  </div>
+  {% else %}
+  <input type="hidden" value="A" name="access">
+  {% endif %}
+  <div class="field">
+    <label for="{{ prefix }}ip_whitelist">{{ lang.ip_whitelist }}</label>
+    <input type="text" class="form-control" id="{{ prefix }}ip_whitelist" name="ip_whitelist" placeholder="{{ lang.ip_addr_comma_list }}" value="{{ user.whitelist }}">
+  </div>
+  <div class="field">
+    <label for="{{ prefix }}ip_blacklist">{{ lang.ip_blacklist }}</label>
+    <input type="text" class="form-control" id="{{ prefix }}ip_blacklist" name="ip_blacklist" placeholder="{{ lang.ip_addr_comma_list }}" value="{{ user.blacklist }}">
+    <span class="field-hint">{{ lang.your_ip_address }}{{ your_ip }}</span>
+  </div>
+  <fieldset class="field field-wide">
+    <legend>{{ lang.flags }}</legend>
+    <div class="check-list">
+      <input type="hidden" name="flag1" value="-">
+      <label><input type="checkbox" name="flag1" value="F" {% if "F" in user.flags %}checked{% endif %}> {{ lang.flag_forensic }}</label>
+      <input type="hidden" name="flag2" value="-">
+      <label><input type="checkbox" name="flag2" value="M" {% if "M" in user.flags %}checked{% endif %}> {{ lang.flag_mobile }}</label>
+      <input type="hidden" name="flag3" value="-">
+      <label><input type="checkbox" name="flag3" value="A" {% if "A" in user.flags %}checked{% endif %}> {{ lang.api_access }}{% if user.apikey %} <span class="text-muted"><i class="fa fa-key" aria-hidden="true"></i> {{ user.apikey }}</span>{% endif %}</label>
+      <input type="hidden" name="flag4" value="-">
+      {% if not editing or user.id != 2 %}
+      <label><input type="checkbox" name="flag4" value="I" {% if "I" in user.flags %}checked{% endif %}> {{ lang.flag_inactive }}</label>
+      {% endif %}
+      <input type="hidden" name="delete_user" value="no">
+      {% if editing and user.id > 2 %}
+      <label class="text-danger"><input type="checkbox" name="delete_user" value="delete"> {{ lang.delete_user }}</label>
+      {% endif %}
+    </div>
+  </fieldset>
+  <div class="field field-wide">
+    <label for="{{ prefix }}current_password">{{ lang.verify_password_for }} <b>{{ session.user.username }}</b></label>
+    <input type="password" class="form-control" id="{{ prefix }}current_password" name="current_password" placeholder="{{ lang.your_password }}" autocomplete="current-password">
+  </div>
+</div>

@@ -15,35 +15,25 @@
 {% block content %}
     {% set current_date = "now" | date("Y-m-d") %}
     <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-        <h3>{{ lang.tool_management|capitalize }}
-            {% if fields %}:
-                {{ fields.product_name }}
-                {{ fields.hw_version }}
-                {{ fields.sw_version }}{% endif %}
-        </h3>
-        <hr>
-
-        {% if not fields %}
-            {% if session.user.access == "0" %}
-            &nbsp;<button type="button" class="btn btn-primary btn-md" data-toggle="modal" data-target="#add_tool_modal">
-                <i class="fa fa-plus"></i>
-                {{ lang.add_a_tool|capitalize }}</button>
+        <div class="page-title-row">
+            <h1 class="h3">{{ lang.tool_management|capitalize }}{% if fields %}: {{ fields.product_name }} {{ fields.hw_version }} {{ fields.sw_version }}{% endif %}</h1>
+            <div class="page-actions">
+            {% if fields %}
+                <a href="tools.php" class="btn btn-default"><i class="fa fa-arrow-left" aria-hidden="true"></i> {{ lang.back }}</a>
+                {% if session.user.access == "0" %}
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#add_tool_modal"><i class="fa fa-edit" aria-hidden="true"></i> {{ lang.edit_tool|capitalize }}</button>
                 {% endif %}
-        {% else %}
-            &nbsp;<a href="tools.php" class="btn btn-success">
-                <i class="fa fa-arrow-left"></i>
-                {{ lang.back }}</a>
-            {% if session.user.access == "0" %}
-            <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#add_tool_modal">
-                <i class="fa fa-edit"></i>
-                {{ lang.edit_tool|capitalize }}
-                {{ fields.product_name }}
-            </button>
+            {% elseif session.user.access == "0" %}
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#add_tool_modal"><i class="fa fa-plus" aria-hidden="true"></i> {{ lang.add_a_tool|capitalize }}</button>
             {% endif %}
-        {% endif %}
+            </div>
+        </div>
 
-        <table class="table table-striped bg-surface" style="margin-top:20px;">
+        <div class="card">
+        <div class="table-responsive">
+        <table class="table table-striped">
             <thead>
+                <tr>
                 <th>{{ lang.product_name|capitalize }}</th>
                 <th>{{ lang.hardware_version|capitalize }}</th>
                 <th>{{ lang.software_version|capitalize }}</th>
@@ -52,146 +42,131 @@
                 <th>{{ lang.last_update|capitalize }}</th>
                 <th class="text-center">{{ lang.active|capitalize }}</th>
                 <th class="text-center">{{ lang.comment|capitalize }}</th>
+                </tr>
             </thead>
-            {% for tool in session.all_tools|filter(tool => 'I' not in tool.flags) %}
-                <tr {% if (fields is not empty) and (fields.id == tool.id) %} class="info" {% endif %}>
-                    <td>
-                        <a href="tools.php?populate={{ tool.id }}">{{ tool.product_name }}</a>
-                    </td>
+            <tbody>
+            {# Active tools first, then inactive ones. #}
+            {% for tool in session.all_tools|sort((a, b) => ('I' in a.flags) <=> ('I' in b.flags)) %}
+                <tr {% if fields is not empty and fields.id == tool.id %}class="info"{% elseif 'I' in tool.flags %}class="warning"{% endif %}>
+                    <td><a href="tools.php?populate={{ tool.id }}">{{ tool.product_name }}</a></td>
                     <td>{{ tool.hw_version }}</td>
                     <td>{{ tool.sw_version }}</td>
                     <td>{{ tool.serialno }}</td>
                     <td>{{ tool.attr_1 }}</td>
-                    <td>{% set updated = tool.attr_2 | split(',') %}
-                        {% set updated = updated.0 | split(';') %}
-                        {{ updated.0 }}</td>
-                    <td class="text-center">
-                        {% if 'I' in tool.flags == true %}
-                            <i class="fa fa-remove text-danger"></i>
-                        {% else %}
-                            <i class="fa fa-check text-success"></i>
-                        {% endif %}
-                    </td>
-                    <td class="text-center">
-                        {% if not tool.attr_3 %}
-                            <i class="fa fa-remove text-danger"></i>
-                        {% else %}
-                            <i class="fa fa-check text-success"></i>
-                        {% endif %}
-                    </td>
-                    <td></td>
+                    <td>{% set updated = tool.attr_2 | split(',') %}{% set updated = updated.0 | split(';') %}{{ updated.0 }}</td>
+                    <td class="text-center">{% if 'I' in tool.flags %}<i class="fa fa-remove text-danger"></i>{% else %}<i class="fa fa-check text-success"></i>{% endif %}</td>
+                    <td class="text-center">{% if not tool.attr_3 %}<i class="fa fa-remove icon-off"></i>{% else %}<i class="fa fa-check text-success"></i>{% endif %}</td>
                 </tr>
+            {% else %}
+                <tr><td colspan="8" class="text-muted">{{ lang.no_tools }}</td></tr>
             {% endfor %}
-            {% for tool in session.all_tools|filter(tool => 'I' in tool.flags) %}
-                <tr {% if fields is not empty and fields.id == tool.id %} class="info" {% else %} class="warning" {% endif %}>
-                    <td>
-                        <a href="tools.php?populate={{ tool.id }}">{{ tool.product_name }}</a>
-                    </td>
-                    <td>{{ tool.hw_version }}</td>
-                    <td>{{ tool.sw_version }}</td>
-                    <td>{{ tool.serialno }}</td>
-                    <td>{{ tool.attr_1 }}</td>
-                    <td>{% set updated = tool.attr_2 | split(',') %}
-                        {% set updated = updated.0 | split(';') %}
-                        {{ updated.0 }}</td>
-                    <td class="text-center">
-                        {% if 'I' in tool.flags == true %}
-                            <i class="fa fa-remove text-danger"></i>
-                        {% else %}
-                            <i class="fa fa-check text-success"></i>
-                        {% endif %}
-                    </td>
-                    <td class="text-center">
-                        {% if not tool.attr_3 %}
-                            <i class="fa fa-remove text-danger"></i>
-                        {% else %}
-                            <i class="fa fa-check text-success"></i>
-                        {% endif %}
-                    </td>
-                    <td></td>
-                </tr>
-            {% endfor %}
+            </tbody>
         </table>
+        </div>
+        </div>
 
         {% if fields.attr_3 %}
         <div class="alert alert-info">{{ fields.attr_3 }}</div>
         {% endif %}
 
-        <h3>{{ lang.upcoming_reservations }}:
-            {{ fields.product_name }}</h3>
-
         {% if fields %}
-            <form class="form-horizontal" role="form" method="post" action="submit.php?type=reserve_tool">
+        <section class="card">
+            <div class="card-header"><i class="fa fa-calendar" aria-hidden="true"></i> {{ lang.upcoming_reservations }}</div>
+            {% if "I" in fields.flags %}
+            <div class="card-body"><div class="alert alert-danger">{{ lang.tool_marked_as_inactive }}</div></div>
+            {% else %}
+            <form class="card-body reserve-form" role="form" method="post" action="submit.php?type=reserve_tool">
                 <input type="hidden" name="token" value="{{ session.user.token }}">
                 <input type="hidden" name="tool_id" value="{{ fields.id }}">
-                <table class="table">
-                    <thead>
-                        <th>{{ lang.reserved_for }}</th>
-                        <th colspan="2">{{ lang.start_date }}</th>
-                        <th colspan="999">{{ lang.end_date }}</th>
-
-                    </thead>
-                    {% if "I" in fields.flags == true %}
-                        <tr class="danger">
-                            <td colspan="999">
-                                {{ lang.tool_marked_as_inactive }}
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td>
-                                <select class="form-control" name="reserved_for">
-                                    {% for user in session.all_users %}
-                                        <option value="{{ user.name }}" {% if session.user.username == user.username %} selected{% endif %}>{{ user.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                            <td>
-                                <input type="date" class="form-control" name="reserve_start_date" value='{{ "now"|date("Y-m-d") }}'>
-                            </td>
-                            <td>
-                                <input type="time" class="form-control" name="reserve_start_time" value="08:00">
-                            </td>
-                            <td>
-                                <input type="date" class="form-control" name="reserve_end_date" value='{{ "now"|date("Y-m-d") }}'>
-                            </td>
-                            <td>
-                                <input type="time" class="form-control" name="reserve_end_time" value="16:00">
-                            </td>
-
-                            <td>
-                                <input type="text" class="form-control" name="comment" placeholder="{{ lang.comment|capitalize }}">
-                            </td>
-
-                            <td>
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fa fa-plus"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    {% endif %}
-                </form>
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="reserved_for">{{ lang.reserved_for }}</label>
+                        <select class="form-control" id="reserved_for" name="reserved_for">
+                            {% for user in session.all_users %}
+                            <option value="{{ user.name }}"{% if session.user.username == user.username %} selected{% endif %}>{{ user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="reserve_start_date">{{ lang.start_date }}</label>
+                        <div class="field-pair">
+                            <input type="date" class="form-control" id="reserve_start_date" name="reserve_start_date" value='{{ "now"|date("Y-m-d") }}'>
+                            <input type="time" class="form-control" name="reserve_start_time" value="08:00" aria-label="{{ lang.start_date }}">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="reserve_end_date">{{ lang.end_date }}</label>
+                        <div class="field-pair">
+                            <input type="date" class="form-control" id="reserve_end_date" name="reserve_end_date" value='{{ "now"|date("Y-m-d") }}'>
+                            <input type="time" class="form-control" name="reserve_end_time" value="16:00" aria-label="{{ lang.end_date }}">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="reserve_comment">{{ lang.comment|capitalize }}</label>
+                        <input type="text" class="form-control" id="reserve_comment" name="comment">
+                    </div>
+                </div>
+                <div class="reserve-actions">
+                    <button type="submit" class="btn btn-primary"><i class="fa fa-plus" aria-hidden="true"></i> {{ lang.reserve }}</button>
+                </div>
+            </form>
+            {% endif %}
+            <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                    <th>{{ lang.reserved_for }}</th>
+                    <th>{{ lang.start_date }}</th>
+                    <th>{{ lang.end_date }}</th>
+                    <th>{{ lang.comment|capitalize }}</th>
+                    <th></th>
+                    </tr>
+                </thead>
+                <tbody>
                 {% for key, entry in fields.attr_4 %}
                     {% if (entry.reserve_end | date("U")) >= (current_date | date("U")) %}
-                        <tr {% if highlight == key %} class="success" {% endif %}>
-                            <td>{{ entry.reserved_for }}</td>
-                            <td colspan="2">{{ entry.reserve_start }}</td>
-                            <td colspan="2">{{ entry.reserve_end }}</td>
-                            <td>{{ entry.comment }}</td>
-                            <td style="width:1px;" class="text-center">
-                                {% if (session.user.name == entry.reserved_for)
-                                    or(session.user.access == "0") %}
-                                    <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}" data-post>
-                                        <i class="fa fa-times text-danger"></i>
-                                    </a>
-                                {% endif %}
-                            </td>
-                        </tr>
+                    <tr {% if highlight == key %}class="success"{% endif %}>
+                        <td>{{ entry.reserved_for }}</td>
+                        <td>{{ entry.reserve_start }}</td>
+                        <td>{{ entry.reserve_end }}</td>
+                        <td>{{ entry.comment }}</td>
+                        <td style="width:1px;" class="text-center">
+                            {% if (session.user.name == entry.reserved_for) or (session.user.access == "0") %}
+                            <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}" data-post aria-label="{{ lang.drop }}"><i class="fa fa-times text-danger"></i></a>
+                            {% endif %}
+                        </td>
+                    </tr>
                     {% endif %}
                 {% endfor %}
-
+                </tbody>
             </table>
+            </div>
+        </section>
+
+        {% if fields.attr_2|join("")|trim is not empty %}
+        <section class="card">
+            <div class="card-header"><i class="fa fa-history" aria-hidden="true"></i> {{ lang.update_history|capitalize }}</div>
+            <div class="table-responsive">
+            <table class="table table-condensed">
+                <tbody>
+                {% for update in fields.attr_2 %}
+                    {% set update = update | split(";") %}
+                    <tr>
+                    <td>{{ update.0 }}</td>
+                    <td>{% if update.1 is not empty %}{{ lang.hw_version }} {{ update.1 }}{% endif %}</td>
+                    <td>{% if update.2 is not empty %}{{ lang.sw_version }} {{ update.2 }}{% endif %}</td>
+                    <td>{% if update.3 is defined %}{% if "I" in update.3 %}<span class="text-danger">{{ lang.inactive|capitalize }}</span>{% else %}<span class="text-success">{{ lang.active|capitalize }}</span>{% endif %}{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </section>
+        {% endif %}
         {% else %}
+        <section class="card">
+            <div class="card-header"><i class="fa fa-calendar" aria-hidden="true"></i> {{ lang.upcoming_reservations }}</div>
+            <div class="card-body">
             <script>
                 $(document).ready(function() {
                     $('#calendar').fullCalendar({
@@ -295,131 +270,60 @@
                 });
             </script>
             <div id='calendar'></div>
-        {% endif %}
-
-        {% if fields %}
-            <h3>{{ lang.update_history|capitalize }}</h3>
-                  <table class="table table-condensed">
-                  {% for update in fields.attr_2 %}
-                      <tr>
-                      <td>{% set update = update | split(";") %}{{update.0}}</td>
-                      <td>{% if update.1 is not empty %}{{ lang.hw_version }}
-                              {{update.1}}
-                          {% endif %}
-                      </td>
-                      <td>
-                          {% if update.2 is not empty %}{{ lang.sw_version }}
-                              {{update.2}}
-                          {% endif %}
-                      </td>
-                      <td>{% if update.3 is defined %}
-                              {% if "I" in update.3 %}
-                                  <span class="text-danger">{{ lang.inactive|capitalize }}</span>
-                              {% else %}
-                                  <span class="text-success">{{ lang.active|capitalize }}</span>
-                              {% endif %}
-                          {% endif %}
-                      </td>
-                    </tr>
-                  {% endfor %}
-              </table>
-        {% endif %}
-{% if session.user.access == "0" %}
-        <div class="modal fade" id="add_tool_modal" role="dialog" aria-labelledby="add_tool_modal">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <h4 class="modal-title" id="add_tool_modal_title">{{ lang.manage_tools }}
-                            |
-                            {% if fields %}{{ lang.edit_tool|capitalize }}
-                            {% else %}{{ lang.add_a_tool|capitalize }}{% endif %}
-                        </h4>
-                    </div>
-                    <div class="modal-body">
-                        <form class="form-horizontal" role="form" method="post" action="submit.php?type={% if fields %}update_tool{% else %}add_tool{% endif %}">
-                            <input type="hidden" name="token" value="{{session.user.token}}">
-                            {% if fields %}<input type="hidden" name="tool_id" value="{% if fields is not empty %}{{ fields.id }}{% endif %}">{% endif %}
-
-                            <div class="form-group">
-                                <input type="hidden" name="product_name" value="{{ fields.product_name }}">
-                                <label for="product_name" class="col-md-2 control-label">{{ lang.product_name|capitalize }}</label>
-                                <div class="col-md-10">
-                                    <input type="text" {% if fields is not empty %}disabled {% endif %}class="form-control" id="product_name" name="product_name" value="{% if fields is not empty %}{{ fields.product_name }}{% endif %}">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="col-md-2 control-label">{{ lang.hardware_version|capitalize }}</label>
-                                <div class="col-md-10">
-                                    <input type="hidden" name="hw_version_old" value="{{ fields.hw_version }}">
-                                    <input type="text" class="form-control" id="hw_version" name="hw_version" value="{% if fields is not empty %}{{ fields.hw_version }}{% endif %}">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="col-md-2 control-label">{{ lang.software_version|capitalize }}</label>
-                                <div class="col-md-10">
-                                  <input type="hidden" name="sw_version_old" value="{{ fields.sw_version }}">
-                                  <input type="text" class="form-control" id="sw_version" name="sw_version" value="{% if fields is not empty %}{{ fields.sw_version }}{% endif %}">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="col-md-2 control-label">{{ lang.serial_no|capitalize }}</label>
-                                <div class="col-md-10">
-                                    <input type="hidden" name="serialno" value="{{ fields.serialno }}">
-                                    <input type="text" {% if fields is not empty %}disabled {% endif %}class="form-control" id="serialno" name="serialno" value="{% if fields is not empty %}{{ fields.serialno }}{% endif %}">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="col-md-2 control-label">{{ lang.comment|capitalize }}</label>
-                                <div class="col-md-10">
-                                  <input type="hidden" name="comment_old" value="{{ fields.attr_3 }}">
-                                    <input type="text" class="form-control" id="comment" name="comment" value="{% if fields is not empty %}{{ fields.attr_3 }}{% endif %}">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="col-md-2 control-label">&nbsp;</label>
-                                <div class="col-md-10">
-                                    <div class="checkbox">
-                                        <label class="col-md-12">
-                                            <input type="hidden" name="flag1" value="">
-                                            <input type="checkbox" name="flag1" value="I" {% if fields is not empty %} {% if "I" in fields.flags %} checked{% endif %} {% endif %}>
-                                            {{ lang.flag_inactive }}
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="col-md-2 control-label">&nbsp;</label>
-                                <div class="col-md-10">
-                                    <div class="checkbox">
-                                        <label class="col-md-12">
-                                            <input type="hidden" name="drop_tool" value="no">
-                                            <input type="checkbox" name="drop_tool" value="yes">
-                                            <span class="text-danger">{{ lang.remove_tool_permanently }}</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-
-                        </div>
-
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-default" data-dismiss="modal">{{ lang.close }}</button>
-                            <button type="submit" class="btn btn-success">{{ lang.save }}</button>
-                            <a href="tools.php" class="btn btn-default">{{ lang.clear_form }}</a>
-                        </form>
-                    </form>
-
-                </div>
             </div>
+        </section>
+        {% endif %}
+
+{% if session.user.access == "0" %}
+        <div class="modal fade" id="add_tool_modal" role="dialog" aria-labelledby="add_tool_modal_title">
+            <div class="modal-dialog" role="document">
+                <form class="modal-content" role="form" method="post" action="submit.php?type={% if fields %}update_tool{% else %}add_tool{% endif %}">
+                    <input type="hidden" name="token" value="{{session.user.token}}">
+                    {% if fields %}<input type="hidden" name="tool_id" value="{{ fields.id }}">{% endif %}
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="{{ lang.close }}"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="add_tool_modal_title">{% if fields %}{{ lang.edit_tool|capitalize }}{% else %}{{ lang.add_a_tool|capitalize }}{% endif %}</h4>
+                    </div>
+                    <div class="modal-body field-grid">
+                        <div class="field">
+                            <input type="hidden" name="product_name" value="{{ fields.product_name }}">
+                            <label for="product_name">{{ lang.product_name|capitalize }}</label>
+                            <input type="text" {% if fields is not empty %}disabled {% endif %}class="form-control" id="product_name" name="product_name" value="{% if fields is not empty %}{{ fields.product_name }}{% endif %}">
+                        </div>
+                        <div class="field">
+                            <input type="hidden" name="serialno" value="{{ fields.serialno }}">
+                            <label for="serialno">{{ lang.serial_no|capitalize }}</label>
+                            <input type="text" {% if fields is not empty %}disabled {% endif %}class="form-control" id="serialno" name="serialno" value="{% if fields is not empty %}{{ fields.serialno }}{% endif %}">
+                        </div>
+                        <div class="field">
+                            <input type="hidden" name="hw_version_old" value="{{ fields.hw_version }}">
+                            <label for="hw_version">{{ lang.hardware_version|capitalize }}</label>
+                            <input type="text" class="form-control" id="hw_version" name="hw_version" value="{% if fields is not empty %}{{ fields.hw_version }}{% endif %}">
+                        </div>
+                        <div class="field">
+                            <input type="hidden" name="sw_version_old" value="{{ fields.sw_version }}">
+                            <label for="sw_version">{{ lang.software_version|capitalize }}</label>
+                            <input type="text" class="form-control" id="sw_version" name="sw_version" value="{% if fields is not empty %}{{ fields.sw_version }}{% endif %}">
+                        </div>
+                        <div class="field field-wide">
+                            <input type="hidden" name="comment_old" value="{{ fields.attr_3 }}">
+                            <label for="comment">{{ lang.comment|capitalize }}</label>
+                            <input type="text" class="form-control" id="comment" name="comment" value="{% if fields is not empty %}{{ fields.attr_3 }}{% endif %}">
+                        </div>
+                        <div class="check-list field-wide">
+                            <input type="hidden" name="flag1" value="">
+                            <label><input type="checkbox" name="flag1" value="I" {% if fields is not empty and "I" in fields.flags %}checked{% endif %}> {{ lang.flag_inactive }}</label>
+                            <input type="hidden" name="drop_tool" value="no">
+                            <label class="text-danger"><input type="checkbox" name="drop_tool" value="yes"> {{ lang.remove_tool_permanently }}</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">{{ lang.close }}</button>
+                        <button type="submit" class="btn btn-primary">{{ lang.save }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 {% endif %}
-        {% endblock %}
+    </div>
+{% endblock %}
