@@ -196,6 +196,18 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertStringNotContainsString('chip-urgent', $page);
     }
 
+    public function testAddMediaDialogStartsFromTheHostDevice(): void
+    {
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Media dialog '));
+        $hostId = $this->addDevice($admin, $caseId, $this->uniqueName('Host'), array('device_item_number' => '7', 'device_owner' => 'Roe Richard'));
+
+        // The item number input had two value attributes; the empty first one won, so the host's number was never filled in.
+        $page = $admin->get('edit_request.php?case=' . $caseId . '&tab=devices')->body;
+        $this->assertMatchesRegularExpression('#id="media_' . $hostId . '_item"[^>]*value="7"#', $page);
+        $this->assertMatchesRegularExpression('#id="media_' . $hostId . '_owner"[^>]*value="Roe Richard"#', $page);
+    }
+
     public function testReportNotesAreSanitised(): void
     {
         $admin = $this->admin();

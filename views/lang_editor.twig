@@ -17,7 +17,7 @@
 <hr>
 
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label">{{ lang.save_as|capitalize }}...</label>
+        <label class="col-md-2 control-label">{{ lang.save_as|capitalize }}...</label>
         <div class="col-md-10">
           <div class="input-group">
             <span class="input-group-addon">lang_</span>
@@ -30,7 +30,7 @@
       <hr>
       {% for key, value in diff %}
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label"><b style="color:red;"><span class="pull-left"><i class="fa fa-warning"></i></span> {{ key|replace({"_": " "})|capitalize }}</b></label>
+        <label class="col-md-2 control-label"><b style="color:red;"><span class="pull-left"><i class="fa fa-warning"></i></span> {{ key|replace({"_": " "})|capitalize }}</b></label>
         <div class="col-md-10">
           <input type="text" class="form-control" name="{{ key }}" value="{{ value }}" placeholder="{{ value }}">
         </div>
@@ -40,7 +40,7 @@
       {% for key, value in langfile %}
       {% if value is not iterable %}
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label">{{ key|replace({"_": " "})|capitalize }}</label>
+        <label class="col-md-2 control-label">{{ key|replace({"_": " "})|capitalize }}</label>
         <div class="col-md-10">
           <input type="text" class="form-control" name="{{ key }}" value="{{ value }}" placeholder="{{ value }}">
         </div>
@@ -55,7 +55,7 @@
       {% set primary = key %}
       {% for subkey, value in value %}
       <div class="form-group">
-        <label for="setting" class="col-md-2 control-label">{{ subkey|replace({"_": " "})|capitalize }}</label>
+        <label class="col-md-2 control-label">{{ subkey|replace({"_": " "})|capitalize }}</label>
         {% if primary == "devices" %}
         <div class="col-md-8">
           <input type="text" class="form-control warning" name="{{primary}}[{{ subkey }}]" value="{{ value }}" placeholder="{{ value }}">
