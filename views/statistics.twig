@@ -11,98 +11,55 @@
   function themeColour(name) { return themeStyle.getPropertyValue(name).trim(); }
   Chart.defaults.global.scaleFontColor = themeColour("--k-text-muted");
   Chart.defaults.global.scaleLineColor = themeColour("--k-border-strong");
-  Chart.defaults.Doughnut.segmentStrokeColor = themeColour("--k-surface");
+  Chart.defaults.Line.bezierCurve = false; // Straight lines between months: a curve would invent values.
+  // Series colours: slots of the validated palette in kirjuri.css, in a fixed order.
+  var chartColour = [1, 2, 3].map(function (n) { return themeColour("--k-chart-" + n); });
+  var surfaceColour = themeColour("--k-surface");
+  function translucent(colour, alpha) {
+    var n = parseInt(colour.slice(1), 16);
+    return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
+  }
   Chart.defaults.Line.scaleGridLineColor = themeColour("--k-border");
   Chart.defaults.Bar.scaleGridLineColor = themeColour("--k-border");
   Chart.defaults.Radar.scaleLineColor = themeColour("--k-border");
   Chart.defaults.Radar.angleLineColor = themeColour("--k-border");
   Chart.defaults.Radar.pointLabelFontColor = themeColour("--k-text-muted");
 </script>
-<div class="col-md-3 col-sm-3 text-center">
-  <h4>{{ lang.status_of_requests }}</h4>
-  <canvas id="status_visualization" style="width:200px;height:200px;"></canvas>
-  <script>
-    var ctx = document.getElementById("status_visualization").getContext("2d");
-    var data = [
-    {
-      value: {{ count_finished }},
-      color: themeColour("--k-success"),
-      highlight: "#FF5A5E",
-      label: "{{ lang.ready }}"
-    },
-    {
-      value: {{ count_open }},
-      color: themeColour("--k-amber-light"),
-      highlight: "#FF5A5E",
-      label: "{{ lang.open }}"
-    },
-    {
-      value: {{ count_new }},
-      color: themeColour("--k-danger"),
-      highlight: "#FF5A5E",
-      label: "{{ lang.new }}"
-    }
-    ]
-    var myNewChart = new Chart(ctx).Doughnut(data);
-  </script>
-</div>
-<div class="col-md-3 col-sm-3  text-center">
-  <h4>{{ lang.requests_containing_phones }}</h4>
-  <canvas id="puhelin_visualization" style="width:200px;height:200px;"></canvas>
-  <script>
-    var ctx = document.getElementById("puhelin_visualization").getContext("2d");
-    var data = [
-    {
-      value: {{ (count_phones / (count_new + count_open + count_finished) * 100)|round }},
-      color:"{{ statistics_chart_colors.1 }}",
-      highlight: "#FF5A5E",
-      label: '{{ lang.contains_mobile_devices }}'
-    },
-    {
-      value: {{ (100 - (count_phones / (count_new + count_open + count_finished) * 100)|round) }},
-      color: themeColour("--k-neutral-soft"),
-      highlight: "#FF5A5E",
-      label: "{{ lang.no_mobile_examination }}"
-    },
-    ]
-    var myNewChart = new Chart(ctx).Doughnut(data);
-  </script>
-</div>
-<div class="col-md-3 col-sm-3 text-center">
-  <h4>{{ lang.requests_by_classification }}</h4>
-  <canvas id="classification_visualization" style="width:200px;height:200px;"></canvas>
-  <script>
-    var ctx = document.getElementById("classification_visualization").getContext("2d");
-    var data = [
-    {% for classification in classifications %}{% set laskuri = "0"%}
-    {
-      value: {% for entry in all_cases %}{% if entry.classification == classification %}{% set laskuri = laskuri + 1 %}{% endif %}{% if loop.last == true %}{{ laskuri }}{% endif %}{% endfor %},
-      color:"#{{ random(['B7','C4','E8','D1','CF','E7']) }}{{ random(['B7','C4','E8','D1','CF','E7']) }}{{ random(['B7','C4','E8','D1','CF','E7']) }}",
-      highlight: "#FF5A5E",
-      label: "{{ classification|e('js') }}"
-    }{% if loop.last == true %}{% else %},{% endif %}
-    {% endfor %}
-    ]
-    var myNewChart = new Chart(ctx).Doughnut(data);
-  </script>
-</div>
-<div class="col-sm-3 col-md-3 text-center">
-  <h4>{{ lang.requests_by_unit }}</h4>
-  <canvas id="investigating_unit_visualization" style="width:200px;height:200px;"></canvas>
-  <script>
-    var ctx = document.getElementById("investigating_unit_visualization").getContext("2d");
-    var data = [
-    {% for investigating_unit in inv_units %}{% set laskuri = "0"%}
-    {
-      value: {% for entry in all_cases %}{% if entry.case_investigator_unit == investigating_unit %}{% set laskuri = laskuri + 1 %}{% endif %}{% if loop.last == true %}{{ laskuri }}{% endif %}{% endfor %},
-      color:"#{{ random(['B7','C4','E8','D1','CF','E7']) }}{{ random(['B7','C4','E8','D1','CF','E7']) }}{{ random(['B7','C4','E8','D1','CF','E7']) }}",
-      highlight: "#FF5A5E",
-      label: "{{ investigating_unit }}"
-    }{% if loop.last == true %}{% else %},{% endif %}
-    {% endfor %}
-    ]
-    var myNewChart = new Chart(ctx).Doughnut(data);
-  </script>
+{% import _self as charts %}
+{% set request_total = count_new + count_open + count_finished %}
+<div class="stat-cards">
+  <section class="card">
+    <div class="card-header">{{ lang.status_of_requests }}</div>
+    <div class="card-body">
+      {{ charts.bar_list([
+        {label: lang.new|capitalize, count: count_new, class: 'bar-new'},
+        {label: lang.open|capitalize, count: count_open, class: 'bar-open'},
+        {label: lang.ready|capitalize, count: count_finished, class: 'bar-ready'},
+      ]) }}
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-header">{{ lang.requests_containing_phones }}</div>
+    <div class="card-body">
+      {% set phone_share = request_total > 0 ? (count_phones / request_total * 100)|round : 0 %}
+      <p class="meter-figure"><b>{{ phone_share }} %</b> <span class="text-muted">{{ count_phones }} / {{ request_total }}</span></p>
+      <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ phone_share }}" aria-label="{{ lang.requests_containing_phones }}"><span class="meter-fill" style="width:{{ phone_share }}%"></span></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-header">{{ lang.requests_by_classification }}</div>
+    <div class="card-body">
+      {% set rows = [] %}{% for label, count in cases_by_classification %}{% if count > 0 %}{% set rows = rows|merge([{label: label, count: count}]) %}{% endif %}{% endfor %}
+      {{ charts.bar_list(rows|sort((a, b) => b.count <=> a.count)) }}
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-header">{{ lang.requests_by_unit }}</div>
+    <div class="card-body">
+      {% set rows = [] %}{% for label, count in cases_by_unit %}{% if count > 0 %}{% set rows = rows|merge([{label: label, count: count}]) %}{% endif %}{% endfor %}
+      {{ charts.bar_list(rows|sort((a, b) => b.count <=> a.count)) }}
+    </div>
+  </section>
 </div>
 
 <div class="col-md-12">
@@ -171,39 +128,44 @@
   </tr>
 </table>
   <canvas id="exam_requestChart" style="width:100%;height:400px;"></canvas>
+  <ul class="chart-legend">
+    <li><span class="chart-swatch chart-swatch-1" aria-hidden="true"></span>{{ lang.examination_requests }}</li>
+    <li><span class="chart-swatch chart-swatch-2" aria-hidden="true"></span>{{ lang.examined_devices }}</li>
+    <li><span class="chart-swatch chart-swatch-3" aria-hidden="true"></span>{{ lang.urgent_requests }}</li>
+  </ul>
   <script>
     var ctx = document.getElementById("exam_requestChart").getContext("2d");
     var data = {
       labels: ["{{ lang.month_1 }}", "{{ lang.month_2 }}", "{{ lang.month_3 }}", "{{ lang.month_4 }}", "{{ lang.month_5 }}", "{{ lang.month_6 }}", "{{ lang.month_7 }}", "{{ lang.month_8 }}", "{{ lang.month_9 }}", "{{ lang.month_10 }}", "{{ lang.month_11 }}", "{{ lang.month_12 }}"],
       datasets: [
       {
-        label: "Laitteita",
-        fillColor: "rgba(151,151,151,0.1)",
-        strokeColor: "{{ statistics_chart_colors.2 }}",
-        pointColor: "{{ statistics_chart_colors.2 }}",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(220,220,220,1)",
+        label: "{{ lang.examined_devices|e('js') }}",
+        fillColor: translucent(chartColour[1], 0.08),
+        strokeColor: chartColour[1],
+        pointColor: chartColour[1],
+        pointStrokeColor: surfaceColour,
+        pointHighlightFill: surfaceColour,
+        pointHighlightStroke: chartColour[1],
         data: [{% for month_col in 1..12 %}{% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% set laskuri = laskuri + entry.case_devicecount %}{% endif %}{% if loop.last == true %}{{ laskuri }}, {% endif %}{% endfor %}{% endfor %}]
       },
       {
-        label: "Requests",
-        fillColor: "rgba(151,151,205,0.1)",
-        strokeColor: "{{ statistics_chart_colors.1 }}",
-        pointColor: "{{ statistics_chart_colors.1 }}",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(220,220,220,1)",
+        label: "{{ lang.examination_requests|e('js') }}",
+        fillColor: translucent(chartColour[0], 0.08),
+        strokeColor: chartColour[0],
+        pointColor: chartColour[0],
+        pointStrokeColor: surfaceColour,
+        pointHighlightFill: surfaceColour,
+        pointHighlightStroke: chartColour[0],
         data: [{% for month_col in 1..12 %}{% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% set laskuri = laskuri + 1 %}{% endif %}{% if loop.last == true %}{{ laskuri }}, {% endif %}{% endfor %}{% endfor %}]
       },
       {
-        label: "Kiireellisiä",
-        fillColor: "rgba(151,151,205,0.1)",
-        strokeColor: "{{ statistics_chart_colors.3 }}",
-        pointColor: "{{ statistics_chart_colors.3 }}",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(220,220,220,1)",
+        label: "{{ lang.urgent_requests|e('js') }}",
+        fillColor: translucent(chartColour[2], 0.08),
+        strokeColor: chartColour[2],
+        pointColor: chartColour[2],
+        pointStrokeColor: surfaceColour,
+        pointHighlightFill: surfaceColour,
+        pointHighlightStroke: chartColour[2],
         data: [{% for month_col in 1..12 %}{% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% if entry.case_urgency == "1"%}{% set laskuri = laskuri + 1 %}{% endif %}{% endif %}{% if loop.last == true %}{{ laskuri }}, {% endif %}{% endfor %}{% endfor %}]
       }
       ]
@@ -250,13 +212,13 @@
       labels: ["{{ lang.month_1 }}", "{{ lang.month_2 }}", "{{ lang.month_3 }}", "{{ lang.month_4 }}", "{{ lang.month_5 }}", "{{ lang.month_6 }}", "{{ lang.month_7 }}", "{{ lang.month_8 }}", "{{ lang.month_9 }}", "{{ lang.month_10 }}", "{{ lang.month_11 }}", "{{ lang.month_12 }}"],
       datasets: [
       {
-        label: "Tutkittu data per kk",
-        fillColor: "rgba(151,151,151,0.1)",
-        strokeColor: "{{ statistics_chart_colors.2 }}",
-        pointColor: "{{ statistics_chart_colors.2 }}",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(220,220,220,1)",
+        label: "{{ lang.data_gb|e('js') }}",
+        fillColor: translucent(chartColour[0], 0.08),
+        strokeColor: chartColour[0],
+        pointColor: chartColour[0],
+        pointStrokeColor: surfaceColour,
+        pointHighlightFill: surfaceColour,
+        pointHighlightStroke: chartColour[0],
         data: [{% for month_col in 1..12 %}{% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% set laskuri = laskuri + entry.device_size_in_gb %}{% endif %}{% if loop.last == true %}{{ laskuri }}, {% endif %}{% endfor %}{% endfor %}]
       }
       ]
@@ -274,11 +236,11 @@
       labels: ["{{ lang.month_1 }}", "{{ lang.month_2 }}", "{{ lang.month_3 }}", "{{ lang.month_4 }}", "{{ lang.month_5 }}", "{{ lang.month_6 }}", "{{ lang.month_7 }}", "{{ lang.month_8 }}", "{{ lang.month_9 }}", "{{ lang.month_10 }}", "{{ lang.month_11 }}", "{{ lang.month_12 }}"],
       datasets: [
       {
-        label: "Kumulatiivinen data",
-        fillColor: "rgba(220,220,220,0.8)",
-        strokeColor: "rgba(151,187,205,1)",
-        highlightFill: "rgba(220,220,220,0.75)",
-        highlightStroke: "rgba(220,220,220,1)",
+        label: "{{ lang.cumulative_data_from_start_of_year|e('js') }}",
+        fillColor: chartColour[0],
+        strokeColor: chartColour[0],
+        highlightFill: translucent(chartColour[0], 0.8),
+        highlightStroke: chartColour[0],
         data: [{% set laskuri = "0" %}{% for month_col in 1..12 %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% set laskuri = laskuri + entry.device_size_in_gb %}{% endif %}{% if loop.last == true %}{{ (laskuri / 1000)|round }}, {% endif %}{% endfor %}{% endfor %}]
       }
       ]
@@ -297,11 +259,11 @@
       labels: [{% for unit in inv_units %}"{{ unit|e('js') }}"{% if not loop.last %},{% endif %}{% endfor %}],
       datasets: [
       {
-        label: "Kumulatiivinen data",
-        fillColor: "rgba(220,220,220,0.8)",
-        strokeColor: "rgba(151,187,205,1)",
-        highlightFill: "rgba(220,220,220,0.75)",
-        highlightStroke: "rgba(220,220,220,1)",
+        label: "{{ lang.data_by_unit|e('js') }}",
+        fillColor: chartColour[0],
+        strokeColor: chartColour[0],
+        highlightFill: translucent(chartColour[0], 0.8),
+        highlightStroke: chartColour[0],
         data: [{% for data in device_data_by_unit %}"{% if not data %}0{% else %}{{ data }}{% endif %}"{% if not loop.last %},{% endif %}{% endfor %}]
       }
       ]
@@ -320,11 +282,11 @@
       labels: [{% for unit in inv_units %}"{{ unit|e('js') }}"{% if not loop.last %},{% endif %}{% endfor %}],
       datasets: [
       {
-        label: "Kumulatiivinen data",
-        fillColor: "rgba(220,220,220,0.8)",
-        strokeColor: "rgba(151,187,205,1)",
-        highlightFill: "rgba(220,220,220,0.75)",
-        highlightStroke: "rgba(220,220,220,1)",
+        label: "{{ lang.count_by_unit|e('js') }}",
+        fillColor: chartColour[0],
+        strokeColor: chartColour[0],
+        highlightFill: translucent(chartColour[0], 0.8),
+        highlightStroke: chartColour[0],
         data: [{% for data in device_count_by_unit %}"{% if not data %}0{% else %}{{ data }}{% endif %}"{% if not loop.last %},{% endif %}{% endfor %}]
       }
       ]
@@ -411,13 +373,13 @@
       labels: [{% for devtype in devices %}"{{ lang.device|e('js') }}: {{ devtype|e('js') }} ", {% endfor %}{% for media in media_objs %}"{{ lang.media|e('js') }}: {{ media|e('js') }} ", {% endfor %}],
       datasets: [
       {
-        label: "devices",
-        fillColor: "rgba(151,187,205,0.2)",
-        strokeColor: "rgba(151,187,205,1)",
-        pointColor: "rgba(151,187,205,1)",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(151,187,205,1)",
+        label: "{{ lang.examined_devices_by_type|e('js') }}",
+        fillColor: translucent(chartColour[0], 0.2),
+        strokeColor: chartColour[0],
+        pointColor: chartColour[0],
+        pointStrokeColor: surfaceColour,
+        pointHighlightFill: surfaceColour,
+        pointHighlightStroke: chartColour[0],
         data: [{% for devtype in devices %}{% set laskuri = "0" %}{%for entry in all_devices %}{% if devtype == entry.device_type %}{% set laskuri = laskuri + 1 %}{% endif %}{% endfor %}{{ laskuri }}, {% endfor%}
         {% for media in media_objs %}{% set laskuri = "0" %}{%for entry in all_devices %}{% if media == entry.device_type %}{% set laskuri = laskuri + 1 %}{% endif %}{% endfor %}{{ laskuri }}, {% endfor%}]
       }
@@ -507,3 +469,21 @@
   </table>
 </div>
 {% endblock %}
+
+{# Counts as labelled horizontal bars, longest first. rows: [{label, count, class}]; class picks a status colour. #}
+{% macro bar_list(rows) %}
+{% set most = max(rows|map(row => row.count)|merge([1])) %}
+{% if rows is empty %}
+<p class="text-muted">&ndash;</p>
+{% else %}
+<ul class="bar-list">
+  {% for row in rows %}
+  <li>
+    <span class="bar-list-label">{{ row.label }}</span>
+    <span class="bar-list-value">{{ row.count }}</span>
+    <span class="bar-list-track" aria-hidden="true"><span class="bar-list-bar {{ row.class ?? '' }}{% if row.count == 0 %} is-zero{% endif %}" style="width:{{ (row.count / most * 100)|round(1) }}%"></span></span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endmacro %}

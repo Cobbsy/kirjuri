@@ -93,6 +93,21 @@
   --k-btn-active: #e6ebf1;
   --k-save-bar: rgba(255, 255, 255, 0.96);
 
+  /*
+   * Chart series, in this order and never cycled. Checked with a colour vision validator: the
+   * neighbouring slots stay apart for red-green and blue-yellow colour blindness, and slots 1-3
+   * all stay apart from each other. In light mode, 3-5 are under 3:1 against white, so charts
+   * name their series in a legend or labels as well.
+   */
+  --k-chart-1: #2a78d6;
+  --k-chart-2: #eb6834;
+  --k-chart-3: #1baf7a;
+  --k-chart-4: #eda100;
+  --k-chart-5: #e87ba4;
+  --k-chart-6: #008300;
+  --k-chart-7: #4a3aa7;
+  --k-chart-8: #e34948;
+
   /* Text on the pale colours the tools calendar picks for each tool, in both modes. */
   --k-event-text: #1e293b;
 
@@ -194,6 +209,14 @@
     --k-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.35);
     --k-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
     --k-icon-filter: invert(0.88) hue-rotate(180deg);
+    --k-chart-1: #3987e5;
+    --k-chart-2: #d95926;
+    --k-chart-3: #199e70;
+    --k-chart-4: #c98500;
+    --k-chart-5: #d55181;
+    --k-chart-6: #008300;
+    --k-chart-7: #9085e9;
+    --k-chart-8: #e66767;
   }
 }
 
@@ -878,6 +901,121 @@ pre {
 .status-dot.status-mine { background: var(--k-primary); }
 .status-dot.status-open { background: var(--k-amber-light); }
 .status-dot.status-ready { background: var(--k-success); }
+
+/*
+ * Statistics: counts as labelled bars and a share as a meter, drawn in HTML so they follow the
+ * theme. The canvas charts below them take the --k-chart-* colours from a script.
+ */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-cards > .card {
+  margin-bottom: 0;
+}
+
+.bar-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bar-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  margin-bottom: 10px;
+  font-size: 13.5px;
+}
+
+.bar-list > li:last-child {
+  margin-bottom: 0;
+}
+
+.bar-list-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-list-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-list-track {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--k-track);
+}
+
+.bar-list-bar {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: 4px;
+  background: var(--k-chart-1);
+}
+
+.bar-list-bar.is-zero { min-width: 0; }
+
+.bar-list-bar.bar-new { background: var(--k-danger); }
+.bar-list-bar.bar-open { background: var(--k-amber-light); }
+.bar-list-bar.bar-ready { background: var(--k-success); }
+
+.meter-figure {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.meter-figure .text-muted {
+  margin-left: 6px;
+  font-size: 14px;
+}
+
+.meter {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--k-track);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--k-chart-1);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 8px 0 24px;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  color: var(--k-text-muted);
+}
+
+.chart-legend > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.chart-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.chart-swatch-1 { background: var(--k-chart-1); }
+.chart-swatch-2 { background: var(--k-chart-2); }
+.chart-swatch-3 { background: var(--k-chart-3); }
 
 /* Front page: the status filters, each with the number of cases it shows. */
 .status-filters {

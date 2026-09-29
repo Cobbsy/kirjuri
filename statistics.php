@@ -18,7 +18,8 @@ if ($statistics === null) {
 
 $_SESSION['message_set'] = false;
 echo kirjuri_render('statistics.twig', $statistics + array(
-        'statistics_chart_colors' => $prefs['statistics_chart_colors'],
+        'cases_by_classification' => kirjuri_count_by($statistics['all_cases'], 'classification', $_SESSION['lang']['classifications']),
+        'cases_by_unit' => kirjuri_count_by($statistics['all_cases'], 'case_investigator_unit', $prefs['inv_units']),
         'devices' => $_SESSION['lang']['devices'],
         'media_objs' => $_SESSION['lang']['media_objs'],
         'inv_units' => $prefs['inv_units'],

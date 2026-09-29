@@ -2,6 +2,22 @@
 // Figures for the statistics page.
 
 /**
+ * How many of $rows have each of $values in $column, in the order of $values. Values match exactly,
+ * as the statistics page has always compared them.
+ */
+function kirjuri_count_by(array $rows, $column, array $values) {
+    $counts = array_fill_keys(array_map('strval', array_values($values)), 0);
+    foreach ($rows as $row) {
+        $value = (string) ($row[$column] ?? '');
+        if (isset($counts[$value])) {
+            $counts[$value]++;
+        }
+    }
+    return $counts;
+}
+
+
+/**
  * Cases and devices of $year and the totals shown on the statistics page, or null when the year
  * has no cases. $units are the investigating units from the settings, in display order.
  */
