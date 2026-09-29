@@ -309,6 +309,27 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertStringNotContainsString('edit_request.php?case=' . $caseId, $admin->get('index.php?search=' . $suspect . '&s=3')->body, 'The status filter applies to searches.');
     }
 
+    public function testFrontPageMarksAndFiltersStalledCases(): void
+    {
+        $admin = $this->admin();
+        $suspect = 'Zs' . generate_token(6);
+        $stalled = $this->createCase($admin, $this->uniqueName('Stalled '), array('case_suspect' => $suspect));
+        $fresh = $this->createCase($admin, $this->uniqueName('Fresh '), array('case_suspect' => $suspect));
+        // Both open; one without an update for longer than stalled_case (120 days by default).
+        $this->server->pdo()->prepare('UPDATE exam_requests SET case_status = "2" WHERE id IN (:a, :b)')->execute(array(':a' => $stalled, ':b' => $fresh));
+        $this->server->pdo()->prepare('UPDATE exam_requests SET last_updated = DATE_SUB(NOW(), INTERVAL 200 DAY) WHERE id = :id')->execute(array(':id' => $stalled));
+
+        $page = $admin->get('index.php?search=' . $suspect)->body;
+        $this->assertSame(1, substr_count($page, 'class="stalled-pill"'));
+        $this->assertMatchesRegularExpression('/href="index\.php\?[^"]*&s=5"[^>]*>.*?<span class="status-filter-count">1<\/span>/s', $page, 'The stalled filter counts the case.');
+
+        $filtered = $admin->get('index.php?search=' . $suspect . '&s=5')->body;
+        $this->assertStringContainsString('edit_request.php?case=' . $stalled . '"', $filtered);
+        $this->assertStringNotContainsString('edit_request.php?case=' . $fresh . '"', $filtered);
+        $this->assertStringContainsString('edit_request.php?case=' . $fresh . '"', $admin->get('index.php?search=' . $suspect . '&s=2')->body, 'Open includes cases that are not stalled.');
+        $this->assertSame(200, $admin->get('index.php?s[]=5')->status, 'A malformed filter shows all cases.');
+    }
+
     public function testSearchesWithFullTextOperatorsDoNotFail(): void
     {
         $admin = $this->admin();
