@@ -14,14 +14,16 @@ foreach ($conffiles as $file) {
     }
 }
 $langfiles = array_unique($langfiles);
-$diff = array_diff_key($langfile_default, $_SESSION['lang']);
-ksort($_SESSION['lang']);
+// The file as saved, without the English strings filled in for missing ones, so those show up as missing.
+$langfile_strings = kirjuri_load_language($prefs, false);
+$diff = array_diff_key($langfile_default, $langfile_strings);
+ksort($langfile_strings);
 ksort($diff);
 
 $_SESSION['message_set'] = false;
 echo kirjuri_render('lang_editor.twig', array(
         'langfiles' => $langfiles,
-        'langfile' => $_SESSION['lang'],
+        'langfile' => $langfile_strings,
         'diff' => $diff,
         'langfile_name' => $prefs['settings']['lang']
     ));

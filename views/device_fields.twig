@@ -1,4 +1,6 @@
-{# Fields of the add device and add media dialogs. fid keeps ids unique when several dialogs are on the page. #}
+{# Fields of the add device and add media dialogs. fid keeps ids unique when several dialogs are on the page.
+   The owner always starts from owner_default (the suspect, or the host device's owner): the input kept after
+   a refused form belongs to one dialog, and media saved under another device's owner is easy to miss. #}
 <div class="field-grid field-grid-3">
   <div class="field">
     <label for="{{ fid }}_type">{{ lang.device_type }} <span class="req" aria-hidden="true">*</span></label>
@@ -62,7 +64,7 @@
   </div>
   <div class="field">
     <label for="{{ fid }}_owner">{{ lang.sort_label_owner }}</label>
-    <input type="text" class="form-control" id="{{ fid }}_owner" name="device_owner" value="{% if session_cache and session_cache.device_owner %}{{ session_cache.device_owner }}{% else %}{{ owner_default }}{% endif %}">
+    <input type="text" class="form-control" id="{{ fid }}_owner" name="device_owner" value="{{ owner_default }}">
   </div>
   <div class="field">
     <label for="{{ fid }}_identifier">{{ lang.device_identifier }}</label>
