@@ -6341,11 +6341,11 @@ DayGrid.mixin({
 						) +
 				'</div>' +
 				(isResizableFromStart ?
-					'<div class="fc-resizer fc-start-resizer" />' :
+					'<div class="fc-resizer fc-start-resizer"></div>' :
 					''
 					) +
 				(isResizableFromEnd ?
-					'<div class="fc-resizer fc-end-resizer" />' :
+					'<div class="fc-resizer fc-end-resizer"></div>' :
 					''
 					) +
 			'</a>';
@@ -7731,15 +7731,15 @@ TimeGrid.mixin({
 						''
 						) +
 				'</div>' +
-				'<div class="fc-bg"/>' +
+				'<div class="fc-bg"></div>' +
 				/* TODO: write CSS for this
 				(isResizableFromStart ?
-					'<div class="fc-resizer fc-start-resizer" />' :
+					'<div class="fc-resizer fc-start-resizer"></div>' :
 					''
 					) +
 				*/
 				(isResizableFromEnd ?
-					'<div class="fc-resizer fc-end-resizer" />' :
+					'<div class="fc-resizer fc-end-resizer"></div>' :
 					''
 					) +
 			'</a>';

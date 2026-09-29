@@ -36,6 +36,11 @@ test('a tool can be added and reserved', async ({ admin: page }) => {
   await page.fill('#reserve_comment', 'Imaging a laptop');
   await page.locator('.reserve-form [type=submit]').click();
   await expect(page.locator('.card table').last()).toContainText('Imaging a laptop');
+
+  // The reservation shows on the calendar. FullCalendar 3.1 wrote self-closing <div/> tags, which
+  // jQuery 3.5 and later no longer expands, and a lone reservation broke the calendar.
+  await page.goto('tools.php');
+  await expect(page.locator('.fc-event', { hasText: name })).toBeVisible();
 });
 
 test('a message can be sent, opened and answered', async ({ admin: page }) => {
