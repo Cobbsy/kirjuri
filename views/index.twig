@@ -175,8 +175,8 @@
         {% endif %}
         {% endfor %}
         {% if has_new == true %}<span class="label label-danger pull-right">{{ newcount }}</span>{% endif %}
-        {% if (entry.case_urgency == "1") and ( entry.case_status <= "2") %}<i title="{{ entry.case_urg_justification}} " style="color:red;" class="fa fa-bolt"></i>&nbsp;{% endif %}
-        <a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{% if entry.case_name %}{{ entry.case_name }}{% elseif entry.case_suspect %}{{ lang.suspect_abbrev }} {{ entry.case_suspect }}{% else %}{{ lang.suspect_short }}{% endif %}{% if (entry.last_updated|date("U") < settings.stalled_case|date("U")) and (entry.case_status == "2")%}<span class="pull-right"><i style="color:blue;" class="fa fa-moon-o"></i>&nbsp;</span>{% endif %}</a>
+        {% if (entry.case_urgency == "1") and ( entry.case_status <= "2") %}<i title="{{ entry.case_urg_justification}} " class="fa fa-bolt text-danger"></i>&nbsp;{% endif %}
+        <a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{% if entry.case_name %}{{ entry.case_name }}{% elseif entry.case_suspect %}{{ lang.suspect_abbrev }} {{ entry.case_suspect }}{% else %}{{ lang.suspect_short }}{% endif %}{% if (entry.last_updated|date("U") < settings.stalled_case|date("U")) and (entry.case_status == "2")%}<span class="pull-right"><i class="fa fa-moon-o text-primary"></i>&nbsp;</span>{% endif %}</a>
       </td>
       {% endif %}
 
@@ -184,20 +184,20 @@
       <td style="width:1%;white-space:nowrap;"><a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{{ entry.case_file_number }}</a>
         {% if (settings.notify_after_4_months == "1") and (entry.case_confiscation_date != "0000-00-00") %}
           {% if (entry.case_confiscation_date|date("U") < ("-3 months"|date("U"))) %}
-        &nbsp;<i class="fa fa-calendar-times-o" style="color:orange;"></i>
+        &nbsp;<i class="fa fa-calendar-times-o text-warning"></i>
         {% elseif (entry.case_confiscation_date|date("U") < ("-4 months"|date("U"))) %}
-      &nbsp;<i class="fa fa-calendar-times-o" style="color:red;"></i><i class="fa fa-exclamation" style="color:red;"></i>
+      &nbsp;<i class="fa fa-calendar-times-o text-danger"></i><i class="fa fa-exclamation text-danger"></i>
           {% endif %}
         {% endif %}
       </td>
       {% endif %}
 
       {% if show_columns.crime != "hide" %}
-      <td>{% if entry.can_access %}<a href="index.php?search={{ entry.case_crime|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_crime|length > 20 ? entry.case_crime|slice(0, 20) ~ '...' : entry.case_crime }}</a>{% else %}<span style="color:#CCC;">-</span>{% endif %}</td>
+      <td>{% if entry.can_access %}<a href="index.php?search={{ entry.case_crime|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_crime|length > 20 ? entry.case_crime|slice(0, 20) ~ '...' : entry.case_crime }}</a>{% else %}<span class="text-faint">-</span>{% endif %}</td>
       {% endif %}
 
       {% if show_columns.suspect != "hide" %}
-      <td>{% if entry.can_access %}<a href="index.php?search={{ entry.case_suspect|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_suspect|length > 20 ? entry.case_suspect|slice(0, 20) ~ '...' : entry.case_suspect }}</a>{% else %}<span style="color:#CCC;">-</span>{% endif %}</td>
+      <td>{% if entry.can_access %}<a href="index.php?search={{ entry.case_suspect|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_suspect|length > 20 ? entry.case_suspect|slice(0, 20) ~ '...' : entry.case_suspect }}</a>{% else %}<span class="text-faint">-</span>{% endif %}</td>
       {% endif %}
 
       {% if show_columns.investigator != "hide" %}
@@ -212,7 +212,7 @@
 
       {% if show_columns.mobile_examiner != "hide" %}
       <td>{% if entry.case_contains_mob_dev == "1" and not entry.phone_investigator %}<span class="text-alert">{{ lang.no_examiner_assigner }}</span>
-        {% elseif entry.case_contains_mob_dev != "1" and not entry.phone_investigator %}<span style="color:lightgrey">-</span>{% endif %}<a href="index.php?search={{ "\"" ~ entry.phone_investigator ~ "\""|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.phone_investigator|length > 20 ? entry.phone_investigator|slice(0, 20) ~ '...' : entry.phone_investigator }}</a></td>
+        {% elseif entry.case_contains_mob_dev != "1" and not entry.phone_investigator %}<span class="text-faint">-</span>{% endif %}<a href="index.php?search={{ "\"" ~ entry.phone_investigator ~ "\""|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.phone_investigator|length > 20 ? entry.phone_investigator|slice(0, 20) ~ '...' : entry.phone_investigator }}</a></td>
       {% endif %}
 
       {% if show_columns.date_added != "hide" %}
@@ -222,9 +222,9 @@
       <td style="width:1px;">
         {% if show_columns.icon_attachments != "hide" %}
         {% if entry.id in attachments %}
-        <i class="fa fa-paperclip" style="color:var(--k-danger);"></i>
+        <i class="fa fa-paperclip text-danger"></i>
         {% else %}
-        <i class="fa fa-paperclip" style="color:var(--k-text-faint);opacity:.5;"></i>
+        <i class="fa fa-paperclip icon-off"></i>
         {% endif %}
         {% endif %}
       </td>
@@ -232,9 +232,9 @@
       <td style="width:1px;">
         {% if show_columns.icon_mobile != "hide" %}
         {% if entry.case_contains_mob_dev == "1" %}
-        <i class="fa fa-mobile" style="color:var(--k-success);font-size:1.4em;"></i>
+        <i class="fa fa-mobile text-success" style="font-size:1.4em;"></i>
         {% else %}
-        <i class="fa fa-mobile" style="color:var(--k-text-faint);opacity:.5;font-size:1.4em;"></i>
+        <i class="fa fa-mobile icon-off" style="font-size:1.4em;"></i>
         {% endif %}
         {% endif %}
       </td>
@@ -243,9 +243,9 @@
        <td style="width:1px;">
          {% if show_columns.icon_report_notes != "hide" %}
          {% if entry.report_notes %}
-         <i class="fa fa-comment-o" style="color:var(--k-primary);font-size:1.1em;"></i>
+         <i class="fa fa-comment-o text-primary" style="font-size:1.1em;"></i>
          {% else %}
-         <i class="fa fa-comment-o" style="color:var(--k-text-faint);opacity:.5;font-size:1.1em;"></i>
+         <i class="fa fa-comment-o icon-off" style="font-size:1.1em;"></i>
          {% endif %}
          {% endif %}
        </td>
@@ -254,12 +254,12 @@
          {% if show_columns.access_group != "hide" %}
          {% if entry.case_owner %}
          {% if entry.can_access %}
-         <i style="color:green;" class="fa fa-unlock-alt"></i>
+         <i class="fa fa-unlock-alt text-success"></i>
          {% else %}
-         <i title="{{ lang.not_in_access_group }}" style="color:red;" class="fa fa-lock"></i>
+         <i title="{{ lang.not_in_access_group }}" class="fa fa-lock text-danger"></i>
          {% endif %}
          {% else %}
-         <i class="fa fa-unlock-alt" style="color:var(--k-text-faint);opacity:.5;"></i>
+         <i class="fa fa-unlock-alt icon-off"></i>
          {% endif %}
          {% endif %}
        </td>
@@ -271,7 +271,7 @@
          {% if entry.case_devicecount > 0 %}
          <span class="badge">{{ entry.case_devicecount }}</span>
          {% else %}
-         <span class="badge" style="background:#e2e8f0;color:var(--k-text-faint);">0</span>
+         <span class="badge badge-empty">0</span>
          {% endif %}
          {% endif %}
        </td>

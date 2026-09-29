@@ -1,5 +1,5 @@
 /*
- * Kirjuri theme. Loaded after Bootstrap 3 and dashboard.css and overrides both.
+ * Kirjuri theme. Loaded after Bootstrap 3 and overrides it.
  * Fonts come from the operating system so the application looks right on
  * networks without internet access.
  */
@@ -109,6 +109,19 @@ hr {
   color: var(--k-text-muted);
 }
 
+/* Bootstrap's text colours, in the theme's palette. */
+.text-primary { color: var(--k-primary); }
+.text-success { color: var(--k-success); }
+.text-warning { color: var(--k-warning); }
+.text-danger { color: var(--k-danger); }
+.text-info { color: var(--k-info); }
+
+a.text-primary:hover, a.text-primary:focus { color: var(--k-primary-hover); }
+a.text-success:hover, a.text-success:focus { color: var(--k-success-hover); }
+a.text-warning:hover, a.text-warning:focus { color: var(--k-warning-hover); }
+a.text-danger:hover, a.text-danger:focus { color: var(--k-danger-hover); }
+a.text-info:hover, a.text-info:focus { color: var(--k-info-hover); }
+
 .table,
 .progress,
 .badge,
@@ -154,6 +167,18 @@ body.app .sidebar {
   padding: 0;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+  body.app .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    overflow-y: auto;
+  }
 }
 
 .sidebar-brand {
@@ -885,6 +910,11 @@ input[type="file"] {
   border-radius: 10px;
 }
 
+.badge.badge-empty {
+  background: #e2e8f0;
+  color: var(--k-text-faint);
+}
+
 .progress {
   height: 16px;
   border-radius: 8px;
@@ -1289,6 +1319,64 @@ body.login-page {
 
 .text-faint {
   color: var(--k-text-faint);
+}
+
+/* An icon for something a case does not have, next to the coloured icon for when it does. */
+.icon-off {
+  color: var(--k-text-faint);
+  opacity: 0.5;
+}
+
+.bg-surface {
+  background: var(--k-surface);
+}
+
+.table-framed {
+  border: 1px solid var(--k-border-strong);
+}
+
+.thead-tinted {
+  background: var(--k-primary-soft);
+}
+
+/* Device memo: a device or medium that holds evidence. */
+.evidence-cell {
+  background: linear-gradient(to right, var(--k-success-soft), var(--k-surface));
+}
+
+.evidence-cell-host {
+  background: linear-gradient(to right, var(--k-success-soft), var(--k-surface-muted));
+}
+
+/* Messages: the opened message under its row. */
+.message-body {
+  border: 1px solid var(--k-border);
+  background: var(--k-surface-muted);
+}
+
+/* Tools: the reservation calendar. */
+#calendar {
+  margin: 0 auto;
+  padding: 5px;
+  background: var(--k-surface);
+  border: 1px solid var(--k-border);
+}
+
+/* Case timeline: the case's phases behind the events, and the event picked in the table. */
+.vis-item.vis-background.timeline-waiting {
+  background-color: var(--k-warning-soft);
+}
+
+.vis-item.vis-background.timeline-pending {
+  background-color: var(--k-danger-soft);
+}
+
+.vis-item.vis-background.timeline-active {
+  background-color: var(--k-success-soft);
+}
+
+.table > tbody > tr.timeline-selected > td {
+  background: var(--k-warning-soft);
 }
 
 .empty-state {

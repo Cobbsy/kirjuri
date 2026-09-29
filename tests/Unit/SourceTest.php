@@ -153,4 +153,40 @@ final class SourceTest extends TestCase
     {
         $this->assertDoesNotMatchRegularExpression('/[?&](token|ct)=/', file_get_contents(KIRJURI_ROOT . '/views/' . $template));
     }
+
+    /**
+     * Colours live in kirjuri.css as classes on its variables, so a theme change reaches every page. Colours that are
+     * data, such as an administrator's chart colour printed with {{ }}, may still go in a style attribute.
+     */
+    #[DataProvider('templates')]
+    public function testTemplateSetsNoColoursOfItsOwn(string $template): void
+    {
+        $source = preg_replace('/\{\{.*?\}\}|\{%.*?%\}/s', '', file_get_contents(KIRJURI_ROOT . '/views/' . $template));
+        $colour = '#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|var)\(|\b(?:red|darkred|green|blue|orange|yellow|black|white|grey|gray|lightgrey)\b';
+        $found = array();
+        preg_match_all('/\sstyle="([^"]*)"/', $source, $styles);
+        foreach ($styles[1] as $style) {
+            if (preg_match('/(?:^|;)\s*(?:color|background|border)[\w-]*\s*:[^;]*(?:' . $colour . ')/i', $style)) {
+                $found[] = 'style="' . $style . '"';
+            }
+        }
+        preg_match_all('/<style\b[^>]*>(.*?)<\/style>/si', $source, $blocks);
+        foreach ($blocks[1] as $block) {
+            if (preg_match('/(?:color|background|border)[\w-]*\s*:[^;}]*(?:' . $colour . ')/i', $block, $match)) {
+                $found[] = '<style> ' . trim($match[0]);
+            }
+        }
+        preg_match_all('/\.css\(\s*[\'"](?:color|background[\w-]*|border[\w-]*)[\'"][^)]*\)/i', $source, $scripts);
+        $found = array_merge($found, $scripts[0]);
+        $this->assertSame(array(), $found, 'Use a class from views/css/kirjuri.css.');
+    }
+
+    /** Every stylesheet, script and image a template loads from the application exists. */
+    #[DataProvider('templates')]
+    public function testTemplateLoadsOnlyFilesThatExist(string $template): void
+    {
+        preg_match_all('/\b(?:href|src)="((?:views|vendor)\/[^"{}?#]+)"/', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $matches);
+        $missing = array_values(array_filter(array_unique($matches[1]), fn ($path) => !file_exists(KIRJURI_ROOT . '/' . $path)));
+        $this->assertSame(array(), $missing);
+    }
 }

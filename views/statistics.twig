@@ -117,7 +117,7 @@
     {% for month_col in 1..12 %}
     <td>
       {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-      {% set laskuri = laskuri + entry.case_devicecount %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
+      {% set laskuri = laskuri + entry.case_devicecount %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
     </td>
     {% endfor %}
     <td>
@@ -130,7 +130,7 @@
     {% for month_col in 1..12 %}
     <td>
       {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-      {% set laskuri = laskuri + 1 %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
+      {% set laskuri = laskuri + 1 %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
     </td>
     {% endfor %}
     <td><b>{{ count_new + count_open + count_finished }}</b>
@@ -143,14 +143,14 @@
     {% if month_col != "13" %}
     {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
     {% if entry.case_urgency == "1"%}{% set laskuri = laskuri + 1 %}{% endif %}{% endif %}{% if loop.last == true %}
-    <td>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}</td>
+    <td>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}</td>
     {% endif %}{% endfor %}
     {% else %}
     {% set laskuri = "0"%}
     {% for entry in all_cases %}
     {% if entry.case_urgency == "1"%}{% set laskuri = laskuri + 1 %}{% endif %}
     {% if loop.last == true %}
-    <td><b>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}</b></td>
+    <td><b>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}</b></td>
     {% endif %}
     {% endfor %}
     {% endif %}
@@ -222,7 +222,7 @@
     {% for month_col in 1..12 %}
     <td>
       {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-      {% set laskuri = laskuri + entry.device_size_in_gb %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri|number_format }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
+      {% set laskuri = laskuri + entry.device_size_in_gb %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri|number_format }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
     </td>
     {% endfor %}
     <td><b>{{ (summed_size / 1000)|number_format }} TB</b>
@@ -348,14 +348,14 @@
     <td>
       {% if month_col != "13" %}
       {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-      {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
+      {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
       {% else %}
       {% set laskuri = "0"%}
       {% for entry in all_devices %}
       {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1 %}{% endif %}
       {% if loop.last == true %}
       <b>
-        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span><script>$( "#solu-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
+        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$( "#solu-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
       </b>
       {% endif %}
       {% endfor %}
@@ -372,14 +372,14 @@
     <td>
       {% if month_col != "13" %}
       {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-      {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
+      {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
       {% else %}
       {% set laskuri = "0"%}
       {% for entry in all_devices %}
       {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1 %}{% endif %}
       {% if (loop.last == true) %}
       <b>
-        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span><script>$( "#solu-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
+        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$( "#solu-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
       </b>
       {% endif %}
       {% endfor %}
@@ -439,12 +439,12 @@
       <td>
         {% if month_col != "13" %}
         {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-        {% if entry.classification == classification %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
+        {% if entry.classification == classification %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
         {% else %}
         {% set laskuri = "0"%}
         {% for entry in all_cases %}
         {% if entry.classification == classification %}{% set laskuri = laskuri + 1 %}{% endif %}
-        {% if loop.last == true %}<b>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}</b>{% endif %}
+        {% if loop.last == true %}<b>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}</b>{% endif %}
         {% endfor %}
         {% endif %}
       </td>
@@ -479,12 +479,12 @@
       <td>
         {% if month_col != "13" %}
         {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = "31." ~ month_col ~ "." ~ dateStart|date("Y") ~ " 23:59.59" %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-        {% if entry.case_investigator_unit == investigating_unit %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
+        {% if entry.case_investigator_unit == investigating_unit %}{% set laskuri = laskuri + 1%}{% endif%}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
         {% else %}
         {% set laskuri = "0"%}
         {% for entry in all_cases %}
         {% if entry.case_investigator_unit == investigating_unit %}{% set laskuri = laskuri + 1 %}{% endif %}
-        {% if loop.last == true %}<b>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span style="color:#D0D0D0;">{{ laskuri }}</span>{% endif %}</b>{% endif %}
+        {% if loop.last == true %}<b>{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}</b>{% endif %}
         {% endfor %}
         {% endif %}
       </td>

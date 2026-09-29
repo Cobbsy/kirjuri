@@ -30,7 +30,7 @@
       <hr>
       {% for key, value in diff %}
       <div class="form-group">
-        <label class="col-md-2 control-label"><b style="color:red;"><span class="pull-left"><i class="fa fa-warning"></i></span> {{ key|replace({"_": " "})|capitalize }}</b></label>
+        <label class="col-md-2 control-label"><b class="text-danger"><span class="pull-left"><i class="fa fa-warning"></i></span> {{ key|replace({"_": " "})|capitalize }}</b></label>
         <div class="col-md-10">
           <input type="text" class="form-control" name="{{ key }}" value="{{ value }}" placeholder="{{ value }}">
         </div>

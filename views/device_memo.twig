@@ -61,44 +61,44 @@ if (e.keyCode == 13) {
   {% endfor %}
   </select>​
 </p>
-    <table class="table table-condensed" style="border: 1px solid #AAA;background-color:#FFF;"">
-      <thead style="background-color:#CDE;">
+    <table class="table table-condensed bg-surface table-framed">
+      <thead class="thead-tinted">
         <th style="width:1px;"></th>
-        <th style="width:350px">{{ lang.device_or_media }}</th>
+        <th style="width:350px;">{{ lang.device_or_media }}</th>
         <th>{{ lang.info }}</th>
-        <th style="width:1px"></th>
+        <th style="width:1px;"></th>
       </thead>
       <tr {% if entry.device_host_id == "0"%}class="active"{% endif %} >
       <td style="vertical-align:middle;" {% if entry.device_contains_evidence %}class="success"{% endif %}>
       <img src="views/img/svg/{% if entry.device_type %}{{ entry.device_type|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}{% else %}{{ lang.unknown }}{% endif %}.svg"  style="vertical-align:middle;float:left;padding:10px;width:64px;">
       </td>
       <td style="vertical-align:middle;;white-space:nowrap;" {% if entry.device_contains_evidence %}class="success"{% endif %}>
-        <h4><a href="device_memo.php?uid={{ entry.id }}">{% if entry.device_type %}{{ entry.device_type }}{% else %}<span style="color:red;">{{ lang.undefined_device_or_media_type }}</span>{% endif %}<br>
+        <h4><a href="device_memo.php?uid={{ entry.id }}">{% if entry.device_type %}{{ entry.device_type }}{% else %}<span class="text-danger">{{ lang.undefined_device_or_media_type }}</span>{% endif %}<br>
           {{ entry.device_manuf }} {{ entry.device_model }} {% if entry.device_size_in_gb > "0" %}{{ entry.device_size_in_gb }} GB{% endif %}</a><br>
           <small>
             <a href="print_sticker.php?uid={{entry.id}}&type=device" target="_BLANK"><i class="fa fa-print"></i> [UID{{ entry.id }}]</a>, {{ entry.device_document }} {{ lang.object_no }} {{ entry.device_item_number }}<br>
             {{ lang.added }} {{ entry.case_added_date|date("d.m.Y H:i") }}{% if entry.case_added_date != entry.last_updated %}<br>{{ lang.updated|capitalize }} {{ entry.last_updated|date("d.m.Y H:i") }}{% endif %}
           {% if entry.report_notes %}<br>
           {% if entry.device_include_in_report == "1" %}
-          <span style="color:green;"><i class="fa fa-check-square-o"></i> {{ lang.examination_notes_shown }}</span><br>
+          <span class="text-success"><i class="fa fa-check-square-o"></i> {{ lang.examination_notes_shown }}</span><br>
           {% endif %}
           {% if entry.device_include_in_report == "0" %}
-          <span style="color:red;"><i class="fa fa-close"></i> {{ lang.examination_notes_hidden }}</span><br>
+          <span class="text-danger"><i class="fa fa-close"></i> {{ lang.examination_notes_hidden }}</span><br>
           {% endif %}
-          {% else %}<br><span style="color:orange;"><i class="fa fa-square-o"></i> {{ lang.examination_notes_empty }}</span><br>
+          {% else %}<br><span class="text-warning"><i class="fa fa-square-o"></i> {{ lang.examination_notes_empty }}</span><br>
           {% endif %}
           {% if entry.device_contains_evidence %}
-          <span style="color:green;"><i class="fa fa-search"></i> {{ lang.contains_evidence }}</span><br>
+          <span class="text-success"><i class="fa fa-search"></i> {{ lang.contains_evidence }}</span><br>
           {% endif %}
           </small>
         </h4>
       </td>
-      <td style="vertical-align:middle;{% if entry.device_contains_evidence %}background:linear-gradient(to right, #e1f0d6 , {% if entry.device_host_id == "0"%}#f5f5f5{% else %}#ffffff{% endif %});{% endif %}">
+      <td style="vertical-align:middle;"{% if entry.device_contains_evidence %} class="evidence-cell{% if entry.device_host_id == "0" %} evidence-cell-host{% endif %}"{% endif %}>
         {% if entry.device_owner %}
         <i class="fa fa-user"></i> {{ entry.device_owner }}</span><br>
         {% set hosting_dev_owner = entry.device_owner %}
         {% else %}
-        <span style="color:red;"> <i class="fa fa-exclamation-triangle"></i> {{ lang.owner_info_missing }}</span><br>
+        <span class="text-danger"> <i class="fa fa-exclamation-triangle"></i> {{ lang.owner_info_missing }}</span><br>
         {% endif %}
         {% if entry.case_request_description %}
         <i class="fa fa-info-circle"></i> {{ entry.case_request_description }}<br>
@@ -149,7 +149,7 @@ if (e.keyCode == 13) {
   {% endfor %}
   </select>​
 </form></p>
-<p><iframe name="submit_iframe{{entry.id}}" allowtransparency="true" style="overflow:hidden; width:200px; height:16px; border:0px solid red; margin: 0 auto; display:block;" src="progress_bar_static.php?uid={{entry.id}}"></iframe></p>
+<p><iframe name="submit_iframe{{entry.id}}" allowtransparency="true" style="overflow:hidden; width:200px; height:16px; border:0; margin: 0 auto; display:block;" src="progress_bar_static.php?uid={{entry.id}}"></iframe></p>
 <iframe name="submit_iframe{{entry.id}}_void" style="display:none;"></iframe></p>
 </td>
 </tr>
