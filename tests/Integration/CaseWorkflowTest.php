@@ -177,6 +177,25 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('3', $this->row($caseId)['case_status']);
     }
 
+    public function testCasePageShowsStatusAndOffersTheNextStep(): void
+    {
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Overview '));
+        $this->addDevice($admin, $caseId, $this->uniqueName('Model'));
+
+        $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        $this->assertStringContainsString('chip chip-new', $page);
+        $this->assertStringContainsString('chip chip-urgent', $page);
+        $this->assertMatchesRegularExpression('#action="submit.php\?type=update_request_status".*value="2" name="case_status"#s', $page, 'A new case can be started.');
+        $this->assertMatchesRegularExpression('#<select[^>]*name="device_action"#', $admin->get('edit_request.php?case=' . $caseId . '&tab=devices')->body);
+
+        // A finished case is no longer flagged urgent, as on the front page.
+        $this->server->pdo()->prepare("UPDATE exam_requests SET case_status = '3' WHERE id = :id")->execute(array(':id' => $caseId));
+        $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        $this->assertStringContainsString('chip chip-ready', $page);
+        $this->assertStringNotContainsString('chip-urgent', $page);
+    }
+
     public function testReportNotesAreSanitised(): void
     {
         $admin = $this->admin();
