@@ -43,4 +43,20 @@ final class ConfigTest extends TestCase
         $prefs = kirjuri_load_settings(kirjuri_settings_file());
         $this->assertSame(array('title_text' => 'Kirjuri', 'new_setting' => 'default', 'release' => '1.0'), $prefs['settings']);
     }
+
+    public function testCustomLanguageFilesGetEnglishForStringsAddedLater(): void
+    {
+        file_put_contents('conf/lang_EN.JSON', json_encode(array('hello' => 'Hello', 'menu' => 'Menu', 'devices' => array('a' => 'Phone', 'b' => 'Tablet'))));
+        file_put_contents('conf/lang_ZZ.JSON', json_encode(array('hello' => 'Hei', 'devices' => array('a' => 'Puhelin'))));
+        $prefs = array('settings' => array('lang' => 'lang_ZZ'));
+
+        // A custom file saved before "menu" existed printed it blank.
+        $lang = kirjuri_load_language($prefs);
+        $this->assertSame('Hei', $lang['hello']);
+        $this->assertSame('Menu', $lang['menu']);
+        $this->assertSame(array('a' => 'Puhelin', 'b' => 'Tablet'), $lang['devices']);
+
+        // The language editor sees the file as saved, so it can list the missing strings.
+        $this->assertSame(array('hello' => 'Hei', 'devices' => array('a' => 'Puhelin')), kirjuri_load_language($prefs, false));
+    }
 }

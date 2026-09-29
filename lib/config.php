@@ -41,11 +41,22 @@ function kirjuri_language_file($prefs) {
 }
 
 
-function kirjuri_load_language($prefs) {
+/**
+ * The strings of the configured language. A custom or older language file lacks the strings added
+ * in later releases, so those come from English unless $fill_missing is false (the language
+ * editor wants to see which ones are missing).
+ */
+function kirjuri_load_language($prefs, $fill_missing = true) {
     $file = kirjuri_language_file($prefs);
     $lang = (substr($file, -5) === '.JSON') ? json_decode(file_get_contents($file), true) : parse_ini_file($file, true);
     if (!is_array($lang)) {
         throw new RuntimeException('Can not read the language file ' . $file . '.');
+    }
+    if ($fill_missing && $file !== 'conf/lang_EN.JSON' && file_exists('conf/lang_EN.JSON')) {
+        $english = json_decode(file_get_contents('conf/lang_EN.JSON'), true);
+        if (is_array($english)) {
+            $lang = array_replace_recursive($english, $lang);
+        }
     }
     return $lang;
 }

@@ -206,6 +206,14 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $page = $admin->get('edit_request.php?case=' . $caseId . '&tab=devices')->body;
         $this->assertMatchesRegularExpression('#id="media_' . $hostId . '_item"[^>]*value="7"#', $page);
         $this->assertMatchesRegularExpression('#id="media_' . $hostId . '_owner"[^>]*value="Roe Richard"#', $page);
+
+        // A refused device form keeps its input for the next try, but not its owner in the host's media dialog.
+        $admin->post('submit.php?type=device', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'parent_id' => (string) $caseId, 'device_host_id' => '0', 'device_type' => '', 'device_owner' => 'Someone Else',
+            'device_manuf' => 'Kept Manufacturer', 'device_action' => '1', 'device_location' => 'Locker', 'is_removed' => '0'));
+        $page = $admin->get('edit_request.php?case=' . $caseId . '&tab=devices')->body;
+        $this->assertStringContainsString('value="Kept Manufacturer"', $page);
+        $this->assertMatchesRegularExpression('#id="media_' . $hostId . '_owner"[^>]*value="Roe Richard"#', $page);
     }
 
     public function testReportNotesAreSanitised(): void

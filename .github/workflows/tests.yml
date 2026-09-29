@@ -88,3 +88,51 @@ jobs:
       - name: Logs
         if: always()
         run: docker compose logs
+
+  browser:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start
+        run: docker compose up -d --build
+
+      - name: Wait for the login page
+        run: |
+          for i in $(seq 1 60); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/login.php)" = "200" ] && exit 0
+            sleep 2
+          done
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+
+      - name: Install Playwright
+        working-directory: tests/browser
+        run: npm ci && npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        working-directory: tests/browser
+        env:
+          KIRJURI_URL: http://localhost:8080/
+          KIRJURI_ADMIN_PASSWORD: admin-password
+        run: npx playwright test
+
+      - name: Keep the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            tests/browser/playwright-report
+            tests/browser/test-results
+          retention-days: 14
+
+      - name: Logs
+        if: always()
+        run: docker compose logs
