@@ -55,13 +55,13 @@
       <td><a href="users.php?populate={{user.id}}#u">{{ user.username }}</a>{% if session.user.username == user.username %} ({{ lang.logged_in|lower }}){% endif %}{% if 'I' in user.flags %} ({{ lang.flag_inactive|lower }}){% endif %}</td>
       <td>{{ user.name }}</td>
       <td>{% if user.access == 0 %}{{ lang.level_admin }}{% elseif user.access == 1 %}{{ lang.level_user }}{% elseif user.access == 2 %}{{ lang.level_viewonly }}{% elseif user.access == 3 %}{{ lang.level_addonly }}{% else %}???{% endif %}</td>
-      <td class="text-center">{% if user.attr_3 == "LDAP_AUTH_ONLY" %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-remove"></i>{% endif %}</td>
-      <td class="text-center">{% if 'F' in user.flags == true %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-remove"></i>{% endif %}</td>
-      <td class="text-center">{% if 'M' in user.flags == true %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-remove"></i>{% endif %}</td>
-      <td class="text-center">{% if 'A' in user.flags == true %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-remove"></i>{% endif %}</td>
-      <td class="text-center">{% if user.attr_2|length > 26 %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-remove"></i>{% endif %}</td>
+      <td class="text-center">{% if user.attr_3 == "LDAP_AUTH_ONLY" %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove text-danger"></i>{% endif %}</td>
+      <td class="text-center">{% if 'F' in user.flags == true %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove text-danger"></i>{% endif %}</td>
+      <td class="text-center">{% if 'M' in user.flags == true %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove text-danger"></i>{% endif %}</td>
+      <td class="text-center">{% if 'A' in user.flags == true %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove text-danger"></i>{% endif %}</td>
+      <td class="text-center">{% if user.attr_2|length > 26 %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove text-danger"></i>{% endif %}</td>
 
-      <td class="text-center">{% if 'I' in user.flags == true %}<i style="color:red;" class="fa fa-remove"></i>{% else %}<i style="color:green;" class="fa fa-check"></i>{% endif %}</td>
+      <td class="text-center">{% if 'I' in user.flags == true %}<i class="fa fa-remove text-danger"></i>{% else %}<i class="fa fa-check text-success"></i>{% endif %}</td>
       <td><a href="submit.php?type=force_logout&user={{user.username|url_encode}}" data-post><i class="fa fa-sign-out"></i> {{ lang.log_out }}</a></td>
     </tr>
     {% endfor %}
@@ -148,7 +148,7 @@
           <div class="checkbox">
              <label class="col-md-12">
                <input type="hidden" name="flag3" value="-">
-               <input type="checkbox" name="flag3" value="A" {% if "A" in fields.flags %}checked{% endif %}> {{ lang.api_access }} {% if fields.apikey %} <i class="fa fa-key"></i> <span style="color:grey;">{{ fields.apikey }}{% endif %}
+               <input type="checkbox" name="flag3" value="A" {% if "A" in fields.flags %}checked{% endif %}> {{ lang.api_access }} {% if fields.apikey %} <i class="fa fa-key"></i> <span class="text-muted">{{ fields.apikey }}{% endif %}
              </label>
            </div>
 
@@ -166,7 +166,7 @@
           {% if fields.id > 2 %}
           <div class="checkbox">
             <label class="col-md-12">
-              <input type="checkbox" name="delete_user" value="delete"> <span style="color:red;">{{ lang.delete_user }}</span>
+              <input type="checkbox" name="delete_user" value="delete"> <span class="text-danger">{{ lang.delete_user }}</span>
             </label>
           </div>
           {% endif %}
@@ -192,14 +192,14 @@
   <tr>
     <td>
       {{ session_file }}
-      <p>{% if session_content.last_activity_sec <= "60" %}<span style="color:green;"><b>ONLINE</b></span>{% else %}<span style="color:red;">OFFLINE</span>{% endif %}
+      <p>{% if session_content.last_activity_sec <= "60" %}<span class="text-success"><b>ONLINE</b></span>{% else %}<span class="text-danger">OFFLINE</span>{% endif %}
     </td>
     <td>
       <p>{{ session_content.content }}</p>
-      <p {% if session_content.last_activity_sec > "259200" %}style="color:red;"{% endif %}>Last activity: {{ session_content.last_activity }}</p>
+      <p{% if session_content.last_activity_sec > "259200" %} class="text-danger"{% endif %}>Last activity: {{ session_content.last_activity }}</p>
     </td>
     <td class="text-center">
-      <a href="submit.php?type=drop_session&user={{fields.username|url_encode}}&user_id={{ fields.id }}&session={{ session_file|replace({".txt": "", "session_": ""}) }}" data-post><i style="color:red;" class="fa fa-times"></i></a>
+      <a href="submit.php?type=drop_session&user={{fields.username|url_encode}}&user_id={{ fields.id }}&session={{ session_file|replace({".txt": "", "session_": ""}) }}" data-post><i class="fa fa-times text-danger"></i></a>
     </td>
   </tr>
 {% endfor %}

@@ -42,7 +42,7 @@
             {% endif %}
         {% endif %}
 
-        <table class="table table-striped" style="margin-top:20px;background-color:#FFF;">
+        <table class="table table-striped bg-surface" style="margin-top:20px;">
             <thead>
                 <th>{{ lang.product_name|capitalize }}</th>
                 <th>{{ lang.hardware_version|capitalize }}</th>
@@ -67,16 +67,16 @@
                         {{ updated.0 }}</td>
                     <td class="text-center">
                         {% if 'I' in tool.flags == true %}
-                            <i style="color:red;" class="fa fa-remove"></i>
+                            <i class="fa fa-remove text-danger"></i>
                         {% else %}
-                            <i style="color:green;" class="fa fa-check"></i>
+                            <i class="fa fa-check text-success"></i>
                         {% endif %}
                     </td>
                     <td class="text-center">
                         {% if not tool.attr_3 %}
-                            <i style="color:red;" class="fa fa-remove"></i>
+                            <i class="fa fa-remove text-danger"></i>
                         {% else %}
-                            <i style="color:green;" class="fa fa-check"></i>
+                            <i class="fa fa-check text-success"></i>
                         {% endif %}
                     </td>
                     <td></td>
@@ -96,16 +96,16 @@
                         {{ updated.0 }}</td>
                     <td class="text-center">
                         {% if 'I' in tool.flags == true %}
-                            <i style="color:red;" class="fa fa-remove"></i>
+                            <i class="fa fa-remove text-danger"></i>
                         {% else %}
-                            <i style="color:green;" class="fa fa-check"></i>
+                            <i class="fa fa-check text-success"></i>
                         {% endif %}
                     </td>
                     <td class="text-center">
                         {% if not tool.attr_3 %}
-                            <i style="color:red;" class="fa fa-remove"></i>
+                            <i class="fa fa-remove text-danger"></i>
                         {% else %}
-                            <i style="color:green;" class="fa fa-check"></i>
+                            <i class="fa fa-check text-success"></i>
                         {% endif %}
                     </td>
                     <td></td>
@@ -182,7 +182,7 @@
                                 {% if (session.user.name == entry.reserved_for)
                                     or(session.user.access == "0") %}
                                     <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}" data-post>
-                                        <i class="fa fa-times" style="color:red;"></i>
+                                        <i class="fa fa-times text-danger"></i>
                                     </a>
                                 {% endif %}
                             </td>
@@ -294,15 +294,6 @@
                     });
                 });
             </script>
-            <style>
-                #calendar {
-                    background-color: #FFF;
-                    padding: 5px;
-                    border: 1px solid #DDD;
-                    margin: 0 auto;
-                }
-
-            </style>
             <div id='calendar'></div>
         {% endif %}
 
@@ -323,9 +314,9 @@
                       </td>
                       <td>{% if update.3 is defined %}
                               {% if "I" in update.3 %}
-                                  <span style="color:red;">{{ lang.inactive|capitalize }}</span>
+                                  <span class="text-danger">{{ lang.inactive|capitalize }}</span>
                               {% else %}
-                                  <span style="color:green;">{{ lang.active|capitalize }}</span>
+                                  <span class="text-success">{{ lang.active|capitalize }}</span>
                               {% endif %}
                           {% endif %}
                       </td>
@@ -412,7 +403,7 @@
                                         <label class="col-md-12">
                                             <input type="hidden" name="drop_tool" value="no">
                                             <input type="checkbox" name="drop_tool" value="yes">
-                                            <span style="color:red;">{{ lang.remove_tool_permanently }}</span>
+                                            <span class="text-danger">{{ lang.remove_tool_permanently }}</span>
                                         </label>
                                     </div>
                                 </div>

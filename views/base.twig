@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html{% block html_class %}{% endblock %}>
   <head>
     {% block title %}
     <title>{{ settings.title_text }}</title>
@@ -14,7 +14,6 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <link href="vendor/twbs/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- <link href="vendor/twbs/bootstrap/dist/css/bootstrap-theme.min.css" rel="stylesheet"> -->
-    <link href="views/css/dashboard.css" rel="stylesheet">
     <link rel="stylesheet" href="views/font-awesome-4.6.3/css/font-awesome.min.css">
     <link href="views/jquery-ui/jquery-ui.css" rel="stylesheet" type="text/css">
     <link href="views/css/kirjuri.css" rel="stylesheet">
@@ -35,10 +34,13 @@
     <script src="vendor/twbs/bootstrap/dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="vendor/tinymce/tinymce/tinymce.min.js"></script>
     <script>
+      var darkMode = window.matchMedia("(prefers-color-scheme: dark)").matches && !document.documentElement.classList.contains("paper");
       tinymce.init({
         selector: "textarea:not(.mceNoEditor)",
         license_key: "gpl",
         promotion: false,
+        skin: darkMode ? "oxide-dark" : "oxide",
+        content_css: darkMode ? "dark" : "default",
         width : "100%"
       });
 

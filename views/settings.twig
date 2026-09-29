@@ -48,7 +48,7 @@
 {% endif %}
 
         <div class="col-md-2"></div>
-        <div class="col-md-10">{% if "F" in session.user.flags %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-times"></i>{% endif %} {{ lang.forensic_examiner_long }}&nbsp;&nbsp;&nbsp;{% if "M" in session.user.flags %}<i style="color:green;" class="fa fa-check"></i>{% else %}<i style="color:red;" class="fa fa-times"></i>{% endif %} {{ lang.mobile_examiner_long }}</div>
+        <div class="col-md-10">{% if "F" in session.user.flags %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-times text-danger"></i>{% endif %} {{ lang.forensic_examiner_long }}&nbsp;&nbsp;&nbsp;{% if "M" in session.user.flags %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-times text-danger"></i>{% endif %} {{ lang.mobile_examiner_long }}</div>
       </div>
 
     <div class="panel-footer">
@@ -97,7 +97,7 @@
       {% for key, value in diff %}
       {% if (key != "self") and (key != "release") and (key != "report_notes_footer") %}
       <div class="form-group">
-        <label class="col-md-2 control-label" style="color:red;">{{ key|replace({"_": " "})|capitalize }}</label>
+        <label class="col-md-2 control-label text-danger">{{ key|replace({"_": " "})|capitalize }}</label>
         <div class="col-md-10">
           {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. #}
           <input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> Yes &nbsp;&nbsp;<input type="radio" name="settings[{{key}}]" value="0" {% if value == "0" %}checked{% endif %}> No

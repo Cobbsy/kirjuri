@@ -1,4 +1,6 @@
 {% extends 'base.twig' %}
+{# The report is a paper document, so it stays light in dark mode. #}
+{% block html_class %} class="paper"{% endblock %}
 {% block title %}
 <title>{{ lang.examination_report }} - {{ settings.title_text }}</title>
 {% endblock title %}

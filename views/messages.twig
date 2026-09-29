@@ -64,14 +64,14 @@
     {% for msg in messages %}
     {% if msg.archived_to == 0 and msg.msgto == session.user.username %}
     <tr {% if open == msg.id %}class="info"{% elseif not msg.received %}class="success"{% endif %} %}>
-      <td style="width:200px;">{% if msg.msgfrom == "Myself" %}<span style="color:green;"><i class="fa fa-caret-right"></i> <i class="fa fa-inbox"></i></span> <i>{{ session.user.name }}</i>{% elseif msg.msgfrom == session.user.username %}<span style="color:red;"><i class="fa fa-inbox"></i> <i class="fa fa-caret-right"></i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% else %}<span style="color:green;"><i class="fa fa-caret-right"> <i class="fa fa-inbox"></i> </i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% endif %}</td>
+      <td style="width:200px;">{% if msg.msgfrom == "Myself" %}<span class="text-success"><i class="fa fa-caret-right"></i> <i class="fa fa-inbox"></i></span> <i>{{ session.user.name }}</i>{% elseif msg.msgfrom == session.user.username %}<span class="text-danger"><i class="fa fa-inbox"></i> <i class="fa fa-caret-right"></i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% else %}<span class="text-success"><i class="fa fa-caret-right"> <i class="fa fa-inbox"></i> </i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% endif %}</td>
       <td><a href="messages.php?open={{ msg.id }}&show=inbox">{% if not msg.subject %}<i>{{ lang.no_subject }}</i>{% else %}{{ msg.subject }}{% endif %}</a></td>
       <td>{{ msg.attr_1 }}</td>
       <td>{% if msg.received == "0" %}<i>{{ lang.new }}</i>{% else %}{{ msg.received }}{% endif %}</td>
       <td>{% if msg.received != "0" %}<a href="submit.php?type=archive_received&id={{msg.id}}" data-post><i class="fa fa-archive"></i></a>{% endif %}</td>
       {% if open == msg.id %}
       <tr>
-        <td style="border:1px solid #DDD;background-color:#EEE;" colspan="5">
+        <td class="message-body" colspan="5">
           {{ msg.body|purify }}
           <br>
           <form class="form-horizontal" role="form" method="post" action="submit.php?type=send_message">
@@ -124,7 +124,7 @@
     {% for msg in messages %}
     {% if msg.archived_from == "0" and ((msg.msgfrom == session.user.username)) %}
     <tr {% if open == msg.id %}class="info"{% elseif not msg.received %}class="warning"{% endif %} %}>
-      <td style="width:200px;">{% if msg.msgfrom == session.user.username %}<span style="color:red;"><i class="fa fa-inbox"></i> <i class="fa fa-caret-right"></i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% else %}<span style="color:green;"><i class="fa fa-caret-right"> <i class="fa fa-inbox"></i> </i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% endif %}</td>
+      <td style="width:200px;">{% if msg.msgfrom == session.user.username %}<span class="text-danger"><i class="fa fa-inbox"></i> <i class="fa fa-caret-right"></i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% else %}<span class="text-success"><i class="fa fa-caret-right"> <i class="fa fa-inbox"></i> </i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% endif %}</td>
       <td style="width:200px;">{% for entry in session.all_users %}{% if entry.username == msg.msgto %}{{ entry.name }}{% endif %}{% endfor %}</td>
       <td><a href="messages.php?open={{ msg.id }}&show=outbox">{{ msg.subject }}</a></td>
       <td>{{ msg.attr_1 }}</td>
@@ -132,7 +132,7 @@
       <td><a href="submit.php?type=archive_sent&id={{msg.id}}" data-post><i class="fa fa-archive"></i></a></td>
       {% if open == msg.id %}
       <tr>
-        <td style="border:1px solid #DDD;background-color:#EEE;" colspan="6">
+        <td class="message-body" colspan="6">
           {{ msg.body|purify }}
           <br>
           <span class="pull-right">
@@ -170,7 +170,7 @@
     {% if (msg.archived_to == 1 and msg.msgto == session.user.username) or (msg.archived_from == 1 and msg.msgfrom == session.user.username) %}
       {% if (msg.deleted_to == 0 and msg.msgto == session.user.username) or (msg.deleted_from == 0 and msg.msgfrom == session.user.username) %}
     <tr {% if open == msg.id %}class="info"{% elseif not msg.received %}class="warning"{% endif %} %}>
-      <td style="width:200px;">{% if msg.msgfrom == "Myself" %}<span style="color:green;"><i class="fa fa-caret-right"></i> <i class="fa fa-inbox"></i></span> {{ session.user.name }}{% elseif msg.msgfrom == session.user.username %}<span style="color:red;"><i class="fa fa-inbox"></i> <i class="fa fa-caret-right"></i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% else %}<span style="color:green;"><i class="fa fa-caret-right"> <i class="fa fa-inbox"></i> </i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% endif %}</td>
+      <td style="width:200px;">{% if msg.msgfrom == "Myself" %}<span class="text-success"><i class="fa fa-caret-right"></i> <i class="fa fa-inbox"></i></span> {{ session.user.name }}{% elseif msg.msgfrom == session.user.username %}<span class="text-danger"><i class="fa fa-inbox"></i> <i class="fa fa-caret-right"></i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% else %}<span class="text-success"><i class="fa fa-caret-right"> <i class="fa fa-inbox"></i> </i></span> {% for entry in session.all_users %}{% if entry.username == msg.msgfrom %}{{ entry.name }}{% endif %}{% endfor %}{% endif %}</td>
       <td style="width:200px;">{% for entry in session.all_users %}{% if entry.username == msg.msgto %}{{ entry.name }}{% endif %}{% endfor %}</td>
       <td><a href="messages.php?open={{ msg.id }}&show=archive">{% if not msg.subject %}<i>{{ lang.no_subject}}</i>{% else %}{{ msg.subject }}{% endif %}</a></td>
       <td>{{ msg.attr_1 }}</td>
@@ -184,14 +184,14 @@
       </td>
       <td>
       {% if msg.msgto == session.user.username %}
-      <a href="submit.php?type=delete_received&id={{msg.id}}" data-post><i style="color:red;" class="fa fa-remove"></i></a>
+      <a href="submit.php?type=delete_received&id={{msg.id}}" data-post><i class="fa fa-remove text-danger"></i></a>
       {% elseif msg.msgfrom == session.user.username %}
-      <a href="submit.php?type=delete_sent&id={{msg.id}}" data-post><i style="color:red;" class="fa fa-remove"></i></a>
+      <a href="submit.php?type=delete_sent&id={{msg.id}}" data-post><i class="fa fa-remove text-danger"></i></a>
       {% endif %}
       </td>
       {% if open == msg.id %}
       <tr>
-        <td style="border:1px solid #DDD;background-color:#EEE;" colspan="7">
+        <td class="message-body" colspan="7">
           {{ msg.body|purify }}
           <br>
           <span class="pull-right">
@@ -222,7 +222,7 @@
     {% endfor %}
     {% if session.unread.msgcount_archived == 0 %}<tr><td colspan="7" class="active">{{ lang.no_messages|capitalize }}</tr></td>{% endif %}
   </table>
-  {% if session.unread.msgcount_archived > 0 %}&nbsp;&nbsp;<a href="submit.php?type=delete_all" data-post><i style="color:red;" class="fa fa-remove"></i> {{ lang.delete_all_archived }}</a>{% endif%}
+  {% if session.unread.msgcount_archived > 0 %}&nbsp;&nbsp;<a href="submit.php?type=delete_all" data-post><i class="fa fa-remove text-danger"></i> {{ lang.delete_all_archived }}</a>{% endif%}
 {% endif %}
 
 </div>

@@ -11,6 +11,16 @@ for (const url of pages) {
   });
 }
 
+test('on a wide screen the sidebar stays in place while the page scrolls', async ({ admin: page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'the phone menu scrolls with the page');
+  await page.goto('help.php');
+  const sidebar = page.locator('.sidebar');
+  await expect(sidebar).toHaveCSS('position', 'fixed');
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  expect((await sidebar.boundingBox()).y).toBe(0);
+});
+
 test('the case tabs switch in the sidebar, and on phones the menu folds away after a choice', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Tabs test ' + Date.now());
   await startCase(page, caseId);

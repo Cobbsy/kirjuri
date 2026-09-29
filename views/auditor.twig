@@ -11,8 +11,8 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <link href="vendor/twbs/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
         <!-- <link href="vendor/twbs/bootstrap/dist/css/bootstrap-theme.min.css" rel="stylesheet"> -->
-        <link href="views/css/dashboard.css" rel="stylesheet">
         <link rel="stylesheet" href="views/font-awesome-4.6.3/css/font-awesome.min.css">
+        <link href="views/css/kirjuri.css" rel="stylesheet">
         <title>{{ settings.title_text }}</title>
     </head>
     <body>
@@ -70,7 +70,7 @@
                                                 <a href="auditor.php?view={{entry}}">{{ entry }}</a>
                                             {% else %}{{ entry }}{% endif %}
                                         {% else %}
-                                            <span style="color:#BBB">no value</span>
+                                            <span class="text-faint">no value</span>
                                         {% endif %}
                                     {% endif %}
                                 </td>
@@ -92,7 +92,7 @@
                         {% endfor %}
 
                     {% else %}
-                        <span style="color:red">No matching log entries for audit file!</span>
+                        <span class="text-danger">No matching log entries for audit file!</span>
                     {% endif %}
 
                 </table>
