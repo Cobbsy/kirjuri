@@ -1,6 +1,6 @@
 const { test, expect, createCase, startCase, openMenuIfFolded, expectNoSidewaysScroll } = require('./fixtures');
 
-const pages = ['index.php', 'add_case.php', 'statistics.php', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'help.php'];
+const pages = ['index.php', 'add_case.php', 'statistics.php', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'lang_editor.php', 'help.php'];
 
 for (const url of pages) {
   test(`${url} renders without errors or sideways scrolling`, async ({ admin: page }) => {

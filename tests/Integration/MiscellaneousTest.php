@@ -250,6 +250,24 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testLanguageEditorShowsTheEnglishTextForOtherLanguages(): void
+    {
+        $admin = $this->admin();
+        $english = $admin->get('lang_editor.php')->body;
+        $this->assertStringNotContainsString('EN: ', $english, 'The English file needs no English text beside it.');
+        $this->assertMatchesRegularExpression('/<label for="string_password">[^<]*<\/label>\s*<input type="text" class="form-control" id="string_password" name="password"/', $english, 'Each label leads to its field.');
+
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_FI"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $finnish = $admin->get('lang_editor.php')->body;
+            $this->assertMatchesRegularExpression('/id="string_password" name="password" value="Salasana">\s*<span class="field-hint">EN: Password<\/span>/', $finnish);
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+    }
+
     public function testNumericSettingsStayTextFieldsAtZero(): void
     {
         // The page showed any setting whose value was 0 or 1 as Yes/No buttons, so a limit set to 0 could

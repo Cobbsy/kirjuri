@@ -25,5 +25,6 @@ echo kirjuri_render('lang_editor.twig', array(
         'langfiles' => $langfiles,
         'langfile' => $langfile_strings,
         'diff' => $diff,
+        'english' => $langfile_default,
         'langfile_name' => $prefs['settings']['lang']
     ));

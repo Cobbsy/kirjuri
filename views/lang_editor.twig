@@ -1,99 +1,123 @@
 {% extends 'base.twig' %} {% block title %}
-<title>{{ lang.settings }} - {{ settings.title_text }}</title>
+<title>{{ lang.edit_language_file }} - {{ settings.title_text }}</title>
 {% endblock title %}
 {% block content %}
+{% import _self as editor %}
+{% set code = langfile_name|replace({'lang_': '', '.JSON': '', '.conf': ''}) %}
+{# Next to each field, the English text, unless this is the English file. #}
+{% set reference = code == 'EN' ? {} : english %}
 <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-<h1>{{ lang.settings }} - {{ lang.edit_language_file }} </h1>
+<div class="page-title-row">
+  <h1 class="h3">{{ lang.edit_language_file }}</h1>
+</div>
 
-<form class="form-horizontal" role="form" method="post" action="submit.php?type=save_langfile">
+<form class="form-sections lang-editor" role="form" method="post" action="submit.php?type=save_langfile">
   <input type="hidden" name="token" value="{{session.user.token}}">
-  <div class="panel panel-default">
-    <div class="panel-heading">
-      <h3 class="panel-title">{{ lang.language_strings }}<span class="pull-right"><button type="submit" class="btn btn-success btn-xs">{{ lang.save }}</button></span></h3>
-    </div>
-    <div class="panel-body">
 
-<p>{{ lang.edit_strings }}</p>
-<hr>
-
-      <div class="form-group">
-        <label class="col-md-2 control-label">{{ lang.save_as|capitalize }}...</label>
-        <div class="col-md-10">
+  <section class="card form-section">
+    <div class="card-header"><i class="fa fa-language" aria-hidden="true"></i> {{ langfile_name }}</div>
+    <div class="card-body">
+      <p class="field-hint lang-intro">{{ lang.edit_strings }}</p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="countrycode">{{ lang.save_as|capitalize }}</label>
           <div class="input-group">
             <span class="input-group-addon">lang_</span>
-            <input type="text" class="form-control" name="countrycode" value="{{ langfile_name|replace({'lang_': "", '.JSON': "", '.conf': ""})}}" placeholder="Three letter country code" maxlength="3">
-
+            <input type="text" class="form-control" id="countrycode" name="countrycode" value="{{ code }}" maxlength="3" autocomplete="off">
+            <span class="input-group-addon">.JSON</span>
           </div>
-          <small>&nbsp;&nbsp;{{ lang.existing_files }}: {% for ccode in langfiles %}{% if ccode in langfile_name %}<b>{{ ccode }}</b>{% else %}{{ ccode }}{% endif %}{% if not loop.last%}, {% endif %}{% endfor %}
+          <span class="field-hint">{{ lang.existing_files|trim(':') }}: {% for ccode in langfiles %}{% if ccode == code %}<b>{{ ccode }}</b>{% else %}{{ ccode }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+        </div>
+        <div class="field">
+          <label for="lang_filter">{{ lang.find_a_string }}</label>
+          <input type="search" class="form-control" id="lang_filter" autocomplete="off">
         </div>
       </div>
-      <hr>
-      {% for key, value in diff %}
-      <div class="form-group">
-        <label class="col-md-2 control-label"><b class="text-danger"><span class="pull-left"><i class="fa fa-warning"></i></span> {{ key|replace({"_": " "})|capitalize }}</b></label>
-        <div class="col-md-10">
-          <input type="text" class="form-control" name="{{ key }}" value="{{ value }}" placeholder="{{ value }}">
-        </div>
-      </div>
-      {% endfor %}
+    </div>
+  </section>
 
+  <p class="empty-state lang-no-match" hidden>{{ lang.no_search_results }}</p>
+
+  {% if diff is not empty %}
+  <section class="card form-section lang-section lang-missing">
+    <div class="card-header"><i class="fa fa-warning" aria-hidden="true"></i> {{ lang.missing_strings }} ({{ diff|length }})</div>
+    <div class="card-body field-grid">
+      {% for key, value in diff %}
+      {% if value is not iterable %}
+      {{ editor.field(key, key, 'string_' ~ key, value, reference[key] ?? null, true) }}
+      {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="card form-section lang-section">
+    <div class="card-header"><i class="fa fa-font" aria-hidden="true"></i> {{ lang.language_strings }}</div>
+    <div class="card-body field-grid">
       {% for key, value in langfile %}
       {% if value is not iterable %}
-      <div class="form-group">
-        <label class="col-md-2 control-label">{{ key|replace({"_": " "})|capitalize }}</label>
-        <div class="col-md-10">
-          <input type="text" class="form-control" name="{{ key }}" value="{{ value }}" placeholder="{{ value }}">
-        </div>
-      </div>
+      {{ editor.field(key, key, 'string_' ~ key, value, reference[key] ?? null, false) }}
       {% endif %}
       {% endfor %}
+    </div>
+  </section>
 
-      {% for key, value in langfile %}
-      {% if value is iterable %}
-      <h3>{{ key|replace({"_": " "})|capitalize }}</h3>
-      <hr>
-      {% set primary = key %}
-      {% for subkey, value in value %}
-      <div class="form-group">
-        <label class="col-md-2 control-label">{{ subkey|replace({"_": " "})|capitalize }}</label>
-        {% if primary == "devices" %}
-        <div class="col-md-8">
-          <input type="text" class="form-control warning" name="{{primary}}[{{ subkey }}]" value="{{ value }}" placeholder="{{ value }}">
-          &nbsp;&nbsp;{{ lang.image_file }}: <code>views/img/svg/{{ value|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg</code>
+  {% for primary, values in langfile %}
+  {% if values is iterable %}
+  <section class="card form-section lang-section">
+    <div class="card-header"><i class="fa fa-list" aria-hidden="true"></i> {{ primary|replace({"_": " "})|capitalize }}</div>
+    <div class="card-body field-grid">
+      {% for subkey, value in values %}
+      {% set id = 'string_' ~ primary ~ '_' ~ subkey %}
+      {% if primary in ['devices', 'media_objs'] %}
+      {% set image = 'views/img/svg/' ~ value|lower|replace({" ": "_", "ä": "a", "ö": "o"}) ~ '.svg' %}
+      <div class="field lang-field" data-search="{{ (subkey ~ ' ' ~ (reference[primary][subkey] ?? ''))|lower }}">
+        <label for="{{ id }}">{{ subkey|replace({"_": " "})|capitalize }}</label>
+        <div class="lang-device">
+          <img src="{{ image }}" alt="" width="32" height="32">
+          <input type="text" class="form-control" id="{{ id }}" name="{{ primary }}[{{ subkey }}]" value="{{ value }}">
         </div>
-        <div class="col-md-2">
-            <img src="views/img/svg/{{ value|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="padding-left:5px;padding-right:5px;">
-        </div>
-        {% elseif primary == "media_objs" %}
-        <div class="col-md-8">
-          <input type="text" class="form-control warning" name="{{primary}}[{{ subkey }}]" value="{{ value }}" placeholder="{{ value }}">
-          &nbsp;&nbsp;{{ lang.image_file }}: <code>views/img/svg/{{ value|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg</code>
-        </div>
-          <div class="col-md-2">
-            <img src="views/img/svg/{{ value|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="padding-left:5px;padding-right:5px;">
-        </div>
-        {% else %}
-        <div class="col-md-10">
-          <input type="text" class="form-control warning" name="{{primary}}[{{ subkey }}]" value="{{ value }}" placeholder="{{ value }}">
-        </div>
-        {% endif %}
+        <span class="field-hint">{% if reference[primary][subkey] is defined %}EN: {{ reference[primary][subkey] }} &middot; {% endif %}{{ lang.image_file }}: <code>{{ image }}</code></span>
       </div>
-      {% endfor %}
+      {% else %}
+      {{ editor.field(subkey, primary ~ '[' ~ subkey ~ ']', id, value, reference[primary][subkey] ?? null, false) }}
       {% endif %}
-    {% endfor %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  {% endfor %}
 
-    </div>
-    <div class="panel-footer">
-      <button type="submit" class="btn btn-success">{{ lang.save }}</button>
-    </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary"><i class="fa fa-save" aria-hidden="true"></i> {{ lang.save }}</button>
   </div>
 </form>
-
 </div>
 
-
-
-</div>
-</div>
-</div>
+<script>
+  // Find a string by its name, its English text or its current value. Sections without a match fold away.
+  $("#lang_filter").on("input", function () {
+    var term = $.trim(this.value).toLowerCase(), any = false;
+    $(".lang-section").each(function () {
+      var shown = 0;
+      $(this).find(".lang-field").each(function () {
+        var match = !term || $(this).attr("data-search").indexOf(term) !== -1 || ($(this).find("input").val() || "").toLowerCase().indexOf(term) !== -1;
+        this.hidden = !match;
+        shown += match ? 1 : 0;
+      });
+      this.hidden = shown === 0;
+      any = any || shown > 0;
+    });
+    $(".lang-no-match").prop("hidden", any);
+  });
+</script>
 {% endblock %}
+
+{# One string: its name as the label, the text to edit, and the English text when editing another language. #}
+{% macro field(key, name, id, value, english, missing) %}
+<div class="field lang-field" data-search="{{ (key ~ ' ' ~ english)|lower }}">
+  <label for="{{ id }}"{% if missing %} class="text-danger"{% endif %}>{% if missing %}<i class="fa fa-warning" aria-hidden="true"></i> {% endif %}{{ key|replace({"_": " "})|capitalize }}</label>
+  <input type="text" class="form-control" id="{{ id }}" name="{{ name }}" value="{{ value }}">
+  {% if english is not null and english is not iterable %}<span class="field-hint">EN: {{ english }}</span>{% endif %}
+</div>
+{% endmacro %}
