@@ -43,6 +43,25 @@ test('a tool can be added and reserved', async ({ admin: page }) => {
   await expect(page.locator('.fc-event', { hasText: name })).toBeVisible();
 });
 
+test('the language editor finds a string, and its labels lead to the fields', async ({ admin: page }) => {
+  await page.goto('lang_editor.php');
+  const all = await page.locator('.lang-field').count();
+  await page.fill('#lang_filter', 'password');
+  const shown = page.locator('.lang-field:visible');
+  await expect(shown.first()).toBeVisible();
+  expect(await shown.count()).toBeLessThan(all);
+  await expect(page.locator('label[for="string_password"]')).toBeVisible();
+
+  await page.fill('#lang_filter', 'no string is called this');
+  await expect(page.locator('.lang-field:visible')).toHaveCount(0);
+  await expect(page.locator('.lang-no-match')).toBeVisible();
+
+  await page.fill('#lang_filter', '');
+  await expect(page.locator('.lang-field:visible')).toHaveCount(all);
+  await page.locator('label[for="string_password"]').click();
+  await expect(page.locator('#string_password')).toBeFocused();
+});
+
 test('a message can be sent, opened and answered', async ({ admin: page }) => {
   const subject = 'Note to self ' + Date.now();
   await page.goto('messages.php?show=compose');

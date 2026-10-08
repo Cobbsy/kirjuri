@@ -2810,6 +2810,17 @@ fieldset.field > legend {
   margin-top: 16px;
 }
 
+/* Language editor: device and media names with the drawing their name picks. */
+.lang-device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang-intro {
+  margin: 0 0 16px;
+}
+
 .server-clock {
   margin: 0 0 16px;
 }
