@@ -172,11 +172,11 @@
                     $('#calendar').fullCalendar({
                         timeFormat: 'HH:mm',
                         buttonText: {
-                            today: '{{ lang.today }}',
-                            month: '{{ lang.month }}',
-                            week: '{{ lang.week }}',
-                            day: '{{ lang.day }}',
-                            list: '{{ lang.list }}'
+                            today: '{{ lang.today|e('js') }}',
+                            month: '{{ lang.month|e('js') }}',
+                            week: '{{ lang.week|e('js') }}',
+                            day: '{{ lang.day|e('js') }}',
+                            list: '{{ lang.list|e('js') }}'
                         },
                         businessHours: {
                             dow: [
@@ -189,50 +189,50 @@
                         firstDay: 1,
                         defaultView: 'agendaWeek',
                         monthNames: [
-                            '{{ lang.month_1 }}',
-                            '{{ lang.month_2 }}',
-                            '{{ lang.month_3 }}',
-                            '{{ lang.month_4 }}',
-                            '{{ lang.month_5 }}',
-                            '{{ lang.month_6 }}',
-                            '{{ lang.month_7 }}',
-                            '{{ lang.month_8 }}',
-                            '{{ lang.month_9 }}',
-                            '{{ lang.month_10 }}',
-                            '{{ lang.month_11 }}',
-                            '{{ lang.month_12 }}'
+                            '{{ lang.month_1|e('js') }}',
+                            '{{ lang.month_2|e('js') }}',
+                            '{{ lang.month_3|e('js') }}',
+                            '{{ lang.month_4|e('js') }}',
+                            '{{ lang.month_5|e('js') }}',
+                            '{{ lang.month_6|e('js') }}',
+                            '{{ lang.month_7|e('js') }}',
+                            '{{ lang.month_8|e('js') }}',
+                            '{{ lang.month_9|e('js') }}',
+                            '{{ lang.month_10|e('js') }}',
+                            '{{ lang.month_11|e('js') }}',
+                            '{{ lang.month_12|e('js') }}'
                         ],
                         monthNamesShort: [
-                            '{{ lang.month_1_short }}',
-                            '{{ lang.month_2_short }}',
-                            '{{ lang.month_3_short }}',
-                            '{{ lang.month_4_short }}',
-                            '{{ lang.month_5_short }}',
-                            '{{ lang.month_6_short }}',
-                            '{{ lang.month_7_short }}',
-                            '{{ lang.month_8 }}',
-                            '{{ lang.month_9 }}',
-                            '{{ lang.month_10 }}',
-                            '{{ lang.month_11 }}',
-                            '{{ lang.month_12 }}'
+                            '{{ lang.month_1_short|e('js') }}',
+                            '{{ lang.month_2_short|e('js') }}',
+                            '{{ lang.month_3_short|e('js') }}',
+                            '{{ lang.month_4_short|e('js') }}',
+                            '{{ lang.month_5_short|e('js') }}',
+                            '{{ lang.month_6_short|e('js') }}',
+                            '{{ lang.month_7_short|e('js') }}',
+                            '{{ lang.month_8_short|e('js') }}',
+                            '{{ lang.month_9_short|e('js') }}',
+                            '{{ lang.month_10_short|e('js') }}',
+                            '{{ lang.month_11_short|e('js') }}',
+                            '{{ lang.month_12_short|e('js') }}'
                         ],
                         dayNames: [
-                            '{{ lang.weekday_7_long }}',
-                            '{{ lang.weekday_1_long }}',
-                            '{{ lang.weekday_2_long }}',
-                            '{{ lang.weekday_3_long }}',
-                            '{{ lang.weekday_4_long }}',
-                            '{{ lang.weekday_5_long }}',
-                            '{{ lang.weekday_6_long }}'
+                            '{{ lang.weekday_7_long|e('js') }}',
+                            '{{ lang.weekday_1_long|e('js') }}',
+                            '{{ lang.weekday_2_long|e('js') }}',
+                            '{{ lang.weekday_3_long|e('js') }}',
+                            '{{ lang.weekday_4_long|e('js') }}',
+                            '{{ lang.weekday_5_long|e('js') }}',
+                            '{{ lang.weekday_6_long|e('js') }}'
                         ],
                         dayNamesShort: [
-                            '{{ lang.weekday_7_short }}',
-                            '{{ lang.weekday_1_short }}',
-                            '{{ lang.weekday_2_short }}',
-                            '{{ lang.weekday_3_short }}',
-                            '{{ lang.weekday_4_short }}',
-                            '{{ lang.weekday_5_short }}',
-                            '{{ lang.weekday_6_short }}'
+                            '{{ lang.weekday_7_short|e('js') }}',
+                            '{{ lang.weekday_1_short|e('js') }}',
+                            '{{ lang.weekday_2_short|e('js') }}',
+                            '{{ lang.weekday_3_short|e('js') }}',
+                            '{{ lang.weekday_4_short|e('js') }}',
+                            '{{ lang.weekday_5_short|e('js') }}',
+                            '{{ lang.weekday_6_short|e('js') }}'
                         ],
                         header: {
                             left: 'prev,next today',
