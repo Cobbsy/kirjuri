@@ -1,9 +1,0 @@
-Kirjuri changes to FullCalendar 3.1.0
-
-fullcalendar.js and fullcalendar.min.js close the tags <div class="fc-bg"/>,
-<div class="fc-resizer fc-start-resizer" /> and <div class="fc-resizer fc-end-resizer" />
-as <div ...></div>. These are part of the HTML FullCalendar builds for each event. jQuery 3.5
-and later no longer expands self-closing tags, so each one stayed open, swallowed the elements
-after it, and the calendar lost count of its events: it rendered none and raised "Cannot read
-properties of undefined (reading 'event')". Keep this change if the files are replaced with
-another 3.x release.
