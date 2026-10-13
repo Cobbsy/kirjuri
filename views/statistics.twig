@@ -136,7 +136,7 @@
   <script>
     var ctx = document.getElementById("exam_requestChart").getContext("2d");
     var data = {
-      labels: ["{{ lang.month_1 }}", "{{ lang.month_2 }}", "{{ lang.month_3 }}", "{{ lang.month_4 }}", "{{ lang.month_5 }}", "{{ lang.month_6 }}", "{{ lang.month_7 }}", "{{ lang.month_8 }}", "{{ lang.month_9 }}", "{{ lang.month_10 }}", "{{ lang.month_11 }}", "{{ lang.month_12 }}"],
+      labels: ["{{ lang.month_1|e('js') }}", "{{ lang.month_2|e('js') }}", "{{ lang.month_3|e('js') }}", "{{ lang.month_4|e('js') }}", "{{ lang.month_5|e('js') }}", "{{ lang.month_6|e('js') }}", "{{ lang.month_7|e('js') }}", "{{ lang.month_8|e('js') }}", "{{ lang.month_9|e('js') }}", "{{ lang.month_10|e('js') }}", "{{ lang.month_11|e('js') }}", "{{ lang.month_12|e('js') }}"],
       datasets: [
       {
         label: "{{ lang.examined_devices|e('js') }}",
@@ -209,7 +209,7 @@
   <script>
     var ctx = document.getElementById("data_visualization").getContext("2d");
     var data = {
-      labels: ["{{ lang.month_1 }}", "{{ lang.month_2 }}", "{{ lang.month_3 }}", "{{ lang.month_4 }}", "{{ lang.month_5 }}", "{{ lang.month_6 }}", "{{ lang.month_7 }}", "{{ lang.month_8 }}", "{{ lang.month_9 }}", "{{ lang.month_10 }}", "{{ lang.month_11 }}", "{{ lang.month_12 }}"],
+      labels: ["{{ lang.month_1|e('js') }}", "{{ lang.month_2|e('js') }}", "{{ lang.month_3|e('js') }}", "{{ lang.month_4|e('js') }}", "{{ lang.month_5|e('js') }}", "{{ lang.month_6|e('js') }}", "{{ lang.month_7|e('js') }}", "{{ lang.month_8|e('js') }}", "{{ lang.month_9|e('js') }}", "{{ lang.month_10|e('js') }}", "{{ lang.month_11|e('js') }}", "{{ lang.month_12|e('js') }}"],
       datasets: [
       {
         label: "{{ lang.data_gb|e('js') }}",
@@ -233,7 +233,7 @@
   <script>
     var ctx = document.getElementById("data_visualization2").getContext("2d");
     var data = {
-      labels: ["{{ lang.month_1 }}", "{{ lang.month_2 }}", "{{ lang.month_3 }}", "{{ lang.month_4 }}", "{{ lang.month_5 }}", "{{ lang.month_6 }}", "{{ lang.month_7 }}", "{{ lang.month_8 }}", "{{ lang.month_9 }}", "{{ lang.month_10 }}", "{{ lang.month_11 }}", "{{ lang.month_12 }}"],
+      labels: ["{{ lang.month_1|e('js') }}", "{{ lang.month_2|e('js') }}", "{{ lang.month_3|e('js') }}", "{{ lang.month_4|e('js') }}", "{{ lang.month_5|e('js') }}", "{{ lang.month_6|e('js') }}", "{{ lang.month_7|e('js') }}", "{{ lang.month_8|e('js') }}", "{{ lang.month_9|e('js') }}", "{{ lang.month_10|e('js') }}", "{{ lang.month_11|e('js') }}", "{{ lang.month_12|e('js') }}"],
       datasets: [
       {
         label: "{{ lang.cumulative_data_from_start_of_year|e('js') }}",

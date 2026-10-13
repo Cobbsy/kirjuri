@@ -268,6 +268,29 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testToolsCalendarGetsShortMonthNamesAndScriptEscapedText(): void
+    {
+        // The short month names for August to December were the full names, and the calendar's texts were
+        // escaped for HTML inside its script, so a custom language's "Aujourd'hui" showed as Aujourd&#039;hui.
+        $admin = $this->admin();
+        $english = $admin->get('tools.php')->body;
+        $this->assertMatchesRegularExpression("/monthNamesShort: \\[\\s*'Jan',(\\s*'\\w+',){6}\\s*'Aug',\\s*'Sep',\\s*'Oct',\\s*'Nov',\\s*'Dec'\\s*\\]/", $english);
+
+        $settings = $this->server->dir . '/conf/settings.local';
+        $custom = $this->server->dir . '/conf/lang_XT.JSON';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($custom, json_encode(array('today' => "Aujourd'hui", 'month' => 'R&D')));
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_XT"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $page = $admin->get('tools.php')->body;
+            $this->assertStringContainsString("today: 'Aujourd\\u0027hui'", $page);
+            $this->assertStringContainsString("month: 'R\\u0026D'", $page);
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+            @unlink($custom);
+        }
+    }
+
     public function testNumericSettingsStayTextFieldsAtZero(): void
     {
         // The page showed any setting whose value was 0 or 1 as Yes/No buttons, so a limit set to 0 could

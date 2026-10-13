@@ -147,6 +147,24 @@ final class SourceTest extends TestCase
         $this->assertSame(array(), array_values(array_diff(array_unique($labels[1]), $ids[1])));
     }
 
+    /**
+     * Text inside an inline script is escaped for JavaScript. HTML escaping there turns an apostrophe or an
+     * ampersand in a translation into &#039; or &amp;, which the calendar and charts then show as is.
+     */
+    #[DataProvider('templates')]
+    public function testScriptsEscapeTheirTextForJavaScript(string $template): void
+    {
+        preg_match_all('/<script(?![^>]*\\bsrc=)[^>]*>(.*?)<\/script>/s', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $scripts);
+        preg_match_all('/\{\{\s*(lang\.[\w.]+)((?:(?!\}\}).)*)\}\}/', implode("\n", $scripts[1]), $values, PREG_SET_ORDER);
+        $unescaped = array();
+        foreach ($values as $value) {
+            if (!preg_match('/\|\s*e\(\s*[\'"]js[\'"]\s*\)/', $value[2])) {
+                $unescaped[] = $value[1];
+            }
+        }
+        $this->assertSame(array(), $unescaped, "Use |e('js') for text inside <script>.");
+    }
+
     /** CSRF and case tokens are sent in POST bodies only: URLs end up in logs, history and Referer headers. */
     #[DataProvider('templates')]
     public function testTemplateLinksCarryNoTokens(string $template): void
