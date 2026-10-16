@@ -31,6 +31,11 @@ MySQL 8.0, plus the Docker image and the browser tests.
     KIRJURI_TEST_DB_HOST=127.0.0.1 KIRJURI_TEST_DB_USER=root KIRJURI_TEST_DB_PASSWORD=... vendor/bin/phpunit
     vendor/bin/phpstan analyse --memory-limit=1G     # level 5, must be clean
 
+In Claude Code on the web, `.claude/hooks/session-start.sh` does the setup when a session starts:
+it installs and starts MariaDB, sets the three `KIRJURI_TEST_DB_*` variables, and installs the
+packages in `tests/` and `tests/browser`. If the container restarts mid-session and MariaDB is down,
+run the hook again.
+
 The integration tests install a throwaway copy of the app into a new database and serve it with
 `php -S`. The database user needs to be able to create and drop databases.
 
