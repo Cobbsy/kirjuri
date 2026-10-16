@@ -52,6 +52,52 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
    real run-through on each kind of machine.
 5. **Upgrade testing**: an existing installation's database upgraded with `php bin/kirjuri
    migrate`, and a backup taken and restored.
+6. **Security review**, before Kirjuri holds real case data: a full code audit, then a penetration
+   test of a test installation set up as for go-live. See Security below.
+
+## Security
+
+Kirjuri holds case data that may become evidence. The application protects itself reasonably well,
+but much of the data's safety depends on how it is installed and run. This was assessed in October
+2026 by reading the security-relevant code, not by a full audit.
+
+Already in place: passwords hashed with `password_hash()`; sign-in lockout after 10 failures per
+username or 50 per IP address within 15 minutes; a new session ID at sign-in, HttpOnly and SameSite
+session cookies, an idle timeout; CSRF and case tokens in POST bodies; prepared statements for all
+SQL (enforced by a source test); HTMLPurifier on user-written HTML; X-Frame-Options, `frame-ancestors`
+and `nosniff` headers; access levels, per-case access groups and per-user IP allow and block lists;
+an event log and an AES-256 encrypted audit log; `.htaccess` rules keeping `conf/`, `logs/`, `cache/`
+and the code folders off the web; an installer that will not run twice.
+
+Minimum for go-live (deployment, not code):
+
+- HTTPS. Kirjuri does not force it, and the session cookie is only marked secure over HTTPS.
+- Not reachable from the internet: lab network or the machine only, behind a firewall, with the
+  database listening on 127.0.0.1.
+- Full-disk encryption (BitLocker, FileVault). The database, attachments included, is not encrypted
+  at rest.
+- `show_errors` off (it ships on; `bin/kirjuri doctor` warns), and `session_idle_timeout` lowered
+  from 12 hours.
+- Access groups on sensitive cases: a case without one is visible to every signed-in user. Few
+  admin accounts.
+- A dedicated database user with rights on Kirjuri's database only; a password on the database's
+  root account.
+- Encrypted backups kept off the machine and restored now and then, including `conf/`, which holds
+  the audit log key.
+- Operating system updates, antivirus, physical security, and limited administrator rights on the
+  machine.
+
+Code improvements, in suggested order:
+
+1. Two-factor sign-in (TOTP), or LDAP sign-in against a directory that already has it.
+2. A tamper-evident audit log for chain of custody: authenticated encryption (AES-256-GCM) and a
+   hash chain over entries, so an edited or deleted entry shows. The current IV is 16 hex characters
+   (64 bits) rather than 16 random bytes.
+3. A stronger password rule than 8 characters, or a check against known breached passwords.
+4. Settings to redirect HTTP to HTTPS and send `Strict-Transport-Security`.
+5. A full Content-Security-Policy, after moving the inline scripts into files.
+6. The defaults above changed in `conf/settings.conf`: `show_errors` off and a shorter idle
+   timeout, so a new install starts safe.
 
 ## Installing without Docker
 

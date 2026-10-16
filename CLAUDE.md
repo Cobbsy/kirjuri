@@ -83,8 +83,8 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
 ## Roadmap
 
 `docs/ROADMAP.md` says where development stands, what is still open (translations, an outside
-review), the testing stage plan, and the plans for native installs and installers on Windows and
-macOS. Read it before planning new work, and update it when an item moves.
+review), the testing stage plan, the security assessment and go-live checklist, and the plans for
+native installs and installers on Windows and macOS. Read it before planning new work, and update it when an item moves.
 
 ## Git and pull requests
 
