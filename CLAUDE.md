@@ -80,6 +80,12 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
   `required` and a `<span class="req">*</span>`, and the form gets `data-validate novalidate`.
 - Keep text in the language files, not in templates, including `aria-label` and `confirm()` text.
 
+## Roadmap
+
+`docs/ROADMAP.md` says where development stands, what is still open (translations, an outside
+review), the testing stage plan, and the plans for native installs and installers on Windows and
+macOS. Read it before planning new work, and update it when an item moves.
+
 ## Git and pull requests
 
 - Before merging a PR, wait for every CI check and read every review comment. Codex reviews pull
