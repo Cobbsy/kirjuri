@@ -50,6 +50,27 @@ final class StatisticsTest extends IntegrationTestCase
         $this->assertSame(($before['device_data_by_unit']['Unit 1'] ?? 0) + 7, $after['device_data_by_unit']['Unit 1']);
     }
 
+    public function testMonthsEndOnTheirLastDay(): void
+    {
+        // Every month ended on its 31st, which PHP rolls over: "31.2." is 3 March and "31.4." is 1 May, so
+        // a case added on 2 March was counted in February as well as in March.
+        $pdo = $this->server->pdo();
+        $pdo->exec("INSERT INTO exam_requests (parent_id, case_id, case_name, case_status, is_removed, case_devicecount, case_added_date)
+            VALUES (0, 0, 'Month end', 2, 0, 5, '2013-03-02 12:00:00')");
+        $caseId = (int) $pdo->lastInsertId();
+        $pdo->exec("UPDATE exam_requests SET parent_id = id WHERE id = $caseId");
+        try {
+            $page = $this->admin()->get('statistics.php?year=2013');
+            $this->assertSame(200, $page->status);
+            // The monthly chart of devices, then of requests: only March has any.
+            $this->assertStringContainsString('data: [0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]', $page->body);
+            $this->assertStringContainsString('data: [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]', $page->body);
+            $this->assertStringNotContainsString('data: [0, 5, 5,', $page->body);
+        } finally {
+            $pdo->exec("DELETE FROM exam_requests WHERE id = $caseId");
+        }
+    }
+
     public function testCasesWithoutAStatusAreCountedWithoutWarnings(): void
     {
         $pdo = $this->server->pdo();
