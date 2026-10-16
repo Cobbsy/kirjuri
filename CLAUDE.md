@@ -31,6 +31,11 @@ MySQL 8.0, plus the Docker image and the browser tests.
     KIRJURI_TEST_DB_HOST=127.0.0.1 KIRJURI_TEST_DB_USER=root KIRJURI_TEST_DB_PASSWORD=... vendor/bin/phpunit
     vendor/bin/phpstan analyse --memory-limit=1G     # level 5, must be clean
 
+In Claude Code on the web, `.claude/hooks/session-start.sh` does the setup when a session starts:
+it installs and starts MariaDB, sets the three `KIRJURI_TEST_DB_*` variables, and installs the
+packages in `tests/` and `tests/browser`. If the container restarts mid-session and MariaDB is down,
+run the hook again.
+
 The integration tests install a throwaway copy of the app into a new database and serve it with
 `php -S`. The database user needs to be able to create and drop databases.
 
@@ -74,6 +79,12 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
 - Forms: labels go above the fields in a `.field-grid` of `.field` elements. Required fields get
   `required` and a `<span class="req">*</span>`, and the form gets `data-validate novalidate`.
 - Keep text in the language files, not in templates, including `aria-label` and `confirm()` text.
+
+## Roadmap
+
+`docs/ROADMAP.md` says where development stands, what is still open (translations, an outside
+review), the testing stage plan, the security assessment and go-live checklist, and the plans for
+native installs and installers on Windows and macOS. Read it before planning new work, and update it when an item moves.
 
 ## Git and pull requests
 
