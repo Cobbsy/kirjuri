@@ -267,15 +267,22 @@ function kirjuri_case_standing(array $case, $user_name, $stalled_before) {
 /**
  * Mark each front page row with where it stands (see kirjuri_case_standing()), count the cases for
  * each status filter and keep the rows the filter $filter (a KIRJURI_STATUS_FILTERS key, anything else
- * shows all) lets through. Search results can include devices: they share their case's status, and are
- * filtered but not counted.
+ * shows all) lets through. Search results can include devices: they stand where their case does, and
+ * are filtered but not counted. $cases has the case rows, by id, of devices whose case is not in $rows
+ * (see kirjuri_cases_of_devices()).
  */
-function kirjuri_filter_case_list(array $rows, $filter, $user_name, $stalled_before) {
+function kirjuri_filter_case_list(array $rows, $filter, $user_name, $stalled_before, array $cases = array()) {
     $counts = array('all' => 0, 'new' => 0, 'open' => 0, 'mine' => 0, 'stalled' => 0, 'ready' => 0);
     $shown = KIRJURI_STATUS_FILTERS[(string) $filter] ?? 'all';
+    foreach ($rows as $row) {
+        if ((string) $row['id'] === (string) $row['parent_id']) {
+            $cases[$row['id']] = $row;
+        }
+    }
     $kept = array();
     foreach ($rows as $row) {
-        $standing = kirjuri_case_standing($row, $user_name, $stalled_before);
+        // A device row has its case's status but not its examiners or last update.
+        $standing = kirjuri_case_standing($cases[$row['parent_id']] ?? $row, $user_name, $stalled_before);
         $row['standing'] = $standing['status'];
         $row['stalled'] = $standing['stalled'];
         $matches = array(
@@ -296,6 +303,34 @@ function kirjuri_filter_case_list(array $rows, $filter, $user_name, $stalled_bef
         }
     }
     return array($kept, $counts);
+}
+
+
+/** The case rows, by id, of the devices in $rows whose case is not among $rows, for kirjuri_filter_case_list(). */
+function kirjuri_cases_of_devices(PDO $db, array $rows) {
+    $present = array();
+    foreach ($rows as $row) {
+        if ((string) $row['id'] === (string) $row['parent_id']) {
+            $present[(string) $row['id']] = true;
+        }
+    }
+    $missing = array();
+    foreach ($rows as $row) {
+        if (!isset($present[(string) $row['parent_id']])) {
+            $missing[(string) $row['parent_id']] = (int) $row['parent_id'];
+        }
+    }
+    if (empty($missing)) {
+        return array();
+    }
+    $query = $db->prepare('SELECT id, parent_id, case_status, forensic_investigator, phone_investigator, last_updated FROM exam_requests
+        WHERE id = parent_id AND id IN (' . implode(', ', array_fill(0, count($missing), '?')) . ')');
+    $query->execute(array_values($missing));
+    $cases = array();
+    foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $case) {
+        $cases[$case['id']] = $case;
+    }
+    return $cases;
 }
 
 

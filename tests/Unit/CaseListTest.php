@@ -65,21 +65,23 @@ final class CaseListTest extends TestCase
             self::row(2, '2', array('forensic_investigator' => 'Alice Examiner')),
             self::row(3, '2', array('last_updated' => '2025-06-01 12:00:00')),
             self::row(4, '3'),
-            // A device found by a search, in case 3.
+            // Devices found by a search, in cases 3 and 2. A device has its case's status, but not its
+            // examiners or last update.
             self::row(5, '2', array('parent_id' => '3')),
+            self::row(6, '2', array('parent_id' => '2', 'last_updated' => '2025-06-01 12:00:00')),
         );
     }
 
     public static function filters(): array
     {
         return array(
-            'no filter' => array('', array('1', '2', '3', '4', '5')),
+            'no filter' => array('', array('1', '2', '3', '4', '5', '6')),
             'new' => array('1', array('1')),
-            'open, including the user\'s own' => array('2', array('2', '3', '5')),
-            'the user\'s own' => array('4', array('2')),
-            'stalled' => array('5', array('3')),
+            'open, including the user\'s own' => array('2', array('2', '3', '5', '6')),
+            'the user\'s own, with its devices' => array('4', array('2', '6')),
+            'stalled, with its devices' => array('5', array('3', '5')),
             'ready' => array('3', array('4')),
-            'unknown filter shows all' => array('9', array('1', '2', '3', '4', '5')),
+            'unknown filter shows all' => array('9', array('1', '2', '3', '4', '5', '6')),
         );
     }
 
@@ -102,7 +104,18 @@ final class CaseListTest extends TestCase
     public function testRowsCarryTheirStanding(): void
     {
         [$rows] = kirjuri_filter_case_list(self::list(), '', 'Alice Examiner', self::STALLED_BEFORE);
-        $this->assertSame(array('new', 'mine', 'open', 'ready', 'open'), array_column($rows, 'standing'));
-        $this->assertSame(array(false, false, true, false, false), array_column($rows, 'stalled'));
+        $this->assertSame(array('new', 'mine', 'open', 'ready', 'open', 'mine'), array_column($rows, 'standing'));
+        $this->assertSame(array(false, false, true, false, true, false), array_column($rows, 'stalled'));
+    }
+
+    public function testDevicesWhoseCaseWasNotFoundStandWhereTheGivenCaseDoes(): void
+    {
+        $device = self::row(7, '2', array('parent_id' => '8'));
+        $case = self::row(8, '2', array('forensic_investigator' => 'Alice Examiner'));
+        [$rows] = kirjuri_filter_case_list(array($device), '4', 'Alice Examiner', self::STALLED_BEFORE, array('8' => $case));
+        $this->assertSame(array('7'), array_column($rows, 'id'));
+        [$rows, $counts] = kirjuri_filter_case_list(array($device), '4', 'Alice Examiner', self::STALLED_BEFORE);
+        $this->assertSame(array(), $rows, 'Without its case, the device has no examiners.');
+        $this->assertSame(0, $counts['all'], 'Devices are not counted.');
     }
 }
