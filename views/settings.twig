@@ -67,7 +67,7 @@
         <label for="setting_lang">{{ key|capitalize }} <a href="lang_editor.php" class="field-link"><i class="fa fa-edit" aria-hidden="true"></i> {{ lang.edit_language_file }}</a></label>
         <select class="form-control" id="setting_lang" name="settings[lang]">
           {% for ccode in langfiles %}
-          <option value="lang_{{ ccode }}" {% if ccode in settings_contents.settings.lang %}selected{% endif %}>{{ ccode }}</option>
+          <option value="lang_{{ ccode }}" {% if 'lang_' ~ ccode == settings_contents.settings.lang|replace({'.conf': '', '.JSON': ''}) %}selected{% endif %}>{{ ccode }}</option>
           {% endfor %}
         </select>
       </div>
@@ -121,12 +121,12 @@
 {% macro setting_field(key, value, default_settings, unknown, lang) %}
   {% set id = 'setting_' ~ key %}
   {% set label = key|replace({"_": " "})|capitalize %}
-  {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. #}
+  {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. Anything but 1 is off, as Kirjuri reads it. #}
   <fieldset class="field">
     <legend{% if unknown %} class="text-danger"{% endif %}>{{ label }}</legend>
     <div class="choice-group">
       <label><input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> {{ lang.yes }}</label>
-      <label><input type="radio" name="settings[{{key}}]" value="0" {% if value == "0" %}checked{% endif %}> {{ lang.no }}</label>
+      <label><input type="radio" name="settings[{{key}}]" value="0" {% if value != "1" %}checked{% endif %}> {{ lang.no }}</label>
     </div>
   </fieldset>
   {% else %}

@@ -44,7 +44,8 @@ else {
     $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending);
 }
 $stalled_before = strtotime((string) ($prefs['settings']['stalled_case'] ?? ''));
-list($row_cases, $status_counts) = kirjuri_filter_case_list($row_cases, $sort_s, $_SESSION['user']['name'] ?? '', $stalled_before === false ? null : $stalled_before);
+list($row_cases, $status_counts) = kirjuri_filter_case_list($row_cases, $sort_s, $_SESSION['user']['name'] ?? '', $stalled_before === false ? null : $stalled_before,
+    kirjuri_cases_of_devices($kirjuri_database, $row_cases));
 $case_owners = array();
 foreach ($row_cases as $key => $case) {
     // The template hides details of cases the user may not open. Search results can include

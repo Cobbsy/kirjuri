@@ -291,6 +291,46 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testSettingsShowTheCurrentLanguageAndEveryYesNoChoice(): void
+    {
+        // The language list marked every code found in the setting, so a custom "PT" was selected along with
+        // PT_BR. A Yes/No setting that was neither 0 nor 1, such as an unquoted off in settings.local, had
+        // neither button checked and was dropped on the next save; Kirjuri reads it as off.
+        $admin = $this->admin();
+        $settings = $this->server->dir . '/conf/settings.local';
+        $custom = $this->server->dir . '/conf/lang_PT.JSON';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        $defaults = file_get_contents(KIRJURI_ROOT . '/conf/settings.conf');
+        try {
+            file_put_contents($custom, '{}');
+            file_put_contents($settings, preg_replace(array('/^lang = .*$/m', '/^show_log = .*$/m'), array('lang = "lang_PT_BR"', 'show_log = off'), $defaults));
+            $page = $admin->get('settings.php')->body;
+            preg_match_all('/<option value="(lang_\w+)" selected>/', $page, $selected);
+            $this->assertSame(array('lang_PT_BR'), $selected[1]);
+            $this->assertStringContainsString('name="settings[show_log]" value="0" checked', $page);
+
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_FI.conf"', $defaults));
+            preg_match_all('/<option value="(lang_\w+)" selected>/', $admin->get('settings.php')->body, $selected);
+            $this->assertSame(array('lang_FI'), $selected[1], 'Older installations name the file.');
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+            @unlink($custom);
+        }
+    }
+
+    public function testCopyToNewKeepsTheRecipient(): void
+    {
+        // The compose form looked for the recipient in a URL parameter that nothing sets, and compared it with
+        // names instead of usernames, so a copied message always started with no recipient.
+        $recipient = $this->uniqueName('copyto');
+        $this->createUser($recipient, 'password1', 1);
+        $admin = $this->admin();
+        $page = $admin->post('messages.php?show=compose', array('token' => $this->token($admin), 'copy_msgto' => $recipient,
+            'copy_subject' => 'Copied', 'copy_body' => '<p>Text</p>'))->body;
+        $this->assertStringContainsString('<option value="' . $recipient . '" selected>', $page);
+        $this->assertStringNotContainsString('<option value="" selected disabled>', $page);
+    }
+
     public function testNumericSettingsStayTextFieldsAtZero(): void
     {
         // The page showed any setting whose value was 0 or 1 as Yes/No buttons, so a limit set to 0 could

@@ -330,6 +330,27 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame(200, $admin->get('index.php?s[]=5')->status, 'A malformed filter shows all cases.');
     }
 
+    public function testSearchFoundDevicesFollowTheirCaseThroughTheStatusFilters(): void
+    {
+        // A device row has its case's status but not its examiners or last update, so "assigned to me" and
+        // "stalled" left out the devices a search found in the user's own or a stalled case.
+        $admin = $this->admin();
+        $pdo = $this->server->pdo();
+        $name = $pdo->query("SELECT name FROM users WHERE username = 'admin'")->fetchColumn();
+        $caseId = $this->createCase($admin, $this->uniqueName('Own case '));
+        $model = 'Zd' . generate_token(6);
+        $deviceId = $this->addDevice($admin, $caseId, $model);
+        $pdo->prepare('UPDATE exam_requests SET case_status = "2" WHERE parent_id = :id')->execute(array(':id' => $caseId));
+        $pdo->prepare('UPDATE exam_requests SET forensic_investigator = :name, last_updated = DATE_SUB(NOW(), INTERVAL 200 DAY) WHERE id = :id')
+            ->execute(array(':name' => $name, ':id' => $caseId));
+
+        foreach (array('4', '5') as $filter) {
+            $page = $admin->get('index.php?search=' . $model . '&s=' . $filter)->body;
+            $this->assertStringContainsString('device_memo.php?uid=' . $deviceId . '"', $page, 'Filter ' . $filter);
+        }
+        $this->assertStringNotContainsString('device_memo.php?uid=' . $deviceId . '"', $admin->get('index.php?search=' . $model . '&s=1')->body);
+    }
+
     public function testSearchesWithFullTextOperatorsDoNotFail(): void
     {
         $admin = $this->admin();

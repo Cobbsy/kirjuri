@@ -178,7 +178,7 @@
       {% if (entry.id == entry.parent_id) and (entry.is_removed == "0") %}
       {% set counter = counter + 1 %}
       {% if entry.standing == "new" %}{% set new_counter = new_counter + 1 %}{% elseif entry.standing in ["open", "mine"] %}{% set open_counter = open_counter + 1 %}{% elseif entry.standing == "ready" %}{% set ready_counter = ready_counter + 1 %}{% endif %}
-      <tr class="{{ {new: 'danger', mine: 'info', open: 'warning', ready: 'default'}[entry.standing] ?? '' }}{% if entry.stalled %} is-stalled{% endif %}">
+      <tr class="{{ {new: 'danger', mine: 'info', open: 'warning', ready: 'default'}[entry.standing] ?? '' }}">
       {% if show_columns.case_no != "hide" %}
       <td style="width:1%;white-space:nowrap;"><a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{{ entry.case_id }}/{{ entry.case_added_date|date("y") }}</a></td>
       {% endif %}
