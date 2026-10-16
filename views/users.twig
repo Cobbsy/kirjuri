@@ -10,6 +10,7 @@
           var form = $(this), password = form.find("[name=current_password]");
           var check = function () { form.find("[type=submit]").prop("disabled", password.val().length === 0); };
           password.on("input change", check);
+          form.on("reset", function () { setTimeout(check); }); // The fields clear after the event.
           check();
       });
       {% for user in session.all_users %}

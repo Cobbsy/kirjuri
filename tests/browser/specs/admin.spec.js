@@ -18,6 +18,11 @@ test('with a user open for editing, the add user dialog has its own fields and p
   await expect(save).toBeDisabled();
   await page.fill('#new_current_password', 'something');
   await expect(save).toBeEnabled();
+
+  // Clearing the form empties the password, so Save waits for it again.
+  await dialog.locator('[type=reset]').click();
+  await expect(page.locator('#new_current_password')).toHaveValue('');
+  await expect(save).toBeDisabled();
 });
 
 test('a tool can be added and reserved', async ({ admin: page }) => {
