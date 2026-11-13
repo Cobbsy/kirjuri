@@ -94,3 +94,16 @@ native installs and installers on Windows and macOS. Read it before planning new
   requests in this repository. Fix real findings (with a test), reply on each thread, then merge
   with a merge commit.
 - After a PR merges, start new work from a fresh `origin/master`.
+
+## Working with the owner
+
+- At the start of every session, and whenever you suggest the next piece of work, say which effort
+  level to set for it:
+  - **Medium** for routine work: merging a green PR, checking CI, applying translators' answers, small
+    text or CHANGELOG edits.
+  - **High** (the default) for most features and bug fixes, which touch PHP, templates, the five
+    language files and the tests together.
+  - **xhigh** for work where a mistake is costly or hard to spot: security work (two-factor sign-in,
+    the audit log), the installers, and large refactors such as splitting `edit_request.twig`.
+  - Not **low**: even small changes here usually need a test and edits in several language files.
+- Write to the owner in plain paragraphs, without jargon, and give the reason for a recommendation.
