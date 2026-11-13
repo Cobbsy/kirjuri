@@ -31,13 +31,13 @@ foreach ($_SESSION['all_tools'] as $tool) { // Get tool information based on GET
         $fields['attr_1'] = $tool['attr_1'];
         $fields['attr_2'] = explode(",", $tool['attr_2']);
         $fields['attr_3'] = $tool['attr_3'];
-        $fields['attr_4'] = json_decode($tool['attr_4'], true);
+        $fields['attr_4'] = json_decode((string) $tool['attr_4'], true); // NULL until the tool's first reservation.
     }
 }
 
 $tool_reservations = array();
 foreach ($_SESSION['all_tools'] as $tool) {
-    $tool_reservations[$tool['id']] = json_decode($tool['attr_4'], true);
+    $tool_reservations[$tool['id']] = json_decode((string) $tool['attr_4'], true);
 }
 
 

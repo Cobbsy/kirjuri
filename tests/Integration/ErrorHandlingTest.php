@@ -55,17 +55,22 @@ final class ErrorHandlingTest extends IntegrationTestCase
     {
         // The error page ends the request inside a shutdown function, which skipped the later one that
         // keeps the user list and language strings out of the session file.
-        $this->expectLoggedError('Allowed memory size');
+        // The fatal error is a function declared twice. Running out of memory, which this test used before,
+        // crashed PHP 8.1's built-in server on GitHub's runners from November 2026, so the page never answered.
+        $this->expectLoggedError('Cannot redeclare');
         $admin = $this->admin();
         $page = $this->server->dir . '/fatal_error_test.php';
-        file_put_contents($page, "<?php require './include_functions.php'; ini_set('memory_limit', '48M'); \$x = str_repeat('x', 96 * 1024 * 1024);");
+        $part = $this->server->dir . '/fatal_error_part.php';
+        file_put_contents($part, "<?php function kirjuri_render() {}");
+        file_put_contents($page, "<?php require './include_functions.php'; require './fatal_error_part.php';");
         try {
             $response = $admin->get('fatal_error_test.php');
             $this->assertSame(500, $response->status);
             $this->assertStringContainsString('request-id', $response->body);
-            $this->assertStringNotContainsString('Allowed memory size', $response->body, 'PHP\'s own message, with the file path, is not shown.');
+            $this->assertStringNotContainsString('Cannot redeclare', $response->body, 'PHP\'s own message, with the file path, is not shown.');
         } finally {
             unlink($page);
+            unlink($part);
         }
         foreach ($this->server->sessionFiles() as $session) {
             $this->assertStringNotContainsString('all_users', $session);
