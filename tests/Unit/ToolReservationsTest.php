@@ -52,4 +52,29 @@ final class ToolReservationsTest extends TestCase
         $this->assertSame(array(0, 1), array_keys($sorted));
         $this->assertSame('2030-01-01 08:00', $sorted[0]['reserve_start']);
     }
+
+    public function testReservationsBelongToTheirUsernameAndOldOnesToTheName(): void
+    {
+        $user = array('username' => 'mk', 'name' => 'Maija Renamed', 'access' => '1');
+        $this->assertTrue(kirjuri_reservation_belongs_to(array('username' => 'mk', 'reserved_for' => 'Maija Old'), $user), 'A rename keeps the reservation.');
+        $this->assertFalse(kirjuri_reservation_belongs_to(array('username' => 'other', 'reserved_for' => 'Maija Renamed'), $user), 'A username is not overridden by the name.');
+        $this->assertTrue(kirjuri_reservation_belongs_to(array('reserved_for' => 'Maija Renamed'), $user), 'An old reservation matches by name.');
+        $this->assertFalse(kirjuri_reservation_belongs_to(array('reserved_for' => 'Maija Old'), $user));
+    }
+
+    public function testPresentedReservationsShowTheCurrentNameAndWhoMayDropThem(): void
+    {
+        $users = array(array('username' => 'mk', 'name' => 'Maija Renamed'), array('username' => 'admin', 'name' => 'Administrator'));
+        $reservations = array(
+            array('username' => 'mk', 'reserved_for' => 'Maija Old'),
+            array('username' => 'gone', 'reserved_for' => 'Left the lab'),
+            'not a reservation',
+        );
+        $shown = kirjuri_present_reservations($reservations, $users, array('username' => 'mk', 'name' => 'Maija Renamed', 'access' => '1'));
+        $this->assertSame(array(0, 1), array_keys($shown));
+        $this->assertSame(array('Maija Renamed', true), array($shown[0]['name'], $shown[0]['can_drop']));
+        $this->assertSame(array('Left the lab', false), array($shown[1]['name'], $shown[1]['can_drop']));
+        $byAdmin = kirjuri_present_reservations($reservations, $users, array('username' => 'admin', 'name' => 'Administrator', 'access' => '0'));
+        $this->assertTrue($byAdmin[1]['can_drop']);
+    }
 }

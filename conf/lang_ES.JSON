@@ -356,6 +356,7 @@
     "requests_by_unit": "Solicitudes por unidad",
     "requests_containing_phones": "Solicitudes conteniendo tel\u00e9fonos",
     "requests_with_matching_complaint_number": "Solicitudes con el mismo n\u00famero de denuncia",
+    "reservation_in_past": "La reserva termina en el pasado. Compruebe las fechas.",
     "reserve": "Reservar",
     "reserved_for": "Reservado para",
     "reset_default_settings": "Restablecer a por defecto",

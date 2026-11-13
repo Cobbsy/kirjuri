@@ -357,6 +357,7 @@
     "requests_by_unit": "Auftr\u00e4ge nach Einheit",
     "requests_containing_phones": "Auftr\u00e4ge enthalten Telefone",
     "requests_with_matching_complaint_number": "Auftr\u00e4ge mit zutreffender Nummer der Strafanzeige",
+    "reservation_in_past": "Die Reservierung endet in der Vergangenheit. Bitte die Daten pr\u00fcfen.",
     "reserve": "Reservieren",
     "reserved_for": "Reserved for",
     "reset_default_settings": "Auf Standard zur\u00fccksetzen",

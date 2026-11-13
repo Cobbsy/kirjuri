@@ -78,26 +78,28 @@
             <form class="card-body reserve-form" role="form" method="post" action="submit.php?type=reserve_tool">
                 <input type="hidden" name="token" value="{{ session.user.token }}">
                 <input type="hidden" name="tool_id" value="{{ fields.id }}">
+                {# The default times are 08:00 to 16:00; after 16:00 they are tomorrow's, as today's would have ended. #}
+                {% set reserve_day = ("now"|date("G")) + 0 < 16 ? "now" : "tomorrow" %}
                 <div class="field-grid">
                     <div class="field">
                         <label for="reserved_for">{{ lang.reserved_for }}</label>
                         <select class="form-control" id="reserved_for" name="reserved_for">
                             {% for user in session.all_users %}
-                            <option value="{{ user.name }}"{% if session.user.username == user.username %} selected{% endif %}>{{ user.name }}</option>
+                            <option value="{{ user.username }}"{% if session.user.username == user.username %} selected{% endif %}>{{ user.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="field">
                         <label for="reserve_start_date">{{ lang.start_date }}</label>
                         <div class="field-pair">
-                            <input type="date" class="form-control" id="reserve_start_date" name="reserve_start_date" value='{{ "now"|date("Y-m-d") }}'>
+                            <input type="date" class="form-control" id="reserve_start_date" name="reserve_start_date" value='{{ reserve_day|date("Y-m-d") }}'>
                             <input type="time" class="form-control" name="reserve_start_time" value="08:00" aria-label="{{ lang.start_date }}">
                         </div>
                     </div>
                     <div class="field">
                         <label for="reserve_end_date">{{ lang.end_date }}</label>
                         <div class="field-pair">
-                            <input type="date" class="form-control" id="reserve_end_date" name="reserve_end_date" value='{{ "now"|date("Y-m-d") }}'>
+                            <input type="date" class="form-control" id="reserve_end_date" name="reserve_end_date" value='{{ reserve_day|date("Y-m-d") }}' min='{{ "now"|date("Y-m-d") }}'>
                             <input type="time" class="form-control" name="reserve_end_time" value="16:00" aria-label="{{ lang.end_date }}">
                         </div>
                     </div>
@@ -126,12 +128,12 @@
                 {% for key, entry in fields.attr_4 %}
                     {% if (entry.reserve_end | date("U")) >= (current_date | date("U")) %}
                     <tr {% if highlight == key %}class="success"{% endif %}>
-                        <td>{{ entry.reserved_for }}</td>
+                        <td>{{ entry.name }}</td>
                         <td>{{ entry.reserve_start }}</td>
                         <td>{{ entry.reserve_end }}</td>
                         <td>{{ entry.comment }}</td>
                         <td style="width:1px;" class="text-center">
-                            {% if (session.user.name == entry.reserved_for) or (session.user.access == "0") %}
+                            {% if entry.can_drop %}
                             <a href="submit.php?type=reserve_tool&drop={{ key }}&returnid={{ fields.id }}" data-post aria-label="{{ lang.drop }}"><i class="fa fa-times text-danger"></i></a>
                             {% endif %}
                         </td>
@@ -250,7 +252,7 @@
                                         {% set evcolor = evcolors[tool_key] %}
                                         {% for res_key, entry in res_value %}
                                             {
-                                                title: '{{ tool.product_name|e('js') }}: {{ entry.comment|e('js') }} ({{ entry.reserved_for|e('js') }})',
+                                                title: '{{ tool.product_name|e('js') }}: {{ entry.comment|e('js') }} ({{ entry.name|e('js') }})',
                                                 url: 'tools.php?populate={{ tool.id }}&highlight={{ res_key }}',
                                                 start: '{{ entry.reserve_start|e('js') }}',
                                                 end: '{{ entry.reserve_end|e('js') }}',

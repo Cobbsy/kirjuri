@@ -356,6 +356,7 @@
     "requests_by_unit": "Pyynn\u00f6t yksik\u00f6itt\u00e4in",
     "requests_containing_phones": "Puhelimia sis\u00e4lt\u00e4vien juttujen osuus",
     "requests_with_matching_complaint_number": "Pyynn\u00f6t samalla rikosilmoitusnumerolla:",
+    "reservation_in_past": "Varaus on jo p\u00e4\u00e4ttynyt. Tarkista p\u00e4iv\u00e4m\u00e4\u00e4r\u00e4t.",
     "reserve": "Varaa",
     "reserved_for": "Varattu k\u00e4ytt\u00e4j\u00e4lle",
     "reset_default_settings": "Palauta oletukset",

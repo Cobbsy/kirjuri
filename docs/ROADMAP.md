@@ -35,9 +35,9 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   save. Their answers are in the page's `reviews` collection, one document per `key~LANG`, read with
   the `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's
   encoding (see CLAUDE.md).
-  Two more were added with the search improvements, `search_hint` and `search_years`, and seventeen
-  with the help page (`help_*` and `licenses_intro`, the user guide itself); they are not on the
-  review page yet.
+  Two more were added with the search improvements, `search_hint` and `search_years`, seventeen
+  with the help page (`help_*` and `licenses_intro`, the user guide itself), and one with the tool
+  reservation fixes (`reservation_in_past`); they are not on the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15, so none of
   them has had a second reviewer. When the limit resets, ask it to review the changes since #5
   (`git diff d467c3e origin/master`), fix real findings with tests, and reply on each thread.
@@ -106,7 +106,7 @@ Code improvements, in suggested order:
 
 A review of every page (desktop and phone, light and dark), the code behind saves, and an automated sweep
 for structural problems. The bugs it found were fixed in the same pull request; these are the
-improvements it suggests, most valuable first within each group. None is started.
+improvements it suggests, most valuable first within each group. Items marked done have been merged.
 
 Finding things:
 
@@ -135,8 +135,9 @@ Working on a case:
 
 Overview and reporting:
 
-- Statistics for a year without requests sends the user to the front page with an error, also from the
-  year arrows. Show the page with an empty state, and hide an arrow that leads to an empty year.
+- Done (November 2026): statistics for a year without requests show the page with an empty state instead
+  of sending the user to the front page with an error. The year arrows lead to the nearest years that have
+  requests, and an arrow with nowhere to go is hidden.
 - A dashboard on the front page for the signed-in examiner: my open requests, stalled ones, new ones
   waiting for an examiner, tool reservations this week.
 - The case report as a PDF download as well as a print page, and a choice of what it includes.
@@ -156,8 +157,9 @@ Administration and help:
 - Password rules and two-factor sign-in, from the Security section.
 - E-mail or in-app notice when a request is assigned to someone or a message arrives; today the unread
   counter is the only sign.
-- Tool reservations can be made in the past, and are tied to the user's display name, so renaming a
-  user orphans their reservations: store the username.
+- Done (November 2026): a tool reservation that has already ended is refused (one that has started is
+  fine), and reservations store the username, so renaming a user keeps them. Migration 008 adds the username
+  to existing reservations whose display name matches exactly one user; the others go on matching by name.
 
 Look and feel:
 
@@ -170,8 +172,9 @@ Look and feel:
 Code health:
 
 - `edit_request.twig` is 1,000 lines holding five tabs and six dialogs: split it into partials.
-- `case_update` has no case token, unlike the other case actions; device rows copy their case's status
-  only on some updates (`kirjuri_update_case` writes the case row alone).
+- Done (November 2026): `case_update` checks the case token like the other case actions, and device rows
+  follow their case's status on every save, when added and when moved (`kirjuri_sync_device_status`).
+  Migration 007 brought existing device rows in step.
 - Chart.js 1 and vis 4.18 are old and unmaintained; Bootstrap 3 and Font Awesome 4 likewise. Plan an
   upgrade path rather than a rewrite.
 

@@ -162,7 +162,7 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $caseId = $this->createCase($admin, $this->uniqueName('Update '));
         $name = $this->uniqueName('Renamed ');
         $admin->post('submit.php?type=case_update&uid=' . $caseId, array(
-                'token' => $this->token($admin),
+                'token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
                 'case_name' => $name, 'case_file_number' => '1', 'case_crime' => 'Fraud', 'classification' => 'Public',
                 'case_suspect' => 'Doe', 'case_investigation_lead' => 'Lead', 'case_investigator' => 'Inv',
                 'forensic_investigator' => 'Administrator', 'phone_investigator' => '', 'case_investigator_tel' => '1',
@@ -191,21 +191,87 @@ final class CaseWorkflowTest extends IntegrationTestCase
             'case_contains_mob_dev' => '1', 'case_urgency' => '1',
         );
         $this->assertNull($this->row($caseId)['case_start_date']);
-        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin)) + $fields);
+        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId)) + $fields);
         $this->assertNotNull($this->row($caseId)['case_start_date'], 'Assigning an examiner starts the examination.');
 
         $this->server->pdo()->exec("UPDATE exam_requests SET case_start_date = '2020-02-03 04:05:06' WHERE id = $caseId");
-        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'case_crime' => 'Theft') + $fields);
+        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'case_crime' => 'Theft') + $fields);
         $row = $this->row($caseId);
         $this->assertSame('Theft', $row['case_crime']);
         $this->assertSame('2020-02-03 04:05:06', $row['case_start_date']);
 
         $admin->post('submit.php?type=update_request_status', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'returnid' => (string) $caseId, 'case_status' => '3'));
-        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'case_crime' => 'Arson') + $fields);
+        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'case_crime' => 'Arson') + $fields);
         $row = $this->row($caseId);
         $this->assertSame('Arson', $row['case_crime']);
         $this->assertSame('3', $row['case_status']);
         $this->assertSame('2020-02-03 04:05:06', $row['case_start_date']);
+    }
+
+    private function requestDetails(string $name): array
+    {
+        return array(
+            'case_name' => $name, 'case_file_number' => '1', 'case_crime' => 'Fraud', 'classification' => 'Public',
+            'case_suspect' => 'Doe', 'case_investigation_lead' => 'Lead', 'case_investigator' => 'Inv',
+            'forensic_investigator' => 'Administrator', 'phone_investigator' => '', 'case_investigator_tel' => '1',
+            'case_investigator_unit' => 'Unit 1', 'case_request_description' => 'x', 'case_confiscation_date' => '2026-01-15',
+            'case_contains_mob_dev' => '1', 'case_urgency' => '1',
+        );
+    }
+
+    public function testSavingRequestDetailsNeedsTheCaseToken(): void
+    {
+        // case_update checked the session token only, unlike the other case actions, so a user who had never
+        // opened the case page could save its details.
+        $this->expectLoggedError('Case access token');
+        $username = 'ct' . strtolower(generate_token(6));
+        $this->createUser($username, 'Password-123', 1);
+        $user = $this->login($username, 'Password-123');
+        $caseId = $this->createCase($user, $this->uniqueName('Token '));
+        $original = $this->row($caseId)['case_name'];
+
+        $user->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($user)) + $this->requestDetails('No case token'));
+        $this->assertSame($original, $this->row($caseId)['case_name'], 'Saved without a case token.');
+        $user->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($user), 'ct' => 'wrong') + $this->requestDetails('Wrong case token'));
+        $this->assertSame($original, $this->row($caseId)['case_name'], 'Saved with a wrong case token.');
+
+        $user->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($user), 'ct' => $this->caseToken($user, $caseId)) + $this->requestDetails('With case token'));
+        $this->assertSame('With case token', $this->row($caseId)['case_name']);
+    }
+
+    public function testDevicesKeepTheStatusOfTheirCase(): void
+    {
+        // Saving the request details changed the status of the case row only, so assigning an examiner left the
+        // devices "new"; devices added to an open case, or moved into one, kept the status they had.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Device status '));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('Before '));
+
+        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId)) + $this->requestDetails('Device status'));
+        $this->assertSame('2', $this->row($caseId)['case_status']);
+        $this->assertSame('2', $this->row($deviceId)['case_status'], 'Assigning an examiner opens the devices too.');
+        $later = $this->addDevice($admin, $caseId, $this->uniqueName('After '));
+        $this->assertSame('2', $this->row($later)['case_status'], 'A device added to an open case is open.');
+
+        $other = $this->createCase($admin, $this->uniqueName('Other case '));
+        $this->server->pdo()->exec("UPDATE exam_requests SET case_status = '1' WHERE id = $later");
+        kirjuri_move_device($this->server->pdo(), $caseId, $later, $other);
+        $this->assertSame('1', $this->row($later)['case_status'], 'A device moved to a new case is new.');
+        kirjuri_move_device($this->server->pdo(), $other, $later, $caseId);
+        $this->assertSame('2', $this->row($later)['case_status'], 'A device moved back to the open case is open again.');
+    }
+
+    public function testMigrationBringsDeviceStatusesInStep(): void
+    {
+        $pdo = $this->server->pdo();
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Stale status '));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('Stale '));
+        $pdo->exec("UPDATE exam_requests SET case_status = '3' WHERE id = $caseId");
+        $pdo->exec("UPDATE exam_requests SET case_status = NULL WHERE id = $deviceId");
+        kirjuri_migration_007_device_status($pdo);
+        $this->assertSame('3', $this->row($deviceId)['case_status']);
+        $this->assertSame('3', $this->row($caseId)['case_status']);
     }
 
     public function testFrontPageLinksExaminersByTheirWholeNameAndOnlyWhenThereIsOne(): void

@@ -37,7 +37,43 @@ final class StatisticsTest extends IntegrationTestCase
         $this->assertNotEmpty($rows[1]);
         $this->assertSame($rows[1], array_values(array_unique($rows[1])), 'Row ids are unique.');
         $this->assertNull(kirjuri_statistics($db, 1999, $units));
-        $this->assertSame('index.php', $admin->get('statistics.php?year=1999')->location());
+    }
+
+    public function testAYearWithoutRequestsShowsAnEmptyPageAndArrowsSkipEmptyYears(): void
+    {
+        // A year without requests sent the user to the front page with an error, and the year arrows led there
+        // too: from the first year with requests, the left arrow went to the empty year before it.
+        $pdo = $this->server->pdo();
+        $insert = function (string $date) use ($pdo): int {
+            $pdo->exec("INSERT INTO exam_requests (parent_id, case_id, case_name, case_status, is_removed, case_devicecount, case_added_date)
+                VALUES (0, 0, 'Old year', 1, 0, 0, '$date')");
+            $id = (int) $pdo->lastInsertId();
+            $pdo->exec("UPDATE exam_requests SET parent_id = id WHERE id = $id");
+            return $id;
+        };
+        $ids = array($insert('1971-06-01 12:00:00'), $insert('1974-02-01 12:00:00'));
+        try {
+            $this->assertSame(array('previous' => null, 'next' => 1974), kirjuri_statistics_neighbours($pdo, 1971));
+            $this->assertSame(array('previous' => 1971, 'next' => 1974), kirjuri_statistics_neighbours($pdo, 1972));
+            $this->assertSame(1971, kirjuri_statistics_neighbours($pdo, 1974)['previous']);
+
+            $admin = $this->admin();
+            $empty = $admin->get('statistics.php?year=1972');
+            $this->assertSame(200, $empty->status, 'An empty year is shown, not redirected: ' . $empty->location());
+            $this->assertStringContainsString('class="empty-state"', $empty->body);
+            $this->assertStringNotContainsString('<canvas', $empty->body, 'No charts of nothing.');
+            $this->assertStringContainsString("href='statistics.php?year=1971'", $empty->body);
+            $this->assertStringContainsString("href='statistics.php?year=1974'", $empty->body);
+            $this->assertStringNotContainsString('year=1973', $empty->body, 'The arrows skip empty years.');
+
+            $first = $admin->get('statistics.php?year=1971');
+            $this->assertSame(200, $first->status);
+            $this->assertStringContainsString('<canvas', $first->body);
+            $this->assertStringNotContainsString('year=1970', $first->body, 'No arrow back from the first year with requests.');
+            $this->assertStringContainsString("href='statistics.php?year=1974'", $first->body);
+        } finally {
+            $pdo->exec('DELETE FROM exam_requests WHERE id IN (' . implode(',', $ids) . ')');
+        }
     }
 
     public function testUnitsMatchAsTheDatabaseComparesThem(): void

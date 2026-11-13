@@ -1,6 +1,6 @@
 const { test, expect, createCase, expectNoSidewaysScroll, findReadabilityProblems } = require('./fixtures');
 
-const pages = ['index.php', 'add_case.php', 'statistics.php', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'lang_editor.php', 'help.php', 'licenses.php'];
+const pages = ['index.php', 'add_case.php', 'statistics.php', 'statistics.php?year=1990', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'lang_editor.php', 'help.php', 'licenses.php'];
 
 for (const colorScheme of ['light', 'dark']) {
   test.describe(`${colorScheme} mode`, () => {
