@@ -58,6 +58,8 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
   kept in sorted order. Each file keeps its own encoding: DE uses CRLF line endings and `\u`
   escapes, ES and FI use `\u` escapes, EN and PT_BR are raw UTF-8. Custom language files get
   missing strings from English at load time; the language editor sees the raw file.
+  `php tests/tools/add_lang_strings.php strings.json` adds new strings to all five files that way,
+  from a JSON object of language code to `{key: text}`.
 - Every `<label for>` points at an `id` in the same template. When a partial is included more than
   once, prefix its ids so they stay unique.
 - Passwords need at least 8 characters.
@@ -92,3 +94,16 @@ native installs and installers on Windows and macOS. Read it before planning new
   requests in this repository. Fix real findings (with a test), reply on each thread, then merge
   with a merge commit.
 - After a PR merges, start new work from a fresh `origin/master`.
+
+## Working with the owner
+
+- At the start of every session, and whenever you suggest the next piece of work, say which effort
+  level to set for it:
+  - **Medium** for routine work: merging a green PR, checking CI, applying translators' answers, small
+    text or CHANGELOG edits.
+  - **High** (the default) for most features and bug fixes, which touch PHP, templates, the five
+    language files and the tests together.
+  - **xhigh** for work where a mistake is costly or hard to spot: security work (two-factor sign-in,
+    the audit log), the installers, and large refactors such as splitting `edit_request.twig`.
+  - Not **low**: even small changes here usually need a test and edits in several language files.
+- Write to the owner in plain paragraphs, without jargon, and give the reason for a recommendation.
