@@ -1,0 +1,13 @@
+{% extends 'base.twig' %} {% block title %}
+<title>kirjuri.log - {{ settings.title_text }}</title>
+{% endblock title %}
+{% block content %}
+<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+  <div class="page-title-row">
+    <h1 class="h3">kirjuri.log</h1>
+  </div>
+  {# Newest first. Long lines scroll inside the box, not the page. #}
+  <pre class="log-view" tabindex="0">{% for line in lines %}{{ line }}
+{% endfor %}</pre>
+</div>
+{% endblock %}

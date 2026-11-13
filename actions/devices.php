@@ -246,9 +246,7 @@ case 'device':
     $audit_stamp = audit_log_write($_POST);
     event_log_write($id, 'Add', 'Added device UID' . $new_uid['id'] . ": ". $_POST['device_type'] . ' ' . $_POST['device_manuf'] . ' ' . $_POST['device_model'] . ' ' . $_POST['device_identifier'] . ' to case ' . $id . '. ' , $audit_stamp);
     $_SESSION['post_cache'] = '';
-    $_SESSION['message']['type'] = 'info';
-    $_SESSION['message']['content'] = 'Changes saved.';
-    $_SESSION['message_set'] = true;
+    show_saved_succesfully();
     header('Location: edit_request.php?case=' . $_POST['parent_id'] . '&tab=devices');
     die;
 }

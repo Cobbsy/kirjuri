@@ -181,7 +181,9 @@ final class KirjuriServer
         $this->serverLog = $this->dir . '/server.log';
         mkdir($this->dir . '/sessions');
         // Tests rewrite PHP files under conf/, which OPcache would otherwise keep for up to two seconds.
-        $command = array(PHP_BINARY, '-d', 'display_errors=stderr', '-d', 'opcache.revalidate_freq=0', '-d', 'session.save_path=' . $this->dir . '/sessions',
+        // Every error level is reported, deprecations included, as in the Docker image, which has no php.ini:
+        // a php.ini that hides deprecations would hide them from the tests too.
+        $command = array(PHP_BINARY, '-d', 'display_errors=stderr', '-d', 'error_reporting=-1', '-d', 'opcache.revalidate_freq=0', '-d', 'session.save_path=' . $this->dir . '/sessions',
             '-S', '127.0.0.1:' . $port, '-t', $this->dir);
         $this->process = proc_open($command, array(
                 0 => array('file', '/dev/null', 'r'),

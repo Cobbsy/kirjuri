@@ -1,4 +1,4 @@
-const { test, expect, createCase, startCase, expectNoSidewaysScroll } = require('./fixtures');
+const { test, expect, createCase, startCase, expectNoSidewaysScroll, findDuplicateIds } = require('./fixtures');
 
 test('devices can be added, have their status changed and be edited', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Device test ' + Date.now());
@@ -40,6 +40,7 @@ test('devices can be added, have their status changed and be edited', async ({ a
   // The device page saves its fields.
   await page.locator('table.device-card', { hasText: model }).locator('.device-title a[href^="device_memo.php"]').click();
   await expect(page.locator('#device_manuf')).toHaveValue('Acme');
+  expect(await findDuplicateIds(page)).toEqual([]);
   await page.fill('#device_manuf', 'Acme Corporation');
   await page.locator('#save_button').first().click();
   await expect(page.locator('#device_manuf')).toHaveValue('Acme Corporation');

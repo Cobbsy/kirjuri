@@ -4,7 +4,7 @@
 {% block content %}
 <div class="col-sm-9 col-sm-offset-3
   col-md-10 col-md-offset-2 main">
-<h1 class="page-header">{{ lang.statistics }} {{ dateStart|date("Y") }} <a href='statistics.php?year={{ (dateStart|date("Y") - 1 ) }}'><i class="fa fa-caret-left"></i></a> <a href='statistics.php?year={{ (dateStart|date("Y") + 1 ) }}'><i class="fa fa-caret-right"></i></a> </h1>
+<h1 class="page-header">{{ lang.statistics }} {{ dateStart|date("Y") }} <a href='statistics.php?year={{ (dateStart|date("Y") - 1 ) }}' title="{{ dateStart|date("Y") - 1 }}" aria-label="{{ dateStart|date("Y") - 1 }}"><i class="fa fa-caret-left" aria-hidden="true"></i></a> <a href='statistics.php?year={{ (dateStart|date("Y") + 1 ) }}' title="{{ dateStart|date("Y") + 1 }}" aria-label="{{ dateStart|date("Y") + 1 }}"><i class="fa fa-caret-right" aria-hidden="true"></i></a> </h1>
 <script>
   // The charts draw on a canvas, so they take the theme's colours from its CSS variables.
   var themeStyle = getComputedStyle(document.documentElement);
@@ -317,7 +317,7 @@
   </thead>
   {% for devtype in devices %}
   <tr id="solu-{{ devtype|replace({' ': '_'}) }}">
-    <td><img src="views/img/svg/{{ devtype|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="float:left;padding-left:5px;padding-right:5px;"> {{ devtype }}
+    <td><img alt="" src="views/img/svg/{{ devtype|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="float:left;padding-left:5px;padding-right:5px;"> {{ devtype }}
     </td>
     {% for month_col in 1..13 %}
     <td>
@@ -340,8 +340,8 @@
   </tr>
   {% endfor %}
   {% for devtype in media_objs %}
-  <tr id="solu-{{ devtype|replace({' ': '_'}) }}">
-    <td><img src="views/img/svg/{{ devtype|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="float:left;padding-left:5px;padding-right:5px;"> {{ devtype }}
+  <tr id="solu-media-{{ devtype|replace({' ': '_'}) }}">
+    <td><img alt="" src="views/img/svg/{{ devtype|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="float:left;padding-left:5px;padding-right:5px;"> {{ devtype }}
     </td>
     {% for month_col in 1..13 %}
     <td>
@@ -354,7 +354,7 @@
       {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1 %}{% endif %}
       {% if (loop.last == true) %}
       <b>
-        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$( "#solu-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
+        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$( "#solu-media-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
       </b>
       {% endif %}
       {% endfor %}

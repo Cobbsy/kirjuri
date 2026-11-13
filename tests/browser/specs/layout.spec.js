@@ -1,6 +1,6 @@
-const { test, expect, createCase, startCase, openMenuIfFolded, expectNoSidewaysScroll } = require('./fixtures');
+const { test, expect, createCase, startCase, openMenuIfFolded, expectNoSidewaysScroll, findDuplicateIds } = require('./fixtures');
 
-const pages = ['index.php', 'add_case.php', 'statistics.php', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'lang_editor.php', 'help.php'];
+const pages = ['index.php', 'add_case.php', 'statistics.php', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'lang_editor.php', 'log.php', 'help.php'];
 
 for (const url of pages) {
   test(`${url} renders without errors or sideways scrolling`, async ({ admin: page }) => {
@@ -8,6 +8,8 @@ for (const url of pages) {
     expect(response.status()).toBe(200);
     await expect(page.locator('.main')).toBeVisible();
     await expectNoSidewaysScroll(page);
+    expect(await findDuplicateIds(page)).toEqual([]);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   });
 }
 
@@ -27,6 +29,7 @@ test('the case tabs switch in the sidebar, and on phones the menu folds away aft
   await page.goto('edit_request.php?case=' + caseId);
   await expect(page.locator('#tab-exam-request')).toBeVisible();
   await expectNoSidewaysScroll(page);
+  expect(await findDuplicateIds(page)).toEqual([]);
 
   await openMenuIfFolded(page);
   await page.click('#sidebar-nav a[href="#tab-devices"]');

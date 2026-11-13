@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html>
+<html{% if html_lang %} lang="{{ html_lang }}"{% endif %}>
   <head>
     {% block title %}
     <title>{{ settings.title_text }} - {{ lang.case_log }} {{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date('Y') }}</title>
@@ -14,6 +15,7 @@
     <link href="vendor/twbs/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="views/font-awesome-4.6.3/css/font-awesome.min.css">
     <link href="views/css/kirjuri.css" rel="stylesheet">
+    <link rel="icon" href="views/img/favicon.svg" type="image/svg+xml">
     <script src="vendor/twbs/bootstrap/dist/js/bootstrap.min.js"></script>
   </head>
   <body>
@@ -31,6 +33,7 @@
     </h3>
     <div class="col-md-12"><br></div>
   {% if caselog %}
+    <div class="table-responsive">
     <table class="table table-condensed bg-surface">
       <thead>
         <th style="width:100px;white-space:nowrap;">{{ lang.timestamp }}</th>
@@ -49,6 +52,7 @@
       </tr>
   {% endfor %}
   </table>
+  </div>
   {% else %}
   <div class="alert alert-danger" role="alert">{{ lang.no_events }}</div>
   {% endif %}

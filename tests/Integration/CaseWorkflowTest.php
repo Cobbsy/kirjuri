@@ -177,6 +177,60 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('3', $this->row($caseId)['case_status']);
     }
 
+    public function testEditingRequestDetailsKeepsTheStartDateAndAFinishedStatus(): void
+    {
+        // Every edit of the details set the start date to now, so the report's "examination started" moved with
+        // each correction; and an edit of a finished case, from a page opened before it was finished, reopened it.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Start date '));
+        $fields = array(
+            'case_name' => 'Start date', 'case_file_number' => '1', 'case_crime' => 'Fraud', 'classification' => 'Public',
+            'case_suspect' => 'Doe', 'case_investigation_lead' => 'Lead', 'case_investigator' => 'Inv',
+            'forensic_investigator' => 'Administrator', 'phone_investigator' => '', 'case_investigator_tel' => '1',
+            'case_investigator_unit' => 'Unit 1', 'case_request_description' => 'x', 'case_confiscation_date' => '2026-01-15',
+            'case_contains_mob_dev' => '1', 'case_urgency' => '1',
+        );
+        $this->assertNull($this->row($caseId)['case_start_date']);
+        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin)) + $fields);
+        $this->assertNotNull($this->row($caseId)['case_start_date'], 'Assigning an examiner starts the examination.');
+
+        $this->server->pdo()->exec("UPDATE exam_requests SET case_start_date = '2020-02-03 04:05:06' WHERE id = $caseId");
+        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'case_crime' => 'Theft') + $fields);
+        $row = $this->row($caseId);
+        $this->assertSame('Theft', $row['case_crime']);
+        $this->assertSame('2020-02-03 04:05:06', $row['case_start_date']);
+
+        $admin->post('submit.php?type=update_request_status', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'returnid' => (string) $caseId, 'case_status' => '3'));
+        $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $this->token($admin), 'case_crime' => 'Arson') + $fields);
+        $row = $this->row($caseId);
+        $this->assertSame('Arson', $row['case_crime']);
+        $this->assertSame('3', $row['case_status']);
+        $this->assertSame('2020-02-03 04:05:06', $row['case_start_date']);
+    }
+
+    public function testFrontPageLinksExaminersByTheirWholeNameAndOnlyWhenThereIsOne(): void
+    {
+        // The examiner links were written for every row, as empty links when there was no examiner, and the
+        // name went into the link unencoded, so one with an ampersand searched for half of it.
+        $admin = $this->admin();
+        $suspect = 'Ze' . generate_token(6);
+        $caseId = $this->createCase($admin, $this->uniqueName('Examiners '), array('case_suspect' => $suspect));
+        $page = $admin->get('index.php?search=' . $suspect)->body;
+        $this->assertStringContainsString('edit_request.php?case=' . $caseId, $page);
+        $this->assertDoesNotMatchRegularExpression('/<a href="index\.php\?search=[^"]*"><\/a>/', $page);
+
+        $this->server->pdo()->prepare('UPDATE exam_requests SET case_status = "2", forensic_investigator = :f, phone_investigator = :p WHERE id = :id')
+            ->execute(array(':f' => 'Smith & Jones', ':p' => 'Mobile #1', ':id' => $caseId));
+        $page = $admin->get('index.php?search=' . $suspect)->body;
+        $this->assertStringContainsString('index.php?search=%22Smith%20%26%20Jones%22&', $page);
+        $this->assertStringContainsString('index.php?search=%22Mobile%20%231%22&', $page);
+    }
+
+    public function testCaseReportWithoutACaseGoesToTheFrontPage(): void
+    {
+        $this->assertSame('index.php', $this->admin()->get('case_report.php')->location());
+    }
+
     public function testCasePageShowsStatusAndOffersTheNextStep(): void
     {
         $admin = $this->admin();

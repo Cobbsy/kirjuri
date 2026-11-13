@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html{% block html_class %}{% endblock %}>
+<html{% if html_lang %} lang="{{ html_lang }}"{% endif %}{% block html_class %}{% endblock %}>
   <head>
     {% block title %}
     <title>{{ settings.title_text }}</title>
@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="views/font-awesome-4.6.3/css/font-awesome.min.css">
     <link href="views/jquery-ui/jquery-ui.css" rel="stylesheet" type="text/css">
     <link href="views/css/kirjuri.css" rel="stylesheet">
+    <link rel="icon" href="views/img/favicon.svg" type="image/svg+xml">
     <style type="text/css" media="print">
       div.page {
       page-break-after: always;

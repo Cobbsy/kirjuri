@@ -25,6 +25,46 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame('1', $this->server->pdo()->query("SELECT archived_to FROM messages WHERE id = $id")->fetchColumn());
     }
 
+    public function testANoteToOneselfCanBeRepliedTo(): void
+    {
+        // A note to oneself is stored as from "Myself", and the reply form sent that as the recipient, which no
+        // account has, so the reply was refused.
+        $admin = $this->admin();
+        $subject = $this->uniqueName('Note ');
+        $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => 'admin', 'subject' => $subject, 'body' => '<p>Remember</p>'));
+        // Subjects are stored encoded, so the note is found as the newest one from "Myself".
+        $id = $this->server->pdo()->query("SELECT MAX(id) FROM messages WHERE msgfrom = 'Myself' AND msgto = 'admin'")->fetchColumn();
+        $this->assertNotNull($id, 'The note was saved.');
+        $page = $admin->get('messages.php?open=' . $id)->body;
+        $this->assertStringContainsString('<input type="hidden" name="msgto" value="admin">', $page);
+        $this->assertStringNotContainsString('name="msgto" value="Myself"', $page);
+
+        $reply = $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => 'admin', 'subject' => 'Re: ' . $subject, 'body' => '<p>Done</p>'));
+        $this->assertSame('messages.php', $reply->location());
+    }
+
+    public function testPagesNameTheirLanguageAndTheDeviceAddedMessageIsInIt(): void
+    {
+        // Pages had no lang attribute, so screen readers read them in the wrong voice. "Changes saved." after
+        // adding a device was written in English in the code.
+        $admin = $this->admin();
+        $this->assertStringContainsString('<html lang="en">', $this->client()->get('login.php')->body);
+        $caseId = $this->createCase($admin, $this->uniqueName('Language '));
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_PT_BR"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $this->assertStringContainsString('<html lang="pt-BR">', $admin->get('index.php')->body);
+            $this->addDevice($admin, $caseId, $this->uniqueName('L'));
+            $page = $admin->get('edit_request.php?case=' . $caseId . '&tab=devices')->body;
+            $portuguese = json_decode(file_get_contents(KIRJURI_ROOT . '/conf/lang_PT_BR.JSON'), true);
+            $this->assertStringContainsString($portuguese['changes_saved'], $page);
+            $this->assertStringNotContainsString('Changes saved.', $page);
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+    }
+
     public function testOnlyTheRecipientCanArchiveOrDeleteTheirCopy(): void
     {
         $sender = $this->uniqueName('sender');

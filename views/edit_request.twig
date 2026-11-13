@@ -82,12 +82,12 @@ $(function() {
         <script type="text/javascript">
           $(document).ready(function() { $('#add_forensic_examiner_modal').modal('show'); });
         </script>
-        <div class="modal fade" id="add_forensic_examiner_modal" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal fade" id="add_forensic_examiner_modal" role="dialog" aria-labelledby="add_forensic_examiner_modal_title">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
               <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="myModalLabel">{{ lang.new_examination_request }} {{ entry.case_id }}/{{ entry.case_added_date|date("Y") }}</h4>
+                <h4 class="modal-title" id="add_forensic_examiner_modal_title">{{ lang.new_examination_request }} {{ entry.case_id }}/{{ entry.case_added_date|date("Y") }}</h4>
               </div>
               <div class="modal-body">
                 <b>{{ lang.no_examiner_assigned }}</b>
@@ -96,7 +96,7 @@ $(function() {
                   <input type="hidden" name="token" value="{{session.user.token}}">
                   <input type="hidden" name="ct" value="{{ct}}">
                   <div class="form-group">
-                    <select style="text-align:left;width:100%;" class="btn btn-default" name="forensic_investigator" id="forensic_investigator">
+                    <select style="text-align:left;width:100%;" class="btn btn-default" name="forensic_investigator" id="assign_forensic_investigator" aria-label="{{ lang.forensic_examiner_long }}">
                       <option disabled>{{ lang.forensic_examiner_long }}</option>
                       {% for user in session.all_users %}
                         {% if 'F' in user.flags == true %}
@@ -111,7 +111,7 @@ $(function() {
                   <p>{{ lang.pick_mobile_examiner }}</p>
                   <div class="form-group">
                     <input type="hidden" name="phone_investigator" value="">
-                    <select style="text-align:left;width:100%;" class="btn btn-default" name="phone_investigator" id="phone_investigator">
+                    <select style="text-align:left;width:100%;" class="btn btn-default" name="phone_investigator" id="assign_phone_investigator" aria-label="{{ lang.mobile_examiner_long }}">
                       <option selected disabled>{{ lang.mobile_examiner_long }}</option>
 
                       {% for user in session.all_users %}
@@ -173,7 +173,7 @@ $(function() {
               {% if entry.case_contains_mob_dev == "1" %}<span class="chip"><i class="fa fa-mobile" aria-hidden="true"></i> {{ lang.contains_mobile_devices }}</span>{% endif %}
               {% if entry.case_owner %}<span class="chip chip-locked" title="{{ entry.case_owner|replace({";": ", "}) }}"><i class="fa fa-lock" aria-hidden="true"></i> {{ lang.access_control }}</span>{% endif %}
             </div>
-            <h1 id="examination_request" class="case-title">{% if entry.case_name %}{{ entry.case_name }}{% elseif entry.case_suspect %}{{ lang.suspect_abbrev }} {{ entry.case_suspect }}{% else %}{{ lang.suspect_short }}{% endif %}</h1>
+            <h1 class="case-title">{% if entry.case_name %}{{ entry.case_name }}{% elseif entry.case_suspect %}{{ lang.suspect_abbrev }} {{ entry.case_suspect }}{% else %}{{ lang.suspect_short }}{% endif %}</h1>
             <div class="case-subtitle">{{ entry.case_file_number }} &middot; {{ entry.case_crime }} &middot; {{ entry.classification }}</div>
           </div>
           {% if entry.case_status != "3" and progress_done > 0 %}
@@ -389,12 +389,12 @@ $(function() {
         {% endif %}
 
       <!-- Modal -->
-      <div class="modal fade" id="perustiedot" role="dialog" aria-labelledby="perustiedot">
+      <div class="modal fade" id="perustiedot" role="dialog" aria-labelledby="perustiedot_title">
         <div class="modal-dialog modal-lg" role="document">
           <div class="modal-content">
             <div class="modal-header">
               <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-              <h4 class="modal-title" id="myModalLabel">{{ lang.edit_request_details }}</h4>
+              <h4 class="modal-title" id="perustiedot_title">{{ lang.edit_request_details }}</h4>
             </div>
             <div class="modal-body">
               <!--- perustiedot -->
@@ -784,12 +784,12 @@ $(function() {
 
 <!-- Button trigger modal -->
 <!-- Modal -->
-<div class="modal fade" id="add_media_modal_{{ entry.id }}" role="dialog" aria-labelledby="add_media_modal_{{ entry.id }}">
+<div class="modal fade" id="add_media_modal_{{ entry.id }}" role="dialog" aria-labelledby="add_media_modal_{{ entry.id }}_title">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="myModalLabel">{{ lang.add_media }} | {{ entry.device_type }} {{ entry.device_manuf }} {{ entry.device_model }}</h4>
+        <h4 class="modal-title" id="add_media_modal_{{ entry.id }}_title">{{ lang.add_media }} | {{ entry.device_type }} {{ entry.device_manuf }} {{ entry.device_model }}</h4>
       </div>
       <form class="form" role="form" method="post" action="submit.php?type=device" data-validate novalidate>
       <div class="modal-body">
@@ -812,12 +812,12 @@ $(function() {
 {% endfor %}
 <!-- Modal -->
 
-<div class="modal fade" id="add_device_media_modal" role="dialog" aria-labelledby="add_device_media_modal">
+<div class="modal fade" id="add_device_media_modal" role="dialog" aria-labelledby="add_device_media_modal_title">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        <h4 class="modal-title" id="myModalLabel">{{ lang.add_new_device_or_media }}</h4>
+        <h4 class="modal-title" id="add_device_media_modal_title">{{ lang.add_new_device_or_media }}</h4>
       </div>
       <form class="form" role="form" method="post" action="submit.php?type=device" data-validate novalidate>
       <div class="modal-body">
@@ -880,7 +880,7 @@ $(function() {
   {% else %}
   <div class="panel panel-default">
   <div class="panel-heading">
-  <h3 id="report_notes" class="panel-title">{{ lang.examination_report }}</h3>
+  <h3 class="panel-title">{{ lang.examination_report }}</h3>
   </div>
   <div class="panel-body">
   {{ caserow.0.report_notes|purify }}
@@ -906,7 +906,7 @@ $(function() {
   {% else %}
   <div class="panel panel-default">
   <div class="panel-heading">
-  <h3 id="report_notes" class="panel-title">{{ lang.examiners_private_notes }}</h3>
+  <h3 class="panel-title">{{ lang.examiners_private_notes }}</h3>
   </div>
   <div class="panel-body">
   {{ caserow.0.examiners_notes|purify }}
@@ -1007,7 +1007,7 @@ $(function() {
 <div role="tabpanel" class="tab-pane{% if returntab == "caselog" %} active{% endif %}" id="tab-caselog">
 <h3 class="page-heading">{{ lang.case_log }}
   <span class="pull-right">
-    <a href="timeline.php?case={{ caserow.0.id }}" class="btn btn-success" target="_blank"><i class="fa fa-calendar"></i></a>
+    <a href="timeline.php?case={{ caserow.0.id }}" class="btn btn-success" target="_blank" title="{{ lang.case_log }}" aria-label="{{ lang.case_log }}"><i class="fa fa-calendar" aria-hidden="true"></i></a>
   </span>
 </h3>
 

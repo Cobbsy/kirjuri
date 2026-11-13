@@ -16,17 +16,17 @@
   {% block content %}
   {% for entry in caserow %}
   <div class="page">
-    <table>
+    <table class="report-head">
       <tr>
         <td>
-          <img src="{{ settings.report_logo }}" width="{{ settings.report_logo_width }}" style="horizontal-align:left;vertical-align:top;">
+          <img alt="" src="{{ settings.report_logo }}" width="{{ settings.report_logo_width }}" style="horizontal-align:left;vertical-align:top;">
         </td>
-        <td style="padding-left:50px;">
+        <td class="report-head-text">
           <h2>{{ lang.forensic_examination_report }}</h2>
           <h3>{{ settings.organization }}</h3>
           <h3>{{ entry.case_file_number }}</h3>
           <h3>
-          {{ lang.addendum_number }}</h1>
+          {{ lang.addendum_number }}</h3>
           <p>{{ lang.crime }}: {{ entry.case_crime }}</p>
           <p>{{ lang.suspect_target }}: {{ entry.case_suspect }}<br>
           <p>{{ lang.head_of_investigation }}: {{ entry.case_investigation_lead }}.</p>

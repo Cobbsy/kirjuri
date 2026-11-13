@@ -2,7 +2,7 @@
 
 require_once './include_functions.php';
 ksess_verify(2); // View only or higher
-$id = filter_numbers($_GET['case']);
+$id = filter_numbers(isset($_GET['case']) ? $_GET['case'] : '');
 verify_case_ownership($id);
 
 
