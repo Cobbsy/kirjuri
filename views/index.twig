@@ -5,7 +5,7 @@
 {% block content %}
 <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
 <ol class="breadcrumb">
-  <li>{{ lang.front_page }} {{ dateStart|date("Y") }}</li>
+  <li>{{ lang.front_page }}{% if not search_term %} {{ dateStart|date("Y") }}{% endif %}</li>
 </ol>
 
 <div class="index-toolbar">
@@ -17,7 +17,7 @@
 {% if show_columns.search_field != "hide" %}
   <form class="index-search" role="search" method="GET" action="index.php">
     <i class="fa fa-search" aria-hidden="true"></i>
-    <input type="search" class="form-control" name="search" placeholder="{{ lang.search_reqs_and_devs }}" aria-label="{{ lang.search_reqs_and_devs }}" title="Boolean search, * is wildcard." value="{{ search_term }}">
+    <input type="search" class="form-control" name="search" placeholder="{{ lang.search_reqs_and_devs }}" aria-label="{{ lang.search_reqs_and_devs }}" title="{{ lang.search_hint }}"{% if search_term %} aria-describedby="search_hint"{% endif %} value="{{ search_term }}">
     <input type="hidden" name="year" value="{{ dateStart|date("Y") }}">
     {% if query_j %}<input type="hidden" name="j" value="{{ query_j }}">{% endif %}
     {% if query_d %}<input type="hidden" name="d" value="{{ query_d }}">{% endif %}
@@ -25,6 +25,12 @@
   </form>
 {% endif %}
 </div>
+{% if search_term %}
+<div class="search-summary">
+  {% if search_years %}<p>{{ lang.search_years }}: {% for search_year, found in search_years %}<b>{{ search_year }}</b> ({{ found }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  <p class="field-hint" id="search_hint">{{ lang.search_hint }}</p>
+</div>
+{% endif %}
 {% if settings.motd and show_columns.message_of_the_day != "hide"%}
 <div class="panel panel-danger">
   <div class="panel-body">

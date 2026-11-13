@@ -327,7 +327,7 @@ function kirjuri_cases_of_devices(PDO $db, array $rows) {
     if (empty($missing)) {
         return array();
     }
-    $query = $db->prepare('SELECT id, parent_id, case_status, forensic_investigator, phone_investigator, last_updated FROM exam_requests
+    $query = $db->prepare('SELECT id, parent_id, case_status, forensic_investigator, phone_investigator, last_updated, case_added_date FROM exam_requests
         WHERE id = parent_id AND id IN (' . implode(', ', array_fill(0, count($missing), '?')) . ')');
     $query->execute(array_values($missing));
     $cases = array();
@@ -375,9 +375,10 @@ function kirjuri_fulltext_match($index, $placeholder) {
  * operator ("@", "<>", a lone "+" or "-") with a syntax error. Each term keeps a leading + or - and a
  * trailing * (on a single word); a term or quoted phrase that punctuation splits into several words, such
  * as an e-mail address or an IMEI written with dashes, becomes a phrase of those words. Other operators
- * (~ < > and parentheses) are left out.
+ * (~ < > and parentheses) are left out. With $word_beginnings, every single word gets a trailing *, so
+ * "phone" also finds "phones"; phrases stay exact.
  */
-function kirjuri_fulltext_query($search) {
+function kirjuri_fulltext_query($search, $word_beginnings = false) {
     preg_match_all('/([+-]?)"([^"]*)"?|\S+/u', (string) $search, $matches, PREG_SET_ORDER);
     $terms = array();
     foreach ($matches as $match) {
@@ -397,7 +398,7 @@ function kirjuri_fulltext_query($search) {
             continue;
         }
         if (count($words) === 1 && !isset($match[2])) {
-            $terms[] = $prefix . $words[0] . ($wildcard ? '*' : '');
+            $terms[] = $prefix . $words[0] . (($wildcard || $word_beginnings) ? '*' : '');
         } else {
             $terms[] = $prefix . '"' . implode(' ', $words) . '"';
         }
@@ -406,13 +407,57 @@ function kirjuri_fulltext_query($search) {
 }
 
 
-/** Full text search over the cases and devices added in $year. */
-function kirjuri_search_cases(PDO $db, $term, $year, $sort, $ascending) {
+/**
+ * Full text search over the cases and devices of every year, for the front page: a word also finds words
+ * that start with it (see kirjuri_fulltext_query()).
+ */
+function kirjuri_search_cases(PDO $db, $term, $sort, $ascending) {
     $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"
         AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
-        AND case_added_date BETWEEN :start AND :stop ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
-    $term = kirjuri_fulltext_query($term);
-    $query->execute(array(':cases' => $term, ':devices' => $term) + kirjuri_year_range($year));
+        ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
+    $term = kirjuri_fulltext_query($term, true);
+    if ($term === '') {
+        return array(); // Only operators or punctuation: nothing to look for, and MATCH would match nothing anyway.
+    }
+    $query->execute(array(':cases' => $term, ':devices' => $term));
+    return $query->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+/**
+ * How many of the front page rows (cases and found devices) belong to requests of each year, newest year
+ * first. Search results span years; this says which. A device counts in its request's year, from the
+ * request's row in $rows or in $cases (see kirjuri_cases_of_devices()), as it may have been added later.
+ */
+function kirjuri_rows_per_year(array $rows, array $cases = array()) {
+    foreach ($rows as $row) {
+        if (isset($row['id'], $row['parent_id']) && (string) $row['id'] === (string) $row['parent_id']) {
+            $cases[$row['id']] = $row;
+        }
+    }
+    $years = array();
+    foreach ($rows as $row) {
+        $request = isset($row['parent_id'], $cases[$row['parent_id']]) ? $cases[$row['parent_id']] : $row;
+        $time = strtotime((string) ($request['case_added_date'] ?? ''));
+        if ($time !== false) {
+            $year = (int) date('Y', $time);
+            $years[$year] = ($years[$year] ?? 0) + 1;
+        }
+    }
+    krsort($years);
+    return $years;
+}
+
+
+/** Device status per case for the cases with these ids, whatever year their devices were added in. */
+function kirjuri_device_actions_for_cases(PDO $db, array $case_ids) {
+    $case_ids = array_values(array_unique(array_map('intval', $case_ids)));
+    if (empty($case_ids)) {
+        return array();
+    }
+    $query = $db->prepare('SELECT parent_id, device_action FROM exam_requests WHERE id != parent_id AND is_removed = "0"
+        AND parent_id IN (' . implode(', ', array_fill(0, count($case_ids), '?')) . ') ORDER BY parent_id, device_action ASC');
+    $query->execute($case_ids);
     return $query->fetchAll(PDO::FETCH_ASSOC);
 }
 

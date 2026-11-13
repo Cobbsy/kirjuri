@@ -3000,3 +3000,12 @@ fieldset.field > legend {
     height: auto;
   }
 }
+
+/* Above search results: the years they come from and how the search reads its words. */
+.search-summary {
+  margin: -6px 0 14px;
+}
+
+.search-summary p {
+  margin: 0 0 2px;
+}
