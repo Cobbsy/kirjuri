@@ -232,6 +232,7 @@ test install; phase 4 needs the signing accounts.
 - The session start hook sets up MariaDB and the test packages. If the container restarts and
   MariaDB is down, run the hook again. `service mariadb stop` can fail here; use
   `mysqladmin -uroot -p... shutdown`.
+- New language strings: `php tests/tools/add_lang_strings.php strings.json` (see CLAUDE.md).
 - A browser test copy is a copy of the code served with `setsid nohup php -S 127.0.0.1:8099`.
   After copying changed templates into it, delete its compiled templates (`cache/??/`): Twig's
   `auto_reload` compares modification times to the second and can keep serving an old template.

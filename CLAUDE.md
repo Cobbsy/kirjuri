@@ -58,6 +58,8 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
   kept in sorted order. Each file keeps its own encoding: DE uses CRLF line endings and `\u`
   escapes, ES and FI use `\u` escapes, EN and PT_BR are raw UTF-8. Custom language files get
   missing strings from English at load time; the language editor sees the raw file.
+  `php tests/tools/add_lang_strings.php strings.json` adds new strings to all five files that way,
+  from a JSON object of language code to `{key: text}`.
 - Every `<label for>` points at an `id` in the same template. When a partial is included more than
   once, prefix its ids so they stay unique.
 - Passwords need at least 8 characters.
