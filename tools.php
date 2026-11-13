@@ -31,13 +31,16 @@ foreach ($_SESSION['all_tools'] as $tool) { // Get tool information based on GET
         $fields['attr_1'] = $tool['attr_1'];
         $fields['attr_2'] = explode(",", $tool['attr_2']);
         $fields['attr_3'] = $tool['attr_3'];
-        $fields['attr_4'] = json_decode((string) $tool['attr_4'], true); // NULL until the tool's first reservation.
+        // NULL until the tool's first reservation. Each gets its user's current name and whether it may be dropped.
+        $reservations = json_decode((string) $tool['attr_4'], true);
+        $fields['attr_4'] = is_array($reservations) ? kirjuri_present_reservations($reservations, $_SESSION['all_users'], $_SESSION['user']) : null;
     }
 }
 
 $tool_reservations = array();
 foreach ($_SESSION['all_tools'] as $tool) {
-    $tool_reservations[$tool['id']] = json_decode((string) $tool['attr_4'], true);
+    $reservations = json_decode((string) $tool['attr_4'], true);
+    $tool_reservations[$tool['id']] = is_array($reservations) ? kirjuri_present_reservations($reservations, $_SESSION['all_users'], $_SESSION['user']) : null;
 }
 
 

@@ -99,3 +99,20 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
         'dateStop' => $range[':stop'],
     );
 }
+
+
+/**
+ * The nearest years before and after $year that have requests, for the statistics page's year arrows, as
+ * array('previous' => year or null, 'next' => year or null). Empty years are skipped rather than linked.
+ */
+function kirjuri_statistics_neighbours(PDO $db, $year) {
+    $query = $db->prepare('SELECT
+        (SELECT MAX(YEAR(case_added_date)) FROM exam_requests WHERE is_removed != "1" AND id = parent_id AND case_added_date < :start) AS previous,
+        (SELECT MIN(YEAR(case_added_date)) FROM exam_requests WHERE is_removed != "1" AND id = parent_id AND case_added_date >= :stop) AS next');
+    $query->execute(kirjuri_year_range($year));
+    $row = $query->fetch(PDO::FETCH_ASSOC);
+    return array(
+        'previous' => $row['previous'] === null ? null : (int) $row['previous'],
+        'next' => $row['next'] === null ? null : (int) $row['next'],
+    );
+}

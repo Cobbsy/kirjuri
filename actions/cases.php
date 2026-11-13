@@ -79,6 +79,7 @@ case 'case_update':
     ksess_verify(1);
     ksess_validate($_POST['token']);
     $_GET['uid'] = filter_numbers($_GET['uid']);
+    csrf_case_validate(posted_case_token(), $_GET['uid']);
     verify_case_ownership($_GET['uid']);
     if (!isset($_POST['phone_investigator'])) {
         $_POST['phone_investigator'] = "-";

@@ -356,6 +356,7 @@
     "requests_by_unit": "Requests by unit",
     "requests_containing_phones": "Requests containing phones",
     "requests_with_matching_complaint_number": "Requests with matching criminal complaint number",
+    "reservation_in_past": "The reservation ends in the past. Check the dates.",
     "reserve": "Reserve",
     "reserved_for": "Reserved for",
     "reset_default_settings": "Reset to default",

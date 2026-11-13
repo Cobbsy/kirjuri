@@ -183,6 +183,18 @@ function kirjuri_update_case(PDO $db, $case_id, array $fields) {
     $db->prepare('UPDATE exam_requests SET case_start_date = IF(:started_status = "2" AND (case_status != "2" OR case_start_date IS NULL), NOW(), case_start_date), '
         . implode(', ', $assignments) . ', last_updated = NOW(), is_removed = "0"
         WHERE id = :id AND parent_id = :id')->execute($values);
+    kirjuri_sync_device_status($db, $case_id);
+}
+
+
+/**
+ * Give the devices of a case the status of the case. Device rows carry their case's status, which the CSV
+ * export and KRF files hold, so every change of a case's status or of a device's case goes through here or
+ * through kirjuri_set_case_status(), which sets both in one statement.
+ */
+function kirjuri_sync_device_status(PDO $db, $case_id) {
+    $db->prepare('UPDATE exam_requests d JOIN exam_requests c ON c.id = d.parent_id AND c.parent_id = c.id
+        SET d.case_status = c.case_status WHERE d.parent_id = :id AND d.id != d.parent_id')->execute(array(':id' => $case_id));
 }
 
 

@@ -29,6 +29,7 @@ function kirjuri_add_device(PDO $db, $case_id, array $fields) {
         VALUES (:parent_id, :' . implode(', :', $columns) . ', "1", "0", NOW(), NOW())');
     $query->execute($values);
     $id = $db->lastInsertId();
+    kirjuri_sync_device_status($db, $case_id);
     kirjuri_touch_case($db, $case_id);
     kirjuri_update_device_count($db, $case_id);
     return $id;
@@ -119,6 +120,7 @@ function kirjuri_move_device(PDO $db, $from_case, $device_id, $to_case) {
     // Its own host stays in the old case, so a medium moved on its own is detached. Its media go with it.
     $db->prepare('UPDATE exam_requests SET device_host_id = "0" WHERE id = :id AND parent_id = :to')
         ->execute(array(':id' => $device_id, ':to' => $to_case));
+    kirjuri_sync_device_status($db, $to_case);
     kirjuri_update_device_count($db, $from_case);
     kirjuri_update_device_count($db, $to_case);
     kirjuri_touch_case($db, $to_case);
@@ -164,7 +166,9 @@ function kirjuri_import_device(PDO $db, $case_id, array $row) {
     $db->prepare('INSERT INTO exam_requests (parent_id, is_removed, case_added_date, last_updated, case_devicecount'
         . (empty($columns) ? '' : ', ' . implode(', ', $columns)) . ') VALUES (:parent_id, "0", NOW(), NOW(), "0"'
         . (empty($columns) ? '' : ', :' . implode(', :', $columns)) . ')')->execute($values);
-    return $db->lastInsertId();
+    $id = $db->lastInsertId();
+    kirjuri_sync_device_status($db, $case_id);
+    return $id;
 }
 
 

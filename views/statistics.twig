@@ -4,7 +4,11 @@
 {% block content %}
 <div class="col-sm-9 col-sm-offset-3
   col-md-10 col-md-offset-2 main">
-<h1 class="page-header">{{ lang.statistics }} {{ dateStart|date("Y") }} <a href='statistics.php?year={{ (dateStart|date("Y") - 1 ) }}' title="{{ dateStart|date("Y") - 1 }}" aria-label="{{ dateStart|date("Y") - 1 }}"><i class="fa fa-caret-left" aria-hidden="true"></i></a> <a href='statistics.php?year={{ (dateStart|date("Y") + 1 ) }}' title="{{ dateStart|date("Y") + 1 }}" aria-label="{{ dateStart|date("Y") + 1 }}"><i class="fa fa-caret-right" aria-hidden="true"></i></a> </h1>
+{# The arrows lead to the nearest years with requests; there is no arrow when there is none. #}
+<h1 class="page-header">{{ lang.statistics }} {{ year }}{% if neighbours.previous %} <a href='statistics.php?year={{ neighbours.previous }}' title="{{ neighbours.previous }}" aria-label="{{ neighbours.previous }}"><i class="fa fa-caret-left" aria-hidden="true"></i></a>{% endif %}{% if neighbours.next %} <a href='statistics.php?year={{ neighbours.next }}' title="{{ neighbours.next }}" aria-label="{{ neighbours.next }}"><i class="fa fa-caret-right" aria-hidden="true"></i></a>{% endif %}</h1>
+{% if no_requests %}
+<div class="empty-state"><i class="fa fa-bar-chart" aria-hidden="true"></i><p>{{ lang.no_cases }}</p></div>
+{% else %}
 <script>
   // The charts draw on a canvas, so they take the theme's colours from its CSS variables.
   var themeStyle = getComputedStyle(document.documentElement);
@@ -467,6 +471,9 @@
     </tr>
     {% endfor %}
   </table>
+</div>
+</div>
+{% endif %}
 </div>
 {% endblock %}
 

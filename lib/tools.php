@@ -1,6 +1,7 @@
 <?php
 // Forensic tools and their reservations. Reservations are stored per tool as a JSON list in tools.attr_4,
-// each with reserved_for, reserve_start, reserve_end and comment.
+// each with username, reserved_for (the user's display name when it was made), reserve_start, reserve_end
+// and comment. Reservations from before usernames were stored may lack the username.
 
 /**
  * Whether reservation [$start, $end) collides with an existing one [$existing_start, $existing_end).
@@ -21,6 +22,38 @@ function kirjuri_find_reservation_conflict(array $reservations, $start, $end) {
         }
     }
     return null;
+}
+
+
+/**
+ * Whether $reservation is $user's own. It is matched by username, so renaming a user keeps their reservations;
+ * one without a username is matched by display name, as before usernames were stored.
+ */
+function kirjuri_reservation_belongs_to(array $reservation, array $user) {
+    if (isset($reservation['username'])) {
+        return isset($user['username']) && (string) $reservation['username'] === (string) $user['username'];
+    }
+    return isset($reservation['reserved_for'], $user['name']) && (string) $reservation['reserved_for'] === (string) $user['name'];
+}
+
+
+/**
+ * Reservations as the tools page shows them: each gets the current display name of its user in 'name' (the
+ * stored name when the user is gone), and in 'can_drop' whether $viewer may drop it: an admin, or its own user.
+ * $users are the user rows, with username and name.
+ */
+function kirjuri_present_reservations(array $reservations, array $users, array $viewer) {
+    $names = array_column($users, 'name', 'username');
+    foreach ($reservations as $key => $reservation) {
+        if (!is_array($reservation)) {
+            unset($reservations[$key]);
+            continue;
+        }
+        $username = isset($reservation['username']) ? (string) $reservation['username'] : '';
+        $reservations[$key]['name'] = isset($names[$username]) ? $names[$username] : (isset($reservation['reserved_for']) ? $reservation['reserved_for'] : '');
+        $reservations[$key]['can_drop'] = (isset($viewer['access']) && (string) $viewer['access'] === '0') || kirjuri_reservation_belongs_to($reservation, $viewer);
+    }
+    return $reservations;
 }
 
 

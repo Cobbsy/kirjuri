@@ -356,6 +356,7 @@
     "requests_by_unit": "Requisições por unidade",
     "requests_containing_phones": "Requisições contendo dispositivos móveis",
     "requests_with_matching_complaint_number": "Requisições  com reclamação criminal correspondente",
+    "reservation_in_past": "A reserva termina no passado. Verifique as datas.",
     "reserve": "Reservar",
     "reserved_for": "Reservado para",
     "reset_default_settings": "Resetar para os padrões",

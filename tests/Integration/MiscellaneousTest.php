@@ -175,7 +175,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $admin->post('submit.php?type=add_tool', array('token' => $token, 'product_name' => $name, 'hw_version' => '1', 'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
         $toolId = $this->server->pdo()->query("SELECT id FROM tools WHERE product_name = '$name'")->fetchColumn();
         $reserve = function ($start, $end) use ($admin, $token, $toolId) {
-            return $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'Administrator', 'comment' => '',
+            return $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'admin', 'comment' => '',
                 'reserve_start_date' => $start, 'reserve_start_time' => '08:00', 'reserve_end_date' => $end, 'reserve_end_time' => '08:00'));
         };
 
@@ -185,11 +185,77 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertCount(2, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
 
         // Missing dates used to pass the check, because " " (date and time joined by a space) is not empty.
-        $incomplete = $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'Administrator', 'comment' => '',
+        $incomplete = $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'admin', 'comment' => '',
             'reserve_start_date' => '', 'reserve_start_time' => '', 'reserve_end_date' => '2030-02-01', 'reserve_end_time' => '08:00'));
         $this->assertSame('tools.php?populate=' . $toolId, $incomplete->location());
         $this->assertCount(2, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
         $this->assertSame(200, $admin->get('tools.php?populate=' . $toolId)->status);
+    }
+
+    public function testReservationsBelongToAUsernameAndCannotBeInThePast(): void
+    {
+        // Reservations stored the user's display name, so renaming a user left their reservations to nobody and
+        // they could no longer drop them; and a reservation could be made for a time already gone.
+        $admin = $this->admin();
+        $token = $this->token($admin);
+        $name = $this->uniqueName('Duplicator ');
+        $admin->post('submit.php?type=add_tool', array('token' => $token, 'product_name' => $name, 'hw_version' => '1', 'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
+        $toolId = $this->server->pdo()->query("SELECT id FROM tools WHERE product_name = '$name'")->fetchColumn();
+        $username = 'rs' . strtolower(generate_token(6));
+        $this->createUser($username, 'Password-123', 1);
+        $reserve = function (array $fields) use ($admin, $token, $toolId, $username) {
+            return $admin->post('submit.php?type=reserve_tool', $fields + array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => $username, 'comment' => '',
+                'reserve_start_date' => '2032-01-01', 'reserve_start_time' => '08:00', 'reserve_end_date' => '2032-01-01', 'reserve_end_time' => '16:00'));
+        };
+        $stored = fn () => json_decode((string) $this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true) ?? array();
+
+        // The form's own default, 08:00 to 16:00, moves to tomorrow once today's has ended.
+        $form = $admin->get('tools.php?populate=' . $toolId)->body;
+        $this->assertMatchesRegularExpression("/name=\"reserve_end_date\" value='(\\d{4}-\\d\\d-\\d\\d)'/", $form);
+        preg_match("/name=\"reserve_end_date\" value='([^']+)'/", $form, $endDate);
+        $this->assertGreaterThan(time(), strtotime($endDate[1] . ' 16:00'), 'The default reservation has not ended.');
+
+        $past = $reserve(array('reserve_start_date' => '2020-01-01', 'reserve_end_date' => '2020-01-02'));
+        $this->assertSame('tools.php?populate=' . $toolId, $past->location());
+        $this->assertSame(array(), $stored(), 'A reservation in the past is refused.');
+        $reserve(array('reserved_for' => 'nobody' . generate_token(6)));
+        $this->assertSame(array(), $stored(), 'A reservation for an unknown user is refused.');
+        $reserve(array());
+        $this->assertCount(1, $stored());
+        $this->assertSame($username, $stored()[0]['username']);
+        $ongoing = $reserve(array('reserve_start_date' => date('Y-m-d', strtotime('-1 day')), 'reserve_end_date' => date('Y-m-d', strtotime('+1 day'))));
+        $this->assertSame('tools.php?populate=' . $toolId, $ongoing->location());
+        $this->assertCount(2, $stored(), 'A reservation that has started but not ended is fine.');
+
+        $this->server->pdo()->prepare('UPDATE users SET name = :name WHERE username = :username')->execute(array(':name' => 'Renamed Examiner', ':username' => $username));
+        $user = $this->login($username, 'Password-123');
+        $page = $user->get('tools.php?populate=' . $toolId)->body;
+        $this->assertStringContainsString('<td>Renamed Examiner</td>', $page, 'Reservations show the current name.');
+        $this->assertStringContainsString('drop=1&returnid=' . $toolId, $page, 'The renamed user can still drop their reservation.');
+        $user->post('submit.php?type=reserve_tool&drop=1&returnid=' . $toolId, array('token' => $this->token($user)));
+        $this->assertCount(1, $stored());
+    }
+
+    public function testMigrationGivesOldReservationsTheirUsername(): void
+    {
+        $pdo = $this->server->pdo();
+        $username = 'mg' . strtolower(generate_token(6));
+        $this->createUser($username, 'Password-123', 1);
+        $display = 'Migrated ' . generate_token(6);
+        $pdo->prepare('UPDATE users SET name = :name WHERE username = :username')->execute(array(':name' => $display, ':username' => $username));
+        $reservations = array(
+            array('reserved_for' => $display, 'reserve_start' => '2033-01-01 08:00', 'reserve_end' => '2033-01-01 16:00', 'comment' => ''),
+            array('reserved_for' => 'Left the lab', 'reserve_start' => '2033-01-02 08:00', 'reserve_end' => '2033-01-02 16:00', 'comment' => ''),
+        );
+        $toolId = kirjuri_add_tool($pdo, array('product_name' => $this->uniqueName('Old tool '), 'hw_version' => '', 'sw_version' => '', 'serialno' => '', 'flags' => '', 'comment' => ''));
+        kirjuri_save_tool_reservations($pdo, $toolId, $reservations);
+
+        kirjuri_migration_008_reservation_usernames($pdo);
+        kirjuri_migration_008_reservation_usernames($pdo);
+        $migrated = kirjuri_tool_reservations($pdo, $toolId);
+        $this->assertSame($username, $migrated[0]['username']);
+        $this->assertSame($display, $migrated[0]['reserved_for']);
+        $this->assertArrayNotHasKey('username', $migrated[1], 'A name no user has is left as it is.');
     }
 
     public function testToolUpdatesKeepAVersionHistoryAndToolsCanBeRemoved(): void
@@ -264,8 +330,12 @@ final class MiscellaneousTest extends IntegrationTestCase
         $admin->post('submit.php?type=add_tool', array('token' => $token, 'product_name' => $name, 'hw_version' => '1', 'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
         $toolId = $this->server->pdo()->query("SELECT id FROM tools WHERE product_name = '$name'")->fetchColumn();
         // A newline or a trailing backslash used to end the JavaScript string early and break the calendar for everyone.
-        $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => "Name\\", 'comment' => "Line one\nLine two \\",
+        $username = 'bs' . strtolower(generate_token(6));
+        $this->createUser($username, 'Password-123', 1);
+        $this->server->pdo()->prepare('UPDATE users SET name = :name WHERE username = :username')->execute(array(':name' => "Name\\", ':username' => $username));
+        $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => $username, 'comment' => "Line one\nLine two \\",
             'reserve_start_date' => '2031-01-01', 'reserve_start_time' => '08:00', 'reserve_end_date' => '2031-01-02', 'reserve_end_time' => '08:00'));
+        $this->assertCount(1, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
         $caseId = $this->createCase($admin, $this->uniqueName('Scripted case '));
 
         // The calendar is on the tools overview; statistics and the timeline are checked as well.
