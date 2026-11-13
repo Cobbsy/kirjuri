@@ -29,6 +29,15 @@ async function expectNoSidewaysScroll(page) {
   base.expect(widths[0], 'page width vs window width').toBeLessThanOrEqual(widths[1] + 1);
 }
 
+/** Ids used more than once on the page: a label, a dialog title or a script then finds the wrong element. */
+async function findDuplicateIds(page) {
+  return page.evaluate(() => {
+    const counts = {};
+    document.querySelectorAll('[id]').forEach((el) => { if (el.id) counts[el.id] = (counts[el.id] || 0) + 1; });
+    return Object.keys(counts).filter((id) => counts[id] > 1).sort();
+  });
+}
+
 /**
  * Text the page shows that is hard to read: each element with its own text (or a form field's value) whose
  * colour has less than minContrast against the background behind it. In dark mode it also lists light boxes,
@@ -147,4 +156,4 @@ async function startCase(page, caseId) {
   await base.expect(page.locator('.chip-open')).toBeVisible();
 }
 
-module.exports = { test, expect: base.expect, login, expectNoSidewaysScroll, findReadabilityProblems, openMenuIfFolded, createCase, startCase, ADMIN_PASSWORD };
+module.exports = { test, expect: base.expect, login, expectNoSidewaysScroll, findDuplicateIds, findReadabilityProblems, openMenuIfFolded, createCase, startCase, ADMIN_PASSWORD };

@@ -92,6 +92,10 @@ case 'case_update':
     else {
         $case_status = '1';
     }
+    $current_case = kirjuri_find_case($kirjuri_database, $_GET['uid']);
+    if ($current_case !== null && (string) $current_case['case_status'] === '3') {
+        $case_status = '3'; // A finished case stays finished: it is reopened with its own button, not by an edit.
+    }
     kirjuri_update_case($kirjuri_database, $_GET['uid'], array(
             'case_name' => $_POST['case_name'],
             'case_file_number' => $_POST['case_file_number'],

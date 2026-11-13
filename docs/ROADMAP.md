@@ -99,6 +99,77 @@ Code improvements, in suggested order:
 6. The defaults above changed in `conf/settings.conf`: `show_errors` off and a shorter idle
    timeout, so a new install starts safe.
 
+## Improvements found in the November 2026 review
+
+A review of every page (desktop and phone, light and dark), the code behind saves, and an automated sweep
+for structural problems. The bugs it found were fixed in the same pull request; these are the
+improvements it suggests, most valuable first within each group. None is started.
+
+Finding things:
+
+- Search looks only in the year shown, so a suspect from last year is not found. Search all years, and
+  show the year in the results.
+- Search matches whole words: "phone" does not find "phones" or "iPhone". Match word beginnings by
+  default (add `*` to plain words) and say so under the box; the `title` that explains the syntax is
+  English only and invisible on touch screens.
+- A filter for one examiner, unit or crime on the front page, and paging for years with hundreds of
+  requests (the whole year is one table).
+
+Working on a case:
+
+- The device page (`device_memo.twig`) and the request details dialog still use the old form layout:
+  move them to the `.field-grid` layout of the add request form, with a sticky save bar, as the admin
+  pages have.
+- Warn before leaving a device or notes page with unsaved text, or save drafts automatically.
+- The device status and location menus save at once without saying so: show a short "saved" mark.
+- "Reload page" under the progress bar is a workaround: update the progress when a device changes.
+- A new request opens with a dialog that must be answered or closed every time until an examiner is
+  assigned. Show it as a card on the page instead.
+- Attachments: drag and drop, a progress bar, and the size limit shown before choosing a file.
+- The case log opens in a new tab without Kirjuri's menu; make it a tab of the case. Its zoom and move
+  buttons have no names for screen readers (needs new language strings).
+- The audit log viewer (`auditor.php`) is a bare page: give it the layout, a list of the audit files and
+  a labelled field.
+
+Overview and reporting:
+
+- Statistics for a year without requests sends the user to the front page with an error, also from the
+  year arrows. Show the page with an empty state, and hide an arrow that leads to an empty year.
+- A dashboard on the front page for the signed-in examiner: my open requests, stalled ones, new ones
+  waiting for an examiner, tool reservations this week.
+- The case report as a PDF download as well as a print page, and a choice of what it includes.
+- Export of the case list and the statistics as CSV.
+
+Administration and help:
+
+- The help page prints the developer README, which starts with a 2021 security notice and says the
+  project is not developed. Write a short user guide (adding a request, devices and media, the report,
+  statuses, searching) in the language files or as a page per language, and move the licences to their
+  own page.
+- The settings are labelled by their internal names ("Index table condensed"). Give each a readable
+  label and a line of help, in the language files.
+- Password rules and two-factor sign-in, from the Security section.
+- E-mail or in-app notice when a request is assigned to someone or a message arrives; today the unread
+  counter is the only sign.
+- Tool reservations can be made in the past, and are tied to the user's display name, so renaming a
+  user orphans their reservations: store the username.
+
+Look and feel:
+
+- A manual light/dark switch beside the automatic one, and the logo as an image file an organization
+  can replace.
+- Empty states with a next step ("No requests yet. Add a request") on the front page, messages and
+  tools.
+- Keyboard: a shortcut to the search box, and focus moved into dialogs when they open.
+
+Code health:
+
+- `edit_request.twig` is 1,000 lines holding five tabs and six dialogs: split it into partials.
+- `case_update` has no case token, unlike the other case actions; device rows copy their case's status
+  only on some updates (`kirjuri_update_case` writes the case row alone).
+- Chart.js 1 and vis 4.18 are old and unmaintained; Bootstrap 3 and Font Awesome 4 likewise. Plan an
+  upgrade path rather than a rewrite.
+
 ## Installing without Docker
 
 Kirjuri needs PHP 8.1 or newer (8.3 recommended) with `pdo_mysql`, `mbstring`, `openssl`, `zlib`,

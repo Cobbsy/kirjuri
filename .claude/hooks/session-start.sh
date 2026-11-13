@@ -18,19 +18,20 @@ if ! command -v mariadbd >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get install -y -q mariadb-server >/dev/null 2>&1 || { apt-get update -q >/dev/null 2>&1 && apt-get install -y -q mariadb-server >/dev/null; }
 fi
-if ! mysqladmin -uroot -p"$DB_PASSWORD" -h127.0.0.1 ping >/dev/null 2>&1; then
-  service mariadb start >/dev/null 2>&1 || service mysql start >/dev/null
+# mysqladmin ping succeeds even when the login is refused, so logging in is tested with a query.
+db_login() { mysql -uroot -p"$DB_PASSWORD" -h127.0.0.1 -e 'SELECT 1' >/dev/null 2>&1; }
+if ! mysqladmin -h127.0.0.1 ping >/dev/null 2>&1; then
+  service mariadb start >/dev/null 2>&1 || service mysql start >/dev/null 2>&1 || true
   for _ in $(seq 1 30); do
-    mysqladmin ping >/dev/null 2>&1 && break
-    mysqladmin -uroot -p"$DB_PASSWORD" -h127.0.0.1 ping >/dev/null 2>&1 && break
+    mysqladmin -h127.0.0.1 ping >/dev/null 2>&1 && break
     sleep 1
   done
 fi
-if ! mysqladmin -uroot -p"$DB_PASSWORD" -h127.0.0.1 ping >/dev/null 2>&1; then
+if ! db_login; then
   # A fresh server lets root in over the socket without a password; give it the tests' password.
   mysql -uroot -e "ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('$DB_PASSWORD'); FLUSH PRIVILEGES;"
 fi
-mysqladmin -uroot -p"$DB_PASSWORD" -h127.0.0.1 ping >/dev/null
+db_login || { log "can not log in to MariaDB as root"; exit 1; }
 log "MariaDB is running"
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
@@ -38,6 +39,8 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     echo "export KIRJURI_TEST_DB_HOST=127.0.0.1"
     echo "export KIRJURI_TEST_DB_USER=root"
     echo "export KIRJURI_TEST_DB_PASSWORD=$DB_PASSWORD"
+    # The preinstalled Chromium is not always the version the pinned Playwright looks for.
+    if [ -x /opt/pw-browsers/chromium ]; then echo "export KIRJURI_CHROMIUM=/opt/pw-browsers/chromium"; fi
   } >> "$CLAUDE_ENV_FILE"
 fi
 

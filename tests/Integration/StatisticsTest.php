@@ -31,6 +31,11 @@ final class StatisticsTest extends IntegrationTestCase
         $this->assertSame(200, $page->status);
         // The unit card lists each unit with cases as a labelled bar with its count.
         $this->assertMatchesRegularExpression('/<span class="bar-list-label">Unit 2<\/span>\s*<span class="bar-list-value">\d+<\/span>/', $page->body);
+        // Device and media types can share a name, and a type without rows hides its row by id: the media
+        // rows have ids of their own, or an empty media type would hide the device type's row.
+        preg_match_all('/<tr id="(solu-[^"]+)">/', $page->body, $rows);
+        $this->assertNotEmpty($rows[1]);
+        $this->assertSame($rows[1], array_values(array_unique($rows[1])), 'Row ids are unique.');
         $this->assertNull(kirjuri_statistics($db, 1999, $units));
         $this->assertSame('index.php', $admin->get('statistics.php?year=1999')->location());
     }

@@ -70,7 +70,7 @@ if (e.keyCode == 13) {
       </thead>
       <tr {% if entry.device_host_id == "0"%}class="active"{% endif %} >
       <td style="vertical-align:middle;" {% if entry.device_contains_evidence %}class="success"{% endif %}>
-      <img src="views/img/svg/{% if entry.device_type %}{{ entry.device_type|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}{% else %}{{ lang.unknown }}{% endif %}.svg"  style="vertical-align:middle;float:left;padding:10px;width:64px;">
+      <img alt="" src="views/img/svg/{% if entry.device_type %}{{ entry.device_type|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}{% else %}{{ lang.unknown }}{% endif %}.svg"  style="vertical-align:middle;float:left;padding:10px;width:64px;">
       </td>
       <td style="vertical-align:middle;;white-space:nowrap;" {% if entry.device_contains_evidence %}class="success"{% endif %}>
         <h4><a href="device_memo.php?uid={{ entry.id }}">{% if entry.device_type %}{{ entry.device_type }}{% else %}<span class="text-danger">{{ lang.undefined_device_or_media_type }}</span>{% endif %}<br>
@@ -291,10 +291,10 @@ if (e.keyCode == 13) {
 
 <div class="form-group" style="width:100%;margin-left:0px;">
 <h3>{{lang.report_notes}} ({% if entry.device_include_in_report == "1" %}{{lang.will_be_shown}}{% else %}{{lang.will_not_be_shown}}{% endif %})</h3>
-<textarea id="richeditor" rows="25" name="report_notes">{% if entry.report_notes %}{{entry.report_notes}}{% else %}{{templates.report_notes}}{% endif %}</textarea>
+<textarea id="report_notes_editor" rows="25" name="report_notes" aria-label="{{ lang.report_notes }}">{% if entry.report_notes %}{{entry.report_notes}}{% else %}{{templates.report_notes}}{% endif %}</textarea>
 <input type="hidden" name="template_report_notes" value="{{templates.report_notes}}">
 <h3>{{lang.examiners_private_notes}}</h3>
-<textarea id="richeditor" rows="10" name="examiners_notes">{{entry.examiners_notes}}</textarea>
+<textarea id="examiners_notes_editor" rows="10" name="examiners_notes" aria-label="{{ lang.examiners_private_notes }}">{{entry.examiners_notes}}</textarea>
 <input type="hidden" name="returnid" value="{{ entry.id }}">
 <input type="hidden" name="id" value="{{ entry.id }}">
 </div>
@@ -303,7 +303,7 @@ if (e.keyCode == 13) {
 <a type="button" class="btn btn-default btn-sm" href="edit_request.php?case={{ entry.parent_id }}&tab=devices#{{ entry.id }}"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span> {{ lang.return_to_device_listing }}</a>
 {% if caserow.0.case_status
 <="2" %}<button
-  type="submit" id="save_button" class="btn btn-success btn-sm"><i class="fa fa-save"></i> {{ lang.save_device_information }}</button>
+  type="submit" id="save_button_bottom" class="btn btn-success btn-sm"><i class="fa fa-save"></i> {{ lang.save_device_information }}</button>
 {% endif %}
 <a type="button" class="btn btn-info btn-sm" href="print_sticker.php?uid={{ entry.id }}&type=device" target="_BLANK"><i class="fa fa-print"></i> {{ lang.print_sticker }}</a>
 </div>

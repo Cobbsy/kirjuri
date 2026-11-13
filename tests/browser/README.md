@@ -20,6 +20,7 @@ Settings, as environment variables:
 
 - `KIRJURI_URL`: the installation to test, default `http://localhost:8080/`
 - `KIRJURI_ADMIN_PASSWORD`: the admin password, default `admin-password` (the Docker setup's)
+- `KIRJURI_CHROMIUM`: the path of a Chromium to use instead of the one `npx playwright install` downloads
 
 `npx playwright test --project=phone` runs only the phone width, `--headed` shows the browser,
 and `npx playwright show-report` opens the report of the last run. In CI the report and the

@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html>
+<html{% if html_lang %} lang="{{ html_lang }}"{% endif %}>
     <head>
         {% block title %}
             <title>{{ settings.title_text }}
@@ -13,6 +14,7 @@
         <!-- <link href="vendor/twbs/bootstrap/dist/css/bootstrap-theme.min.css" rel="stylesheet"> -->
         <link rel="stylesheet" href="views/font-awesome-4.6.3/css/font-awesome.min.css">
         <link href="views/css/kirjuri.css" rel="stylesheet">
+        <link rel="icon" href="views/img/favicon.svg" type="image/svg+xml">
         <title>{{ settings.title_text }}</title>
     </head>
     <body>

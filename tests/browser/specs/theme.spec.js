@@ -1,4 +1,4 @@
-const { test, expect, createCase, findReadabilityProblems } = require('./fixtures');
+const { test, expect, createCase, expectNoSidewaysScroll, findReadabilityProblems } = require('./fixtures');
 
 const pages = ['index.php', 'add_case.php', 'statistics.php', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'lang_editor.php', 'help.php'];
 
@@ -25,6 +25,7 @@ for (const colorScheme of ['light', 'dark']) {
       expect(await findReadabilityProblems(page)).toEqual([]);
       await page.goto('timeline.php?case=' + caseId);
       expect(await findReadabilityProblems(page)).toEqual([]);
+      await expectNoSidewaysScroll(page);
     });
 
     test('the case report stays light, like the paper it is printed on', async ({ admin: page }) => {
@@ -32,6 +33,7 @@ for (const colorScheme of ['light', 'dark']) {
       await page.goto('case_report.php?case=' + caseId);
       await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
       expect(await findReadabilityProblems(page)).toEqual([]);
+      await expectNoSidewaysScroll(page);
     });
   });
 }

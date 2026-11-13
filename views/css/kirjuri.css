@@ -2972,3 +2972,31 @@ fieldset.field > legend {
     display: none;
   }
 }
+
+/* The event log page: long lines scroll inside the box. */
+.log-view {
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+  white-space: pre;
+  font-size: 12px;
+}
+
+/* The case report's heading: the logo beside the title on paper and wide screens, above it on a phone. */
+.report-head-text {
+  padding-left: 50px;
+}
+
+@media screen and (max-width: 600px) {
+  .report-head td {
+    display: block;
+  }
+
+  .report-head-text {
+    padding-left: 0;
+  }
+
+  .report-head img {
+    max-width: 96px;
+    height: auto;
+  }
+}

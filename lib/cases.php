@@ -177,7 +177,11 @@ function kirjuri_update_case(PDO $db, $case_id, array $fields) {
         $assignments[] = $column . ' = :' . $column;
         $values[':' . $column] = isset($fields[$column]) ? $fields[$column] : null;
     }
-    $db->prepare('UPDATE exam_requests SET ' . implode(', ', $assignments) . ', case_start_date = NOW(), last_updated = NOW(), is_removed = "0"
+    // The examination starts when the case goes from new to open, or is open without a start date. The start
+    // date is assigned first, as it reads the status the case had before this update.
+    $values[':started_status'] = isset($fields['case_status']) ? $fields['case_status'] : null;
+    $db->prepare('UPDATE exam_requests SET case_start_date = IF(:started_status = "2" AND (case_status != "2" OR case_start_date IS NULL), NOW(), case_start_date), '
+        . implode(', ', $assignments) . ', last_updated = NOW(), is_removed = "0"
         WHERE id = :id AND parent_id = :id')->execute($values);
 }
 

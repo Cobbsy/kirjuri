@@ -46,7 +46,8 @@
   <div class="card-footer">
     {% if session.user.attr_3 != "LDAP_AUTH_ONLY" %}<button id="user_save_button" type="submit" class="btn btn-primary">{{ lang.change_password }}</button>{% endif %}
     <a class="btn btn-default" href="submit.php?type=force_logout&user={{session.user.username|url_encode}}" data-post><i class="fa fa-sign-out" aria-hidden="true"></i> {{ lang.log_out_all_sessions }}</a>
-    {% if session.user.access == "0" %}<a class="btn btn-default card-footer-end" href="backup.php" target="_BLANK"><i class="fa fa-download" aria-hidden="true"></i> {{ lang.back_up_database }}</a>{% endif %}
+    {% if session.user.access == "0" %}<a class="btn btn-default card-footer-end" href="log.php"><i class="fa fa-list-alt" aria-hidden="true"></i> kirjuri.log</a>{% endif %}
+    {% if session.user.access == "0" %}<a class="btn btn-default" href="backup.php" target="_BLANK"><i class="fa fa-download" aria-hidden="true"></i> {{ lang.back_up_database }}</a>{% endif %}
   </div>
 </form>
 

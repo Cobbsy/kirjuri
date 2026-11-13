@@ -19,7 +19,7 @@
       <label for="msgto">{{ lang.to }}</label>
       {% if open > 0 %}
       <select class="form-control" id="msgto" name="msgto">
-        {% for msg in messages %}{% if msg.id == open %}<option value="{{ msg.msgfrom }}">{{ msg.msgfrom }}</option>{% endif %}{% endfor %}
+        {% for msg in messages %}{% if msg.id == open %}<option value="{{ msg.msgfrom == 'Myself' ? session.user.username : msg.msgfrom }}">{{ msg.msgfrom == 'Myself' ? session.user.name : msg.msgfrom }}</option>{% endif %}{% endfor %}
       </select>
       {% else %}
       <select class="form-control" id="msgto" name="msgto">
@@ -78,7 +78,7 @@
         <div class="rich-text">{{ msg.body|purify }}</div>
         <form class="message-reply" role="form" method="post" action="submit.php?type=send_message">
           <input type="hidden" name="token" value="{{session.user.token}}">
-          <input type="hidden" name="msgto" value="{{ msg.msgfrom }}">
+          <input type="hidden" name="msgto" value="{{ msg.msgfrom == 'Myself' ? session.user.username : msg.msgfrom }}">{# A note to oneself is stored as from "Myself". #}
           <div class="field">
             <label for="reply_subject">{{ lang.subject }}</label>
             <input type="text" class="form-control" id="reply_subject" name="subject" value="{{ lang.re }}{{ msg.subject }}">
