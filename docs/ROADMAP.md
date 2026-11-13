@@ -35,6 +35,8 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   save. Their answers are in the page's `reviews` collection, one document per `key~LANG`, read with
   the `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's
   encoding (see CLAUDE.md).
+  Two more were added with the search improvements, `search_hint` and `search_years`; they are not on
+  the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15, so none of
   them has had a second reviewer. When the limit resets, ask it to review the changes since #5
   (`git diff d467c3e origin/master`), fix real findings with tests, and reply on each thread.
@@ -107,11 +109,10 @@ improvements it suggests, most valuable first within each group. None is started
 
 Finding things:
 
-- Search looks only in the year shown, so a suspect from last year is not found. Search all years, and
-  show the year in the results.
-- Search matches whole words: "phone" does not find "phones" or "iPhone". Match word beginnings by
-  default (add `*` to plain words) and say so under the box; the `title` that explains the syntax is
-  English only and invisible on touch screens.
+- Done (November 2026): search covers every year, says which years the results come from, and a word
+  finds longer words that start with it, with the syntax explained under the box in each language.
+  Still open: a word inside another ("phone" in "iPhone"), which full text indexes cannot find;
+  it would need a LIKE search over the device model and manufacturer.
 - A filter for one examiner, unit or crime on the front page, and paging for years with hundreds of
   requests (the whole year is one table).
 

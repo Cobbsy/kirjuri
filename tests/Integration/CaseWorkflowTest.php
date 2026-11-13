@@ -226,6 +226,32 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertStringContainsString('index.php?search=%22Mobile%20%231%22&', $page);
     }
 
+    public function testSearchCoversEveryYearAndFindsWordBeginnings(): void
+    {
+        // Search only looked in the year on screen, so last year's suspect was not found, and a word only
+        // found itself: "Zr...phon" did not find "Zr...phone".
+        $admin = $this->admin();
+        $stem = 'Zr' . strtolower(generate_token(6));
+        $old = $this->createCase($admin, $this->uniqueName('Old year '), array('case_suspect' => $stem . 'phone Holder'));
+        $this->server->pdo()->exec("UPDATE exam_requests SET case_added_date = '2019-05-06 07:08:09' WHERE parent_id = $old");
+        $current = $this->createCase($admin, $this->uniqueName('This year '), array('case_suspect' => $stem . 'phone Keeper'));
+        $device = $this->addDevice($admin, $old, $stem . 'phonemodel');
+
+        $page = $admin->get('index.php?search=' . $stem . 'phon&year=' . date('Y'))->body;
+        $this->assertStringContainsString('edit_request.php?case=' . $old . '"', $page, 'A request from another year is found.');
+        $this->assertStringContainsString('edit_request.php?case=' . $current . '"', $page);
+        $this->assertStringContainsString('device_memo.php?uid=' . $device . '"', $page, 'Devices are found by word beginnings too.');
+        $this->assertMatchesRegularExpression('/<b>' . date('Y') . '<\/b> \(1\)/', $page);
+        $this->assertMatchesRegularExpression('/<b>2019<\/b> \(2\)/', $page, 'The old request and its device.');
+        $this->assertStringContainsString('id="search_hint"', $page);
+
+        // Removing the search returns to the year the search was made from.
+        $this->assertStringContainsString('href="index.php?year=2019"', $admin->get('index.php?search=' . $stem . 'phon&year=2019')->body);
+        // An exact phrase stays exact, and a minus leaves a word out.
+        $this->assertStringNotContainsString('edit_request.php?case=' . $old . '"', $admin->get('index.php?search=' . rawurlencode('"' . $stem . 'phon"'))->body);
+        $this->assertStringNotContainsString('edit_request.php?case=' . $old . '"', $admin->get('index.php?search=' . rawurlencode($stem . 'phon -holder'))->body);
+    }
+
     public function testCaseReportWithoutACaseGoesToTheFrontPage(): void
     {
         $this->assertSame('index.php', $this->admin()->get('case_report.php')->location());

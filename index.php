@@ -38,14 +38,16 @@ if (isset($_GET['search']) && (!empty($_GET['search']))) {
         header('Location: device_memo.php?uid='.$get_uid_result['id']); // Jump to device.
         die;
     }
-    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $year, $sort_j, $ascending);
+    // Searches cover every year. The year stays in the address, so removing the search returns to it.
+    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $sort_j, $ascending);
 }
 else {
     $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending);
 }
 $stalled_before = strtotime((string) ($prefs['settings']['stalled_case'] ?? ''));
+$cases_of_devices = kirjuri_cases_of_devices($kirjuri_database, $row_cases);
 list($row_cases, $status_counts) = kirjuri_filter_case_list($row_cases, $sort_s, $_SESSION['user']['name'] ?? '', $stalled_before === false ? null : $stalled_before,
-    kirjuri_cases_of_devices($kirjuri_database, $row_cases));
+    $cases_of_devices);
 $case_owners = array();
 foreach ($row_cases as $key => $case) {
     // The template hides details of cases the user may not open. Search results can include
@@ -56,7 +58,9 @@ foreach ($row_cases as $key => $case) {
     $row_cases[$key]['can_access'] = kirjuri_user_can_access_case($_SESSION['user'], $case_owners[$case['parent_id']]);
 }
 
-$row_devices = kirjuri_device_actions_for_year($kirjuri_database, $year);
+$row_devices = ($search_term !== '')
+    ? kirjuri_device_actions_for_cases($kirjuri_database, array_column($row_cases, 'parent_id'))
+    : kirjuri_device_actions_for_year($kirjuri_database, $year);
 $attachments = kirjuri_cases_with_attachments($kirjuri_database);
 
 $_SESSION['message_set'] = false;
@@ -83,5 +87,7 @@ echo kirjuri_render('index.twig', array(
         'dateStart' => $dateRange['start'],
         'row_cases' => $row_cases,
         'status_counts' => $status_counts,
+        // Devices of cases the user may not open are left out of the results, so they are not counted either.
+        'search_years' => ($search_term !== '') ? kirjuri_rows_per_year(array_filter($row_cases, fn ($row) => $row['can_access'] || $row['id'] === $row['parent_id']), $cases_of_devices) : array(),
         'row_devices' => $row_devices
     ));
