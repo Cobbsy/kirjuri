@@ -190,7 +190,7 @@
           {% if session.user.access <= 1 %}
             <li{% if "tools.php" in settings.self %} class="active"{% endif %}><a href="tools.php"><i class="fa fa-wrench"></i> {{ lang.manage_tools|capitalize }}</a></li>
           {% endif %}
-            <li{% if "help.php" in settings.self %} class="active"{% endif %}><a href="help.php"><i class="fa fa-question-circle"></i> {{ lang.help_licenses }}</a></li>
+            <li{% if "help.php" in settings.self or "licenses.php" in settings.self %} class="active"{% endif %}><a href="help.php"><i class="fa fa-question-circle"></i> {{ lang.help_licenses }}</a></li>
           </ul>
 
           <div class="nav-sidebar-divider"></div>

@@ -35,6 +35,7 @@ require_once __DIR__.'/lib/tools.php';
 require_once __DIR__.'/lib/users.php';
 require_once __DIR__.'/lib/auth.php';
 require_once __DIR__.'/lib/session.php';
+require_once __DIR__.'/lib/licenses.php';
 require_once __DIR__.'/lib/output.php';
 $loader = new \Twig\Loader\FilesystemLoader('views/');
 $twig = new \Twig\Environment($loader, array(
