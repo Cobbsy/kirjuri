@@ -35,8 +35,9 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   save. Their answers are in the page's `reviews` collection, one document per `key~LANG`, read with
   the `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's
   encoding (see CLAUDE.md).
-  Two more were added with the search improvements, `search_hint` and `search_years`; they are not on
-  the review page yet.
+  Two more were added with the search improvements, `search_hint` and `search_years`, and seventeen
+  with the help page (`help_*` and `licenses_intro`, the user guide itself); they are not on the
+  review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15, so none of
   them has had a second reviewer. When the limit resets, ask it to review the changes since #5
   (`git diff d467c3e origin/master`), fix real findings with tests, and reply on each thread.
@@ -143,10 +144,13 @@ Overview and reporting:
 
 Administration and help:
 
-- The help page prints the developer README, which starts with a 2021 security notice and says the
-  project is not developed. Write a short user guide (adding a request, devices and media, the report,
-  statuses, searching) in the language files or as a page per language, and move the licences to their
-  own page.
+- Done (November 2026): the help page is a short user guide in the language files (adding a request,
+  devices and media, statuses, the report, searching, access levels, messages) instead of the
+  developer README. The licences have their own page, licenses.php, which reads each component's
+  licence file, the Composer packages from vendor/composer/installed.json; a unit test fails when a
+  template loads a library that is not listed. Worth knowing before distributing installers:
+  TinyMCE 7 is GPL-2.0-or-later, HTML Purifier LGPL-2.1 and the barcode generator LGPL-3.0, while
+  Kirjuri itself is MIT.
 - The settings are labelled by their internal names ("Index table condensed"). Give each a readable
   label and a line of help, in the language files.
 - Password rules and two-factor sign-in, from the Security section.

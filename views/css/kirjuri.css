@@ -3009,3 +3009,104 @@ fieldset.field > legend {
 .search-summary p {
   margin: 0 0 2px;
 }
+
+/* Help page: the guide's sections as cards, two side by side on wide screens. */
+.help-lead {
+  max-width: 70ch;
+  margin-bottom: 18px;
+  font-size: 15px;
+}
+
+.help-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 20px;
+  align-items: start;
+}
+
+@media (min-width: 1200px) {
+  .help-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+h2.card-header {
+  margin: 0;
+  line-height: inherit;
+}
+
+.help-grid .card-body p {
+  max-width: 70ch;
+}
+
+.help-grid .card-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* Licences page: one row per component, the licence text folded away until opened. */
+.license-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.license-list > li + li {
+  border-top: 1px solid var(--k-border);
+}
+
+.license-list summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.license-list summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A flex summary loses the browser's own marker, so it gets a caret: right when closed, down when open. */
+.license-list summary::before {
+  content: "\f0da";
+  font-family: FontAwesome;
+  width: 10px;
+  color: var(--k-text-muted);
+}
+
+.license-list details[open] > summary::before {
+  content: "\f0d7";
+}
+
+.license-list summary:hover {
+  background: var(--k-row-hover);
+}
+
+.license-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.license-version {
+  font-family: var(--k-mono);
+  font-size: 12px;
+  color: var(--k-text-muted);
+}
+
+.license-kind {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--k-text-muted);
+}
+
+.license-text {
+  max-height: 24em;
+  margin: 0 16px 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: normal; /* Bootstrap's pre breaks words anywhere. */
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}

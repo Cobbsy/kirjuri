@@ -13,7 +13,7 @@ final class UnauthenticatedAccessTest extends IntegrationTestCase
         foreach (array(
                 'index.php', 'add_case.php', 'edit_request.php?case=1', 'device_memo.php?uid=2', 'case_report.php?case=1',
                 'timeline.php?case=1', 'statistics.php', 'settings.php', 'users.php', 'tools.php', 'messages.php',
-                'help.php', 'lang_editor.php', 'auditor.php', 'log.php', 'backup.php', 'download_csv.php?case=1',
+                'help.php', 'licenses.php', 'lang_editor.php', 'auditor.php', 'log.php', 'backup.php', 'download_csv.php?case=1',
                 'download_krf.php?case=1', 'get_file.php?file=1', 'upload.php', 'upload_IMEI.php',
                 // These three showed case data without a login.
                 'print_sticker.php?type=examination_request&uid=1', 'request.php?case_file_number=1', 'progress_bar_static.php?uid=2',

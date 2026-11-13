@@ -1,0 +1,26 @@
+{% extends 'base.twig' %} {% block title %}
+<title>{{ lang.licenses }} - {{ settings.title_text }}</title>
+{% endblock title %}
+{% block content %}
+<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+  <div class="page-title-row">
+    <h1 class="h3">{{ lang.licenses }}</h1>
+    <div class="page-actions">
+      <a class="btn btn-default" href="help.php"><i class="fa fa-question-circle" aria-hidden="true"></i> {{ lang.help }}</a>
+    </div>
+  </div>
+  <p class="help-lead">{{ lang.licenses_intro }}</p>
+  <div class="card">
+    <ul class="license-list">
+      {% for component in components %}
+      <li>
+        <details>
+          <summary><span class="license-name">{{ component.name }}</span>{% if component.version %} <span class="license-version">{{ component.version }}</span>{% endif %} <span class="license-kind">{{ component.license }}</span></summary>
+          {% if component.text %}<pre class="license-text" tabindex="0">{{ component.text }}</pre>{% endif %}
+        </details>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

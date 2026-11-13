@@ -450,10 +450,32 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertFileDoesNotExist($this->server->dir . '/conf/settings.local');
     }
 
+    public function testHelpPageIsAUserGuideWithTheLicencesOnTheirOwnPage(): void
+    {
+        $admin = $this->admin();
+        $help = $admin->get('help.php');
+        $this->assertSame(200, $help->status);
+        // It printed the developer README, which opens with a 2021 notice that the project is not developed.
+        $this->assertStringNotContainsString('SECURITY UPDATE', $help->body);
+        $this->assertStringNotContainsString('MIT License', $help->body);
+        $this->assertStringContainsString('<h2 class="card-header"><i class="fa fa-plus" aria-hidden="true"></i> Adding a request</h2>', $help->body);
+        $this->assertStringContainsString('Kirjuri ' . trim(file_get_contents($this->server->dir . '/conf/RELEASE')), $help->body);
+        $this->assertStringContainsString('href="licenses.php"', $help->body);
+
+        $licenses = $admin->get('licenses.php');
+        $this->assertSame(200, $licenses->status);
+        $this->assertStringContainsString('<span class="license-name">twig/twig</span>', $licenses->body);
+        $this->assertStringContainsString('<span class="license-kind">BSD-3-Clause</span>', $licenses->body);
+        $this->assertStringContainsString('Copyright (c) 2016 Antti Kurittu', $licenses->body);
+        // Licence files are shown as text: TinyMCE's Markdown link stays escaped.
+        $this->assertStringContainsString('[&lt;https://github.com/tinymce/tinymce&gt;]', $licenses->body);
+        $this->assertStringContainsString('<li class="active"><a href="help.php">', preg_replace('/\s+/', ' ', $licenses->body));
+    }
+
     public function testAdminPagesRender(): void
     {
         $admin = $this->admin();
-        foreach (array('users.php?populate=2', 'settings.php', 'lang_editor.php', 'log.php', 'help.php', 'tools.php', 'auditor.php') as $page) {
+        foreach (array('users.php?populate=2', 'settings.php', 'lang_editor.php', 'log.php', 'help.php', 'licenses.php', 'tools.php', 'auditor.php') as $page) {
             $this->assertSame(200, $admin->get($page)->status, $page);
         }
         $caseId = $this->createCase($admin, $this->uniqueName('Audited '));
