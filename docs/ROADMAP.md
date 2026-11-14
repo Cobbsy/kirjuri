@@ -41,6 +41,12 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   Status (14 November 2026): German is confirmed for the eleven redesign strings (all "reads right",
   16 October), so the files need no change yet. Nothing else has an answer. The help texts quote
   button and tab names, and each quoted name was checked against the same language file and matches.
+  The page also asks about three device statuses that look wrong, each shown only to its language:
+  German "unterbrochen" for Broken (suggested "defekt"), Spanish "Reanalizar" for Examination over
+  (suggested "Análisis terminado") and Brazilian Portuguese "Live investigation", still in English
+  (suggested "Exame ao vivo"). Device statuses are stored with their text ("9|Done"), so a corrected
+  label shows on a device only once its status is changed; only the number drives progress.
+  Finnish numbers its statuses differently from the others, so its list is not compared key by key.
   Sixty more came with two-factor sign-in (the `two_factor_*` strings, `help_two_factor_title` and
   `help_two_factor_text`), also written without a native speaker. They are not on the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
@@ -105,8 +111,9 @@ Minimum for go-live (deployment, not code):
   database listening on 127.0.0.1.
 - Full-disk encryption (BitLocker, FileVault). The database, attachments included, is not encrypted
   at rest.
-- `show_errors` off (it ships on; `bin/kirjuri doctor` warns), and `session_idle_timeout` lowered
-  from 12 hours.
+- `show_errors` off and `session_idle_timeout` at an hour or less. Both are the defaults since November
+  2026, but an install that saved its settings earlier keeps its old values (`show_errors` on, 12 hours);
+  `bin/kirjuri doctor` warns about `show_errors`.
 - Access groups on sensitive cases: a case without one is visible to every signed-in user. Few
   admin accounts.
 - Two-factor sign-in required at least for administrators (setting `two_factor_required`), and
@@ -137,8 +144,8 @@ Code improvements, in suggested order:
 3. A stronger password rule than 8 characters, or a check against known breached passwords.
 4. Settings to redirect HTTP to HTTPS and send `Strict-Transport-Security`.
 5. A full Content-Security-Policy, after moving the inline scripts into files.
-6. The defaults above changed in `conf/settings.conf`: `show_errors` off and a shorter idle
-   timeout, so a new install starts safe.
+6. Done (November 2026): `conf/settings.conf` ships with `show_errors` off and a 60-minute
+   `session_idle_timeout`, so a new install starts safe.
 
 Advisories in bundled libraries. `composer audit`, run from the repository root, checks the locked
 versions against published advisories. CI does not run it, so run it before a release.

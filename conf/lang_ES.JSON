@@ -575,16 +575,16 @@
         "device_action1": "1|Reservado",
         "device_action2": "2|Investigaci\u00f3n activa",
         "device_action3": "3|Copiado en local",
-        "device_action4": "4|copiado en servidor",
+        "device_action4": "4|Copiado en servidor",
         "device_action5": "5|Procesado",
         "device_action6": "6|An\u00e1lisis activo",
         "device_action7": "7|Reanalizar",
         "device_action8": "8|Informe pendiente",
         "device_action9": "9|Hecho",
-        "device_action10": "9|Hecho - DATOS ENTEGADOS",
+        "device_action10": "9|Hecho - DATOS ENTREGADOS",
         "device_action11": "0|Nada hecho",
         "device_action12": "0|Roto",
-        "device_action13": "0|Vacio"
+        "device_action13": "0|Vac\u00edo"
     },
     "device_locations": {
         "dev_location1": "Asunto investigado",

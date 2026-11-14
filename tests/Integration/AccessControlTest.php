@@ -447,11 +447,11 @@ final class AccessControlTest extends IntegrationTestCase
         $sessions = glob($this->server->dir . '/cache/user_' . $username . '/session_*.txt');
         $this->assertCount(1, $sessions);
 
-        touch($sessions[0], time() - 11 * 3600); // Under the default limit of 12 hours.
+        touch($sessions[0], time() - 50 * 60); // Under the default limit of 60 minutes.
         $this->assertSame(200, $user->get('index.php')->status);
         $this->assertGreaterThan(time() - 60, filemtime($sessions[0]), 'Each request keeps the session alive.');
 
-        touch($sessions[0], time() - 13 * 3600);
+        touch($sessions[0], time() - 70 * 60);
         $this->assertSame('login.php', $user->get('index.php')->location());
         $this->assertFileDoesNotExist($sessions[0]);
     }

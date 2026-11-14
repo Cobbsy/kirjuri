@@ -38,6 +38,17 @@ final class ConfigTest extends TestCase
         $this->assertSame('1.0', $prefs['settings']['release']);
     }
 
+    /**
+     * A new install starts safe for real data: no error details on pages, which can show file paths, and logins
+     * that end after an hour with no Kirjuri page open, so a shared lab machine does not stay signed in for a day.
+     */
+    public function testShippedDefaultsAreSafeForProduction(): void
+    {
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $this->assertSame('0', $defaults['settings']['show_errors']);
+        $this->assertSame('60', $defaults['settings']['session_idle_timeout']);
+    }
+
     public function testDefaultsAloneBeforeSettingsAreSaved(): void
     {
         $prefs = kirjuri_load_settings(kirjuri_settings_file());
