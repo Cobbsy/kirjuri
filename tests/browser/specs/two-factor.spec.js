@@ -34,9 +34,18 @@ async function createUser(page, username, password) {
   await Promise.all([page.waitForURL(/users\.php/), page.locator('#add_user_modal [type=submit]').click()]);
 }
 
+/**
+ * Sign out by dropping the session cookie. The signed-in page is left first: its unread counter, polled without
+ * a session, sends the page to login.php, which would cut short the next navigation.
+ */
+async function signOut(page) {
+  await page.goto('about:blank');
+  await page.context().clearCookies();
+}
+
 /** The password step of signing in, which now leads to the code step. */
 async function enterPassword(page, username, password) {
-  await page.context().clearCookies(); // Signed out.
+  await signOut(page);
   await page.goto('login.php');
   await page.fill('#username', username);
   await page.fill('#password', password);
@@ -49,7 +58,7 @@ test('two-factor sign-in is set up from the menu, then asks for a code or a reco
   const password = 'browser-test-password';
   await login(page, 'admin', ADMIN_PASSWORD);
   await createUser(page, username, password);
-  await page.context().clearCookies();
+  await signOut(page);
   await login(page, username, password);
 
   await openMenuIfFolded(page);
@@ -111,7 +120,7 @@ for (const colorScheme of ['light', 'dark']) {
       const password = 'browser-test-password';
       await login(page, 'admin', ADMIN_PASSWORD);
       await createUser(page, username, password);
-      await page.context().clearCookies();
+      await signOut(page);
       await login(page, username, password);
       await page.goto('two_factor.php?setup=1');
       const secret = base32Decode(await page.locator('#two_factor_key').textContent());
