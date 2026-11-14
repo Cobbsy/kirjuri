@@ -111,6 +111,10 @@
   /* Text on the pale colours the tools calendar picks for each tool, in both modes. */
   --k-event-text: #1e293b;
 
+  /* QR codes for authenticator apps: dark on light in both modes, as not every scanner reads them inverted. */
+  --k-qr-dark: #000000;
+  --k-qr-light: #ffffff;
+
   /* Device icons are black drawings; dark mode turns them light. */
   --k-icon-filter: none;
 
@@ -217,6 +221,8 @@
     --k-chart-6: #008300;
     --k-chart-7: #9085e9;
     --k-chart-8: #e66767;
+    --k-qr-dark: #000000; /* Unchanged: see :root. */
+    --k-qr-light: #ffffff;
   }
 }
 
@@ -3163,4 +3169,107 @@ h2.card-header {
   word-break: normal; /* Bootstrap's pre breaks words anywhere. */
   overflow-wrap: anywhere;
   font-size: 12px;
+}
+
+/*
+ * Two-factor sign-in: setting up an authenticator app, the code step and recovery codes.
+ */
+
+.two-factor-steps {
+  margin: 0 0 18px;
+  padding-left: 22px;
+}
+
+.two-factor-steps > li {
+  margin-bottom: 14px;
+}
+
+.two-factor-qr {
+  width: 200px;
+  max-width: 100%;
+  margin: 10px 0 8px;
+  overflow: hidden;
+  background: var(--k-qr-light);
+  border: 1px solid var(--k-border);
+  border-radius: var(--k-radius-sm);
+}
+
+.two-factor-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.two-factor-qr .qr-light {
+  fill: var(--k-qr-light);
+}
+
+.two-factor-qr .qr-dark {
+  fill: var(--k-qr-dark);
+}
+
+.two-factor-key-box summary,
+.two-factor-recovery summary {
+  color: var(--k-primary-text);
+  cursor: pointer;
+}
+
+.two-factor-key-box p {
+  margin: 8px 0 4px;
+}
+
+.two-factor-key {
+  display: inline-block;
+  font-family: var(--k-mono);
+  font-size: 15px;
+  word-spacing: 0.3em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.form-control.two-factor-code-input {
+  max-width: 11em;
+  font-family: var(--k-mono);
+  font-size: 20px;
+  letter-spacing: 0.2em;
+}
+
+.login-card .two-factor-recovery {
+  margin-top: 18px;
+}
+
+.login-card .two-factor-recovery form {
+  margin-top: 10px;
+}
+
+.login-card .two-factor-cancel {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.two-factor-status .chip {
+  margin-right: 6px;
+}
+
+.recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 28px;
+  max-width: 420px;
+  margin: 16px 0 4px;
+  padding-left: 28px;
+  font-family: var(--k-mono);
+}
+
+.recovery-codes code {
+  padding: 0;
+  font-size: 16px;
+  color: var(--k-text);
+  background: transparent;
+}
+
+@media print {
+  .recovery-codes-card .card-footer {
+    display: none;
+  }
 }

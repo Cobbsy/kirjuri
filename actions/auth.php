@@ -18,6 +18,7 @@ case 'anon_login':
                 die;
             }
             else {
+                kirjuri_two_factor_drop(); // A sign-in that was waiting for its code is over.
                 kirjuri_set_session_user($user);
                 ksess_init();
                 event_log_write('0', 'Action', 'Anonymous login, created session ' . $_SESSION['user']['token']);
@@ -32,6 +33,7 @@ case 'anon_login':
 
 case 'login':
     $_SESSION['user'] = array();
+    kirjuri_two_factor_drop(); // A new password starts the sign-in over.
     $auth_success = false;
     $_POST['username'] = filter_username(isset($_POST['username']) ? $_POST['username'] : '');
 
@@ -41,23 +43,15 @@ case 'login':
     }
 
     // Failures count against the account, whichever spelling of its name reaches it, and against the
-    // address they come from, so that trying a few passwords on each of many accounts is limited too.
-    // Each attempt is counted before the password is checked and given back unless it fails.
-    $throttle_name = kirjuri_account_username($kirjuri_database, $_POST['username']);
-    // Only a number counts: a blank or mistyped setting keeps the default rather than reading as 0 (off).
-    $ip_setting = trim((string) (isset($prefs['settings']['login_max_failures_per_ip']) ? $prefs['settings']['login_max_failures_per_ip'] : ''));
-    $ip_limit = ctype_digit($ip_setting) ? (int) $ip_setting : LOGIN_MAX_FAILURES_PER_IP;
-    $throttle_ip = ($ip_limit > 0) ? login_throttle_ip_key($_SERVER['REMOTE_ADDR']) : null; // 0 turns the address limit off.
-    if (!login_throttle_attempt($throttle_name, LOGIN_MAX_FAILURES)) {
+    // address they come from (kirjuri_login_take_attempt()).
+    $attempt = kirjuri_login_take_attempt(kirjuri_account_username($kirjuri_database, $_POST['username']), $prefs);
+    $throttle_name = $attempt['name'];
+    $throttle_ip = $attempt['ip'];
+    if (!$attempt['allowed']) {
         message('error', $_SESSION['lang']['invalid_credentials']);
-        event_log_write('0', 'Auth', 'Login throttled after repeated failures: ' . $_POST['username']);
-        header('Location: login.php');
-        die;
-    }
-    if ($throttle_ip !== null && !login_throttle_attempt($throttle_ip, $ip_limit)) {
-        login_throttle_release($throttle_name);
-        message('error', $_SESSION['lang']['invalid_credentials']);
-        event_log_write('0', 'Auth', 'Login throttled after repeated failures from ' . $_SERVER['REMOTE_ADDR'] . ': ' . $_POST['username']);
+        event_log_write('0', 'Auth', ($attempt['refused_by'] === 'address')
+            ? 'Login throttled after repeated failures from ' . $_SERVER['REMOTE_ADDR'] . ': ' . $_POST['username']
+            : 'Login throttled after repeated failures: ' . $_POST['username']);
         header('Location: login.php');
         die;
     }
@@ -91,14 +85,24 @@ case 'login':
             event_log_write('0', 'Auth', 'Login attempt from restricted IP address '.$_SERVER['REMOTE_ADDR'].': ' . $_POST['username']);
             header('Location: login.php');
             die;
-        } else {
-            login_throttle_clear($throttle_name);
-            ksess_init();
-            message('info', $_SESSION['lang']['logged_in_as'] . ' ' . $_SESSION['user']['username']);
-            event_log_write('0', 'Auth', 'Login, created session ' . $_SESSION['user']['token']);
-            header('Location: index.php');
+        }
+        $user_record = $_SESSION['user'];
+        $has_two_factor = kirjuri_two_factor_enabled($kirjuri_database, $user_record['id']);
+        if ($has_two_factor || kirjuri_two_factor_required_for($prefs['settings'], $user_record)) {
+            // The second step takes attempts of its own (actions/two_factor.php); the right password gives this one back.
+            login_throttle_release($throttle_name);
+            event_log_write('0', 'Auth', 'Password accepted for ' . $user_record['username'] . ($has_two_factor
+                ? ', waiting for the two-factor code.' : ', who must set up two-factor sign-in first.'));
+            kirjuri_two_factor_hold($user_record, $has_two_factor ? 'code' : 'setup');
+            header('Location: login.php');
             die;
         }
+        login_throttle_clear($throttle_name);
+        kirjuri_start_session($user_record);
+        message('info', $_SESSION['lang']['logged_in_as'] . ' ' . $_SESSION['user']['username']);
+        event_log_write('0', 'Auth', 'Login, created session ' . $_SESSION['user']['token']);
+        header('Location: index.php');
+        die;
     } elseif ($auth_success === false) {
         $_SESSION['user'] = array(); // The attempt was counted as a failure above.
         message('error', $_SESSION['lang']['invalid_credentials']);

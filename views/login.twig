@@ -19,7 +19,7 @@
         <div class="login-brand-sub">{% if settings.title_text and settings.title_text != "Kirjuri" %}{{ settings.title_text }} &middot; {% endif %}{{ settings.release }}</div>
       </div>
     </div>
-    <h1 class="h3">{{ lang.log_in }}</h1>
+    <h1 class="h3">{% if two_factor %}{{ lang.two_factor }}{% else %}{{ lang.log_in }}{% endif %}</h1>
 
     {% if session.message.type == "error" %}
     <div class="alert alert-danger" role="alert"><i class="fa fa-warning" aria-hidden="true"></i> {{ session.message.content }}</div>
@@ -27,6 +27,48 @@
     <div class="alert alert-success" role="status"><i class="fa fa-check-circle" aria-hidden="true"></i> {{ session.message.content }}</div>
     {% endif %}
 
+    {% if two_factor and two_factor.mode == "code" %}
+    {# The second step after the right password: a code from the app, or a recovery code. #}
+    <form role="form" method="post" action="submit.php?type=two_factor_code" class="two-factor-form">
+      <input type="hidden" name="token" value="{{ two_factor.token }}">
+      <p>{{ lang.two_factor_enter_code }}</p>
+      <div class="form-group">
+        <label for="two_factor_code" class="control-label">{{ lang.two_factor_code }}</label>
+        <input type="text" class="form-control two-factor-code-input" id="two_factor_code" name="two_factor_code" inputmode="numeric" autocomplete="one-time-code" autocapitalize="none" spellcheck="false" maxlength="7" autofocus>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg"><i class="fa fa-sign-in" aria-hidden="true"></i> {{ lang.log_in }}</button>
+    </form>
+    <details class="two-factor-recovery">
+      <summary>{{ lang.two_factor_use_recovery_code }}</summary>
+      <form role="form" method="post" action="submit.php?type=two_factor_code">
+        <input type="hidden" name="token" value="{{ two_factor.token }}">
+        <div class="form-group">
+          <label for="recovery_code" class="control-label">{{ lang.two_factor_recovery_code }}</label>
+          <input type="text" class="form-control" id="recovery_code" name="recovery_code" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="32" aria-describedby="recovery_code_hint">
+          <span class="field-hint" id="recovery_code_hint">{{ lang.two_factor_recovery_hint }}</span>
+        </div>
+        <button type="submit" class="btn btn-default btn-block">{{ lang.log_in }}</button>
+      </form>
+    </details>
+    <form method="post" action="submit.php?type=two_factor_cancel" class="two-factor-cancel">
+      <input type="hidden" name="token" value="{{ two_factor.token }}">
+      <button type="submit" class="btn btn-link">{{ lang.two_factor_cancel }}</button>
+    </form>
+
+    {% elseif two_factor and two_factor.mode == "setup" %}
+    {# Two-factor sign-in is required for this account, which does not have it yet: set it up before signing in. #}
+    <p>{{ lang.two_factor_setup_required }}</p>
+    <form role="form" method="post" action="submit.php?type=two_factor_enrol" class="two-factor-form" data-validate novalidate>
+      <input type="hidden" name="token" value="{{ two_factor.token }}">
+      {% include 'two_factor_setup.twig' with {setup: two_factor.setup, prefix: 'enrol_'} %}
+      <button type="submit" class="btn btn-primary btn-block btn-lg"><i class="fa fa-check" aria-hidden="true"></i> {{ lang.two_factor_turn_on }}</button>
+    </form>
+    <form method="post" action="submit.php?type=two_factor_cancel" class="two-factor-cancel">
+      <input type="hidden" name="token" value="{{ two_factor.token }}">
+      <button type="submit" class="btn btn-link">{{ lang.two_factor_cancel }}</button>
+    </form>
+
+    {% else %}
     {% if settings.motd %}
     <div class="alert alert-warning">
       <i class="fa fa-warning" aria-hidden="true"></i> {{ settings.motd|purify }}
@@ -62,6 +104,7 @@
         {% endif %}
       {% endfor %}
     </form>
+    {% endif %}
   </div>
 </main>
 {% endblock %}
