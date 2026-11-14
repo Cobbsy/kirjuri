@@ -375,6 +375,7 @@
     "save_notes": "Salvar notas",
     "search_found_device": "O termo pesquisado encontrou um dispositivo",
     "search_hint": "Pesquisa todos os anos. Uma palavra também encontra palavras mais longas que começam com ela. Coloque uma frase entre aspas para encontrá-la exatamente e um sinal de menos antes de uma palavra para excluí-la.",
+    "search_limited": "Apenas os primeiros %d resultados são mostrados. Adicione uma palavra para refinar a busca.",
     "search_reqs_and_devs": "Buscar requisições e dispositivos...",
     "search_years": "Encontrado em",
     "searching_with": "Buscando com",

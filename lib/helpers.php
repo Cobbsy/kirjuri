@@ -365,3 +365,32 @@ function kirjuri_write_csv($handle, array $rows) {
         fputcsv($handle, array_map('kirjuri_csv_cell', array_values($row)), ';', '"', '');
     }
 }
+
+
+/**
+ * The last $count lines of a file, oldest first, without their line endings. The file is read backwards in
+ * blocks of $block bytes, so a log that has grown for years is not read into memory to show its end.
+ */
+function kirjuri_last_lines($file, $count, $block = 65536) {
+    $count = (int) $count;
+    $handle = ($count > 0) ? @fopen($file, 'rb') : false;
+    if ($handle === false) {
+        return array();
+    }
+    fseek($handle, 0, SEEK_END);
+    $position = ftell($handle);
+    $buffer = '';
+    // One line more than asked for: the first line in the buffer may be only the end of a line.
+    while ($position > 0 && substr_count($buffer, "\n") <= $count) {
+        $read = (int) min($block, $position);
+        $position -= $read;
+        fseek($handle, $position);
+        $buffer = fread($handle, $read) . $buffer;
+    }
+    fclose($handle);
+    $lines = preg_split('/\r?\n/', rtrim($buffer, "\r\n"));
+    if ($buffer === '' || $lines === false) {
+        return array();
+    }
+    return array_slice($lines, -$count);
+}

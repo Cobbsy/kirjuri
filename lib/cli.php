@@ -394,7 +394,7 @@ function cli_log($args) {
         cli_out('No log at ' . $file . '.');
         return $case === null ? 0 : 1;
     }
-    foreach (array_slice(file($file, FILE_IGNORE_NEW_LINES), -(int) cli_option($args, '--last', '20')) as $line) {
+    foreach (kirjuri_last_lines($file, (int) cli_option($args, '--last', '20')) as $line) {
         cli_out($line);
     }
     return 0;

@@ -48,6 +48,7 @@ case 'device_detach':
     ksess_verify(1);
     ksess_validate(posted_token());
     $_GET['returnid'] = filter_numbers($_GET['returnid']);
+    csrf_case_validate(posted_case_token(), $_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
     kirjuri_detach_device($kirjuri_database, $_GET['returnid'], filter_numbers($_GET['uid'])); // Only devices of this case.
     $_POST['returnid'] = $_GET['returnid'];

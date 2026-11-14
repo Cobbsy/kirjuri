@@ -88,11 +88,9 @@
   <tr>
     <td>{{ lang.examined_devices }}
     </td>
-    {% for month_col in 1..12 %}
-    <td>
-      {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = monthBeginsAt|date_modify("+1 month -1 second") %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-      {% set laskuri = laskuri + entry.case_devicecount %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
-    </td>
+    {# By the month each device was added (see kirjuri_statistics()), so the months add up to the total. #}
+    {% for count in devices_per_month %}
+    <td>{% if count >= 1 %}{{ count }}{% else %}<span class="text-faint">0</span>{% endif %}</td>
     {% endfor %}
     <td>
       <b>{{ device_count }}</b>
@@ -150,7 +148,7 @@
         pointStrokeColor: surfaceColour,
         pointHighlightFill: surfaceColour,
         pointHighlightStroke: chartColour[1],
-        data: [{% for month_col in 1..12 %}{% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = monthBeginsAt|date_modify("+1 month -1 second") %}{% for entry in all_cases %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% set laskuri = laskuri + entry.case_devicecount %}{% endif %}{% if loop.last == true %}{{ laskuri }}, {% endif %}{% endfor %}{% endfor %}]
+        data: [{% for count in devices_per_month %}{{ count }}, {% endfor %}]
       },
       {
         label: "{{ lang.examination_requests|e('js') }}",
@@ -198,11 +196,8 @@
   <tr>
     <td>{{ lang.data_gb }}
     </td>
-    {% for month_col in 1..12 %}
-    <td>
-      {% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = monthBeginsAt|date_modify("+1 month -1 second") %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}
-      {% set laskuri = laskuri + entry.device_size_in_gb %}{% endif %}{% if loop.last == true %}{% if laskuri >= "1" %}{{ laskuri|number_format }}{% else %}<span class="text-faint">{{ laskuri }}</span>{% endif %}{% endif %}{% endfor %}
-    </td>
+    {% for size in gb_per_month %}
+    <td>{% if size >= 1 %}{{ size|number_format }}{% else %}<span class="text-faint">0</span>{% endif %}</td>
     {% endfor %}
     <td><b>{{ (summed_size / 1000)|number_format }} TB</b>
     </td>
@@ -223,7 +218,7 @@
         pointStrokeColor: surfaceColour,
         pointHighlightFill: surfaceColour,
         pointHighlightStroke: chartColour[0],
-        data: [{% for month_col in 1..12 %}{% set laskuri = "0" %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = monthBeginsAt|date_modify("+1 month -1 second") %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% set laskuri = laskuri + entry.device_size_in_gb %}{% endif %}{% if loop.last == true %}{{ laskuri }}, {% endif %}{% endfor %}{% endfor %}]
+        data: [{% for size in gb_per_month %}{{ size }}, {% endfor %}]
       }
       ]
     };
@@ -245,7 +240,7 @@
         strokeColor: chartColour[0],
         highlightFill: translucent(chartColour[0], 0.8),
         highlightStroke: chartColour[0],
-        data: [{% set laskuri = "0" %}{% for month_col in 1..12 %}{% set monthBeginsAt = "01." ~ month_col ~ "." ~ dateStart|date("Y") %}{% set monthStopsAt = monthBeginsAt|date_modify("+1 month -1 second") %}{% for entry in all_devices %}{% if (entry.case_added_date|date("U") >= monthBeginsAt|date("U")) and (entry.case_added_date|date("U") <= monthStopsAt|date("U")) %}{% set laskuri = laskuri + entry.device_size_in_gb %}{% endif %}{% if loop.last == true %}{{ (laskuri / 1000)|round }}, {% endif %}{% endfor %}{% endfor %}]
+        data: [{% set laskuri = 0 %}{% for size in gb_per_month %}{% set laskuri = laskuri + size %}{{ (laskuri / 1000)|round }}, {% endfor %}]
       }
       ]
     };
@@ -268,7 +263,7 @@
         strokeColor: chartColour[0],
         highlightFill: translucent(chartColour[0], 0.8),
         highlightStroke: chartColour[0],
-        data: [{% for data in device_data_by_unit %}"{% if not data %}0{% else %}{{ data }}{% endif %}"{% if not loop.last %},{% endif %}{% endfor %}]
+        data: [{% for data in device_data_by_unit %}{{ data|default(0)|number_format(0, '.', '') }}{% if not loop.last %},{% endif %}{% endfor %}]
       }
       ]
     };
@@ -291,7 +286,7 @@
         strokeColor: chartColour[0],
         highlightFill: translucent(chartColour[0], 0.8),
         highlightStroke: chartColour[0],
-        data: [{% for data in device_count_by_unit %}"{% if not data %}0{% else %}{{ data }}{% endif %}"{% if not loop.last %},{% endif %}{% endfor %}]
+        data: [{% for data in device_count_by_unit %}{{ data|default(0)|number_format(0, '.', '') }}{% if not loop.last %},{% endif %}{% endfor %}]
       }
       ]
     };
@@ -320,7 +315,9 @@
     <td><b>{{ lang.total }}</b></td>
   </thead>
   {% for devtype in devices %}
-  <tr id="solu-{{ devtype|replace({' ': '_'}) }}">
+  {# Rows are numbered: a device type can hold characters that a CSS selector or a script cannot. #}
+  {% set row_id = 'solu-device-' ~ loop.index %}
+  <tr id="{{ row_id }}">
     <td><img alt="" src="views/img/svg/{{ devtype|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="float:left;padding-left:5px;padding-right:5px;"> {{ devtype }}
     </td>
     {% for month_col in 1..13 %}
@@ -334,7 +331,7 @@
       {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1 %}{% endif %}
       {% if loop.last == true %}
       <b>
-        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$( "#solu-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
+        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$(document.getElementById("{{ row_id|e('js') }}")).hide();</script>{% endif %}
       </b>
       {% endif %}
       {% endfor %}
@@ -344,7 +341,8 @@
   </tr>
   {% endfor %}
   {% for devtype in media_objs %}
-  <tr id="solu-media-{{ devtype|replace({' ': '_'}) }}">
+  {% set row_id = 'solu-media-' ~ loop.index %}
+  <tr id="{{ row_id }}">
     <td><img alt="" src="views/img/svg/{{ devtype|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}.svg" width="32px" style="float:left;padding-left:5px;padding-right:5px;"> {{ devtype }}
     </td>
     {% for month_col in 1..13 %}
@@ -358,7 +356,7 @@
       {% if entry.device_type == devtype %}{% set laskuri = laskuri + 1 %}{% endif %}
       {% if (loop.last == true) %}
       <b>
-        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$( "#solu-media-{{ devtype|replace({' ': '_'}) }}" ).hide();</script>{% endif %}
+        {% if laskuri >= "1" %}{{ laskuri }}{% else %}<span class="text-faint">{{ laskuri }}</span><script>$(document.getElementById("{{ row_id|e('js') }}")).hide();</script>{% endif %}
       </b>
       {% endif %}
       {% endfor %}

@@ -55,6 +55,7 @@ function kirjuri_attach_device(PDO $db, $case_id, $device_id, $host_id) {
         ->execute(array(':host' => $host_id, ':id' => $device_id, ':case' => $case_id));
     $db->prepare('UPDATE exam_requests SET device_is_host = "1" WHERE id = :host AND parent_id = :case')
         ->execute(array(':host' => $host_id, ':case' => $case_id));
+    kirjuri_touch_case($db, $case_id);
     return true;
 }
 
@@ -62,7 +63,11 @@ function kirjuri_attach_device(PDO $db, $case_id, $device_id, $host_id) {
 function kirjuri_detach_device(PDO $db, $case_id, $device_id) {
     $query = $db->prepare('UPDATE exam_requests SET device_host_id = "0", last_updated = NOW() WHERE id = :id AND parent_id = :case AND id != parent_id');
     $query->execute(array(':id' => $device_id, ':case' => $case_id));
-    return $query->rowCount() > 0;
+    if ($query->rowCount() === 0) {
+        return false;
+    }
+    kirjuri_touch_case($db, $case_id);
+    return true;
 }
 
 
@@ -89,7 +94,11 @@ function kirjuri_update_device_field(PDO $db, $case_id, $device_id, $field, $val
     }
     $query = $db->prepare('UPDATE exam_requests SET ' . $field . ' = :value, last_updated = NOW() WHERE id = :id AND parent_id = :case AND id != parent_id');
     $query->execute(array(':value' => $value, ':id' => $device_id, ':case' => $case_id));
-    return $query->rowCount() > 0;
+    if ($query->rowCount() === 0) {
+        return false;
+    }
+    kirjuri_touch_case($db, $case_id); // Work on a device is work on its case: the front page's stalled mark reads the case.
+    return true;
 }
 
 

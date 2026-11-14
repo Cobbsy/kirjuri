@@ -165,6 +165,30 @@ final class SourceTest extends TestCase
         $this->assertSame(array(), $unescaped, "Use |e('js') for text inside <script>.");
     }
 
+    /**
+     * Any value printed inside a quoted string of an inline script is escaped for JavaScript, not only language
+     * strings: statistics wrote device types into a jQuery selector, and the users page usernames, so a custom
+     * device type with a quote, or a username such as j.smith, broke the script or the selector.
+     */
+    #[DataProvider('templates')]
+    public function testScriptsEscapeEveryValueInsideAString(string $template): void
+    {
+        preg_match_all('/<script(?![^>]*\\bsrc=)[^>]*>(.*?)<\/script>/s', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $scripts);
+        $unescaped = array();
+        foreach (explode("\n", implode("\n", $scripts[1])) as $line) {
+            $line = preg_replace('/\{%.*?%\}/', '', $line); // Tags print nothing.
+            preg_match_all('/\{\{((?:(?!\}\}).)*)\}\}/', $line, $values, PREG_OFFSET_CAPTURE);
+            foreach ($values[1] as $i => $value) {
+                $before = preg_replace('/\{\{.*?\}\}/', '', substr($line, 0, $values[0][$i][1]));
+                $inside_string = preg_match_all('/(?<!\\\\)["\']/', $before) % 2 === 1;
+                if ($inside_string && !preg_match('/\|\s*e\(\s*[\'"]js[\'"]\s*\)\s*$/', $value[0])) {
+                    $unescaped[] = trim($value[0]);
+                }
+            }
+        }
+        $this->assertSame(array(), $unescaped, "Use |e('js') for values inside a string in <script>.");
+    }
+
     /** CSRF and case tokens are sent in POST bodies only: URLs end up in logs, history and Referer headers. */
     #[DataProvider('templates')]
     public function testTemplateLinksCarryNoTokens(string $template): void

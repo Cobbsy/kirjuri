@@ -375,6 +375,7 @@
     "save_notes": "Save notes",
     "search_found_device": "Search term found a device",
     "search_hint": "Searches all years. A word also finds longer words that start with it. Put a phrase in quotes to find it exactly, and a minus sign before a word to leave it out.",
+    "search_limited": "Only the first %d matches are shown. Add a word to narrow the search.",
     "search_reqs_and_devs": "Search requests and devices...",
     "search_years": "Found in",
     "searching_with": "Searching with",

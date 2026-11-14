@@ -95,7 +95,7 @@ final class CaseWorkflowTest extends IntegrationTestCase
 
         $admin->post('submit.php?type=device_attach&uid=' . $media . '&returnid=' . $caseId, array('token' => $token, 'ct' => $ct, 'isanta' => (string) $host));
         $this->assertSame((string) $host, $this->row($media)['device_host_id']);
-        $admin->post('submit.php?type=device_detach&uid=' . $media . '&returnid=' . $caseId, array('token' => $token));
+        $admin->post('submit.php?type=device_detach&uid=' . $media . '&returnid=' . $caseId, array('token' => $token, 'ct' => $ct));
         $this->assertSame('0', $this->row($media)['device_host_id']);
 
         $admin->post('submit.php?type=move_all&returnid=' . $caseId, array('token' => $token, 'ct' => $ct, 'device_action' => 'NO_CHANGE', 'device_location' => 'Vault'));
@@ -272,6 +272,64 @@ final class CaseWorkflowTest extends IntegrationTestCase
         kirjuri_migration_007_device_status($pdo);
         $this->assertSame('3', $this->row($deviceId)['case_status']);
         $this->assertSame('3', $this->row($caseId)['case_status']);
+    }
+
+    public function testWorkOnDevicesKeepsTheCaseFromStalling(): void
+    {
+        // The stalled mark reads the case's last update, which changing a device's status or location, attaching
+        // or detaching it did not touch: a case worked on only through its devices was marked stalled.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Busy '));
+        $host = $this->addDevice($admin, $caseId, $this->uniqueName('Host '));
+        $media = $this->addDevice($admin, $caseId, $this->uniqueName('Media '));
+        $pdo = $this->server->pdo();
+        $steps = array(
+            'status' => fn () => $admin->post('submit.php?type=change_device_status&uid=' . $host, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'device_action' => '2')),
+            'location' => fn () => $admin->post('submit.php?type=change_device_location&uid=' . $host, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'device_location' => 'Lab')),
+            'attach' => fn () => $admin->post("submit.php?type=device_attach&uid=$media&returnid=$caseId", array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'isanta' => (string) $host)),
+            'detach' => fn () => $admin->post("submit.php?type=device_detach&uid=$media&returnid=$caseId", array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId))),
+        );
+        foreach ($steps as $step => $post) {
+            $pdo->exec("UPDATE exam_requests SET last_updated = '2020-01-01 00:00:00' WHERE id = $caseId");
+            $post();
+            $this->assertNotSame('2020-01-01 00:00:00', $this->row($caseId)['last_updated'], "Changing the $step of a device updates its case.");
+        }
+        $this->assertSame('0', $this->row($media)['device_host_id'], 'Detached.');
+    }
+
+    public function testDetachingADeviceNeedsTheCaseToken(): void
+    {
+        // device_detach checked the session token only, unlike attaching and the other case actions.
+        $this->expectLoggedError('Case access token');
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Detach '));
+        $host = $this->addDevice($admin, $caseId, $this->uniqueName('Host '));
+        $media = $this->addDevice($admin, $caseId, $this->uniqueName('Media '));
+        $admin->post("submit.php?type=device_attach&uid=$media&returnid=$caseId", array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'isanta' => (string) $host));
+        $this->assertSame((string) $host, $this->row($media)['device_host_id']);
+
+        $admin->post("submit.php?type=device_detach&uid=$media&returnid=$caseId", array('token' => $this->token($admin)));
+        $this->assertSame((string) $host, $this->row($media)['device_host_id'], 'Detached without a case token.');
+        $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        $this->assertMatchesRegularExpression('/type=device_detach&uid=' . $media . '&returnid=' . $caseId . '" data-post data-ct="[0-9a-f]+"/', $page, 'The link sends the case token.');
+    }
+
+    public function testSearchShowsAtMostItsLimit(): void
+    {
+        // A search covers every year, and a short word finds words that start with it: with no limit, it could
+        // put every row of a large installation on one page.
+        $admin = $this->admin();
+        $stem = 'Zl' . strtolower(generate_token(5));
+        $ids = array();
+        foreach (array('a', 'b', 'c') as $suffix) {
+            $ids[] = $this->createCase($admin, $this->uniqueName('Limited '), array('case_suspect' => $stem . $suffix));
+        }
+        $found = kirjuri_search_cases($this->server->pdo(), $stem, '', false, 2);
+        $this->assertCount(2, $found);
+        $this->assertCount(3, kirjuri_search_cases($this->server->pdo(), $stem, '', false));
+        $page = $admin->get('index.php?search=' . $stem)->body;
+        $this->assertStringNotContainsString(sprintf(json_decode(file_get_contents(KIRJURI_ROOT . '/conf/lang_EN.JSON'), true)['search_limited'], KIRJURI_SEARCH_LIMIT), $page,
+            'No note while everything fits.');
     }
 
     public function testSearchLeavesOutDevicesOfRemovedRequests(): void

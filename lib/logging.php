@@ -115,3 +115,4 @@ function audit_log_write($post_data) {
         return "Audit file failure.";
     }
 }
+

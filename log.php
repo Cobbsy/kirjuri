@@ -5,8 +5,7 @@ ksess_verify(0);
 
 // The newest lines only: the file grows for as long as the installation lives. bin/kirjuri log reads all of it.
 const LOG_PAGE_LINES = 2000;
-$lines = file_exists('logs/kirjuri.log') ? file('logs/kirjuri.log', FILE_IGNORE_NEW_LINES) : array();
-$lines = array_reverse(array_slice($lines, -LOG_PAGE_LINES));
+$lines = array_reverse(kirjuri_last_lines('logs/kirjuri.log', LOG_PAGE_LINES));
 foreach ($lines as $key => $line) {
     $lines[$key] = str_replace(';', ' ', $line);
 }
