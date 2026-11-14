@@ -17,7 +17,9 @@ function kirjuri_api_find(PDO $db, $search_term, array $date_range) {
         . ' AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
     $query->execute($params);
     $found = array('cases' => $query->fetchAll(PDO::FETCH_ASSOC));
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE id != parent_id AND is_removed = "0" AND ' . kirjuri_fulltext_match('devices', ':search_term')
+    // Removing a case marks the case row only: its devices are left out with it.
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE id != parent_id AND is_removed = "0"
+        AND parent_id IN (SELECT id FROM exam_requests WHERE id = parent_id AND is_removed = "0") AND ' . kirjuri_fulltext_match('devices', ':search_term')
         . ' AND case_added_date BETWEEN :dateStart AND :dateStop ORDER BY id');
     $query->execute($params);
     $found['devices'] = $query->fetchAll(PDO::FETCH_ASSOC);

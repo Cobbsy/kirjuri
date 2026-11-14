@@ -259,6 +259,35 @@ function kirjuri_case_list_order($sort, $ascending) {
 }
 
 
+/** The front page sort columns (j) that a case the user may not open hides: name, file number, crime, suspect, investigator. */
+const KIRJURI_SORTS_HIDDEN_FROM_OUTSIDERS = array('2', '3', '4', '5', '6');
+
+
+/**
+ * Front page rows, marked with can_access, sorted by a column that a case the user may not open hides would put
+ * each such case among the others by the hidden value: between "Smith" and "Smyth" it gives its suspect away.
+ * Then those cases go last, by UID, which is no secret. Other sorts keep the order. $sort is the j parameter.
+ */
+function kirjuri_order_restricted_cases(array $rows, $sort) {
+    if (!is_scalar($sort) || !in_array((string) $sort, KIRJURI_SORTS_HIDDEN_FROM_OUTSIDERS, true)) {
+        return $rows;
+    }
+    $open = array();
+    $restricted = array();
+    foreach ($rows as $row) {
+        if (empty($row['can_access'])) {
+            $restricted[] = $row;
+        } else {
+            $open[] = $row;
+        }
+    }
+    usort($restricted, function ($a, $b) {
+        return (int) $a['id'] <=> (int) $b['id'];
+    });
+    return array_merge($open, $restricted);
+}
+
+
 /** The front page's status filters by the value of its s parameter. 1 to 3 are the case statuses. */
 const KIRJURI_STATUS_FILTERS = array('1' => 'new', '2' => 'open', '4' => 'mine', '5' => 'stalled', '3' => 'ready');
 
@@ -421,10 +450,13 @@ function kirjuri_fulltext_query($search, $word_beginnings = false) {
 
 /**
  * Full text search over the cases and devices of every year, for the front page: a word also finds words
- * that start with it (see kirjuri_fulltext_query()).
+ * that start with it (see kirjuri_fulltext_query()). Devices of a removed case are left out with it: removing
+ * a case marks the case row only. Access groups are not checked here; the caller leaves out what the user may
+ * not open.
  */
 function kirjuri_search_cases(PDO $db, $term, $sort, $ascending) {
     $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"
+        AND parent_id IN (SELECT id FROM exam_requests WHERE id = parent_id AND is_removed = "0")
         AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
         ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
     $term = kirjuri_fulltext_query($term, true);

@@ -72,6 +72,70 @@ final class AccessControlTest extends IntegrationTestCase
         $this->assertStringContainsString($suspect, $admin->get('index.php')->body, 'Admins see every case.');
     }
 
+    public function testSearchLeavesOutCasesTheUserMayNotOpen(): void
+    {
+        // Search matched restricted cases on their suspect and notes and listed them, name and file number included,
+        // so a match told an outsider what a case held; with word beginnings it could be read one prefix at a time.
+        $outsider = $this->uniqueName('searcher');
+        $this->createUser($outsider, 'password1', 1);
+        $admin = $this->admin();
+        $secret = 'Zs' . strtolower(generate_token(8));
+        $name = $this->uniqueName('Hidden case ');
+        $caseId = $this->createCase($admin, $name, array('examiners_notes' => 'PIN ' . $secret));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('Hidden device '), array('device_owner' => $secret));
+        $admin->post('submit.php?type=case_access&id=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'access' => array('admin_only' => 'admin_only')));
+
+        $outside = $this->login($outsider, 'password1');
+        foreach (array($secret, substr($secret, 0, 5), '"' . $name . '"') as $term) {
+            $page = $outside->get('index.php?search=' . urlencode($term))->body;
+            $this->assertStringNotContainsString('case=' . $caseId . '"', $page, "Found by \"$term\".");
+            $this->assertStringNotContainsString('uid=' . $deviceId . '"', $page, "Device found by \"$term\".");
+            $this->assertStringNotContainsString('>' . $name . '</a>', $page, "Named for \"$term\"."); // The term itself is shown back.
+            $this->assertStringContainsString('class="alert alert-warning"', $page, "Nothing is found or counted for \"$term\".");
+        }
+
+        $found = $admin->get('index.php?search=' . urlencode($secret))->body;
+        $this->assertStringContainsString('edit_request.php?case=' . $caseId . '"', $found, 'Admins still find it.');
+    }
+
+    public function testFrontPageShowsNoDetailsOfRestrictedCases(): void
+    {
+        // The year list hid a restricted case's crime and suspect, but showed its name (or, without a name, its
+        // suspect), file number, investigator and urgency justification.
+        $outsider = $this->uniqueName('lister');
+        $this->createUser($outsider, 'password1', 1);
+        $admin = $this->admin();
+        $suspect = $this->uniqueName('Sx');
+        $fileNumber = $this->uniqueName('FN');
+        $investigator = $this->uniqueName('Iv');
+        $justification = $this->uniqueName('Urgent because ');
+        $caseId = $this->createCase($admin, '', array('case_suspect' => $suspect, 'case_file_number' => $fileNumber,
+            'case_investigator' => $investigator, 'case_urg_justification' => $justification));
+        $admin->post('submit.php?type=case_access&id=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'access' => array('admin_only' => 'admin_only')));
+
+        $page = $this->login($outsider, 'password1')->get('index.php')->body;
+        foreach (array('suspect' => $suspect, 'file number' => $fileNumber, 'investigator' => $investigator, 'urgency' => $justification) as $what => $value) {
+            $this->assertStringNotContainsString($value, $page, "The $what of a restricted case is shown.");
+        }
+        $this->assertStringNotContainsString('edit_request.php?case=' . $caseId . '"', $page, 'No links into a case that cannot be opened.');
+        $this->assertStringContainsString('<span class="sr-only">', $page, 'The row is still listed, marked as restricted.');
+
+        // Sorted by suspect (descending), the restricted case sat among the others by its hidden suspect: here before
+        // an open case whose suspect starts with A.
+        $open = $this->createCase($admin, $this->uniqueName('Open case '), array('case_suspect' => $this->uniqueName('Aa')));
+        $sorted = $this->login($outsider, 'password1')->get('index.php?j=5')->body;
+        $lastLink = strrpos($sorted, 'edit_request.php?case=' . $open . '"');
+        $this->assertNotFalse($lastLink);
+        $this->assertLessThan(strpos($sorted, '<span class="sr-only">'), $lastLink, 'Restricted cases come after the others.');
+
+        $adminPage = $admin->get('index.php')->body;
+        foreach (array($suspect, $fileNumber, $investigator, $justification) as $value) {
+            $this->assertStringContainsString($value, $adminPage, 'Admins see every case.');
+        }
+    }
+
     public function testRegularUserCannotOpenAdminPages(): void
     {
         $username = $this->uniqueName('regular');

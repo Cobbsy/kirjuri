@@ -38,9 +38,29 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   Two more were added with the search improvements, `search_hint` and `search_years`, seventeen
   with the help page (`help_*` and `licenses_intro`, the user guide itself), and one with the tool
   reservation fixes (`reservation_in_past`); they are not on the review page yet.
-- **Outside code review.** Codex was at its usage limit for every PR from #6 to #15, so none of
-  them has had a second reviewer. When the limit resets, ask it to review the changes since #5
-  (`git diff d467c3e origin/master`), fix real findings with tests, and reply on each thread.
+- **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
+  on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
+  to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
+  so Codex sees everything since #5 in one diff. Codex was asked on it in November 2026 and was again
+  at its limit. When the limit resets, comment `@codex review` on #21 once, fix real findings with
+  tests in a pull request against master, reply on each thread, then close #21 and delete
+  `codex-review-base`.
+- **Findings of our own review (November 2026)** of the same diff, with code-review at high effort.
+  Done (November 2026): search no longer lists cases, or their devices, that the user may not open,
+  and the counts leave them out (a match told an outsider what a case's notes or suspect held, prefix
+  by prefix); the year list shows such cases without their name, suspect, file number, investigator,
+  urgency justification or links, and sorting by a hidden column puts them last; devices of a removed
+  request are no longer found, on the front page or through the API. Still open, most valuable first:
+  - Changing a device's status or location, attaching or detaching it leaves the case's
+    `last_updated` alone, so a case worked on only through its devices is marked stalled.
+  - Searches cover every year with no limit: a short prefix on a large installation renders every
+    row. Page the results, or cap them with a note.
+  - `log.php` reads the whole event log into memory to show its last 2,000 lines; read from the end.
+  - `statistics.twig` writes device types into inline scripts without `|e('js')`: a custom language
+    with a quote or a bracket in a device type breaks the page.
+  - "Assigned to me" matches examiners by display name, so renaming a user drops their cases from it.
+  - The monthly device counts in statistics sum the year's requests' devices while the total counts
+    devices added in the year, so they do not add up (older than #6).
 
 ## Testing stage plan
 

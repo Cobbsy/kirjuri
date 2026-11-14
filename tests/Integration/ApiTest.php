@@ -49,6 +49,20 @@ final class ApiTest extends IntegrationTestCase
         $this->assertSame(array((string) $deviceId), array_column($found['devices'], 'id'));
     }
 
+    public function testFindLeavesOutDevicesOfRemovedRequests(): void
+    {
+        // Removing a request marks its own row only, so its devices were still found.
+        $admin = $this->admin();
+        $word = 'Zr' . strtolower(generate_token(6));
+        $caseId = $this->createCase($admin, $this->uniqueName('Api removed '));
+        $deviceId = $this->addDevice($admin, $caseId, 'Model ' . $word);
+        $admin->post('submit.php?type=set_removed_case', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'remove_exam_request' => (string) $caseId));
+
+        $found = json_decode($this->client()->post('api.php?operation=find&key=' . $this->apiKey($this->apiUser()), array('find' => $word))->body, true);
+        $this->assertNotContains((string) $deviceId, array_column($found['devices'] ?? array(), 'id'));
+    }
+
     public function testFindMatchesIdentifiersShortWordsAndStopwords(): void
     {
         // exam_requests is InnoDB, with full text indexes built without stopwords and a three letter minimum;

@@ -274,6 +274,24 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('3', $this->row($caseId)['case_status']);
     }
 
+    public function testSearchLeavesOutDevicesOfRemovedRequests(): void
+    {
+        // Removing a request marks its own row only, and the search checked each found row on its own, so the devices
+        // of a removed request were still found, from every year once searches covered them all.
+        $admin = $this->admin();
+        $model = 'Zm' . strtolower(generate_token(8));
+        $caseId = $this->createCase($admin, $this->uniqueName('Removed request '));
+        $deviceId = $this->addDevice($admin, $caseId, $model);
+        $this->assertStringContainsString('device_memo.php?uid=' . $deviceId . '"', $admin->get('index.php?search=' . $model)->body);
+
+        $admin->post('submit.php?type=set_removed_case', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'remove_exam_request' => (string) $caseId));
+        $this->assertSame('1', $this->row($caseId)['is_removed']);
+        $page = $admin->get('index.php?search=' . $model)->body;
+        $this->assertStringNotContainsString('device_memo.php?uid=' . $deviceId . '"', $page);
+        $this->assertStringContainsString('class="alert alert-warning"', $page, 'Nothing is found.');
+    }
+
     public function testFrontPageLinksExaminersByTheirWholeNameAndOnlyWhenThereIsOne(): void
     {
         // The examiner links were written for every row, as empty links when there was no examiner, and the

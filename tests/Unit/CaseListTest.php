@@ -118,4 +118,22 @@ final class CaseListTest extends TestCase
         $this->assertSame(array(), $rows, 'Without its case, the device has no examiners.');
         $this->assertSame(0, $counts['all'], 'Devices are not counted.');
     }
+
+    public function testRestrictedCasesGoLastWhenSortedByAColumnTheyHide(): void
+    {
+        // Sorted by suspect, a restricted case sat among the others by its hidden suspect: between "Smith" and
+        // "Smyth" it gave its suspect away. Sorted by a column they hide, restricted cases go last, by UID.
+        $rows = array(
+            array('id' => '9', 'can_access' => true),
+            array('id' => '7', 'can_access' => false),
+            array('id' => '8', 'can_access' => true),
+            array('id' => '3', 'can_access' => false),
+        );
+        foreach (array('2', '3', '4', '5', '6') as $sort) {
+            $this->assertSame(array('9', '8', '3', '7'), array_column(kirjuri_order_restricted_cases($rows, $sort), 'id'), "Sorted by $sort.");
+        }
+        foreach (array('', '1', '7', '8', '9', 'x', array('5')) as $sort) {
+            $this->assertSame(array('9', '7', '8', '3'), array_column(kirjuri_order_restricted_cases($rows, $sort), 'id'), 'Visible columns keep the order.');
+        }
+    }
 }
