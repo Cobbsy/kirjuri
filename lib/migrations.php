@@ -46,6 +46,10 @@ function kirjuri_migrations() {
             'description' => 'Store the username with each tool reservation, which named the user by display name only',
             'up' => 'kirjuri_migration_008_reservation_usernames',
         ),
+        '009_two_factor' => array(
+            'description' => 'Add the tables for two-factor sign-in: encrypted authenticator app secrets and hashed recovery codes',
+            'up' => 'kirjuri_migration_009_two_factor',
+        ),
     );
 }
 
@@ -288,6 +292,26 @@ function kirjuri_migration_008_reservation_usernames(PDO $db) {
             $save->execute(array(':attr_4' => json_encode($reservations), ':id' => $tool['id']));
         }
     }
+}
+
+
+function kirjuri_migration_009_two_factor(PDO $db) {
+    // Tables of their own rather than columns in users, whose rows are copied into the session and every template.
+    // Times are Unix timestamps, so that PHP and the database server can be in different time zones.
+    $db->exec('CREATE TABLE IF NOT EXISTS two_factor (
+        user_id int(11) NOT NULL PRIMARY KEY,
+        secret text NOT NULL,
+        enabled_at bigint NOT NULL,
+        last_step bigint NOT NULL DEFAULT 0,
+        wrong_codes int(11) NOT NULL DEFAULT 0
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $db->exec('CREATE TABLE IF NOT EXISTS two_factor_recovery_codes (
+        id int(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+        user_id int(11) NOT NULL,
+        code_hash varchar(255) NOT NULL,
+        created_at bigint NOT NULL,
+        KEY user_id (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 }
 
 

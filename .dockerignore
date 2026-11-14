@@ -3,6 +3,7 @@ tests/vendor
 tests/.phpunit.cache
 conf/mysql_credentials.php
 conf/audit_credentials.php
+conf/two_factor_key.php
 conf/*.local
 logs/*
 cache/*
