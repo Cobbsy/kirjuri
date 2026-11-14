@@ -88,7 +88,7 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $ct = $this->caseToken($admin, $caseId);
 
         $status = $admin->post('submit.php?type=change_device_status&uid=' . $host, array('token' => $token, 'ct' => $ct, 'device_action' => '3'));
-        $this->assertStringContainsString('progress', $status->body);
+        $this->assertTrue(json_decode($status->body, true)['saved']);
         $admin->post('submit.php?type=change_device_location&uid=' . $host, array('token' => $token, 'ct' => $ct, 'device_location' => 'Lab'));
         $this->assertSame('3', $this->row($host)['device_action']);
         $this->assertSame('Lab', $this->row($host)['device_location']);
@@ -319,6 +319,41 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertStringContainsString('for="classification"', $dialog);
         $this->assertStringContainsString('for="case_investigator_unit"', $dialog);
         $this->assertMatchesRegularExpression('/<div class="field has-warning">\s*<label for="case_confiscation_date">/', $dialog, 'An old confiscation is marked.');
+    }
+
+    public function testDeviceStatusAnswersWithWhatThePageUpdates(): void
+    {
+        // The status and location menus saved into hidden frames: the device's own bar was the only thing that
+        // changed, and the case's progress and its close button waited for "Reload page".
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Live '));
+        $admin->post('submit.php?type=update_request_status', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'returnid' => (string) $caseId, 'case_status' => '2'));
+        $first = $this->addDevice($admin, $caseId, $this->uniqueName('First '));
+        $second = $this->addDevice($admin, $caseId, $this->uniqueName('Second '));
+        $set = function (int $device, string $field, string $value) use ($admin, $caseId) {
+            $response = $admin->post('submit.php?type=change_device_' . ($field === 'device_action' ? 'status' : 'location') . '&uid=' . $device,
+                array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), $field => $value));
+            $this->assertStringStartsWith('application/json', (string) $response->header('Content-Type'));
+            return json_decode($response->body, true);
+        };
+
+        $answer = $set($first, 'device_action', '5|Processed');
+        $this->assertSame(array('step' => 5, 'label' => 'Processed', 'percent' => 56, 'bar' => 'warning'), $answer['device']);
+        // Steps 5 and 1 of nine each: 6 of 18.
+        $this->assertSame(array('percent' => 34, 'bar' => 'warning', 'started' => true, 'all_done' => false), $answer['case']);
+        $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        $this->assertStringContainsString('data-close-request hidden', $page, 'The close button waits, hidden.');
+        $this->assertStringContainsString('<strong data-case-percent>34%</strong>', $page, 'The page shows what the answer said.');
+        $this->assertStringNotContainsString('<iframe', $page);
+        $this->assertStringNotContainsString('edit_request.php?case=' . $caseId . '"><i class="fa fa-refresh"', $page, 'No "Reload page".');
+
+        $set($first, 'device_action', '9|Done');
+        $answer = $set($second, 'device_action', '0|Empty');
+        $this->assertSame(array('percent' => 100, 'bar' => 'success', 'started' => true, 'all_done' => true), $answer['case']);
+        $this->assertMatchesRegularExpression('/data-close-request>/', $admin->get('edit_request.php?case=' . $caseId)->body, 'The case can be closed.');
+
+        $this->assertSame(array('saved' => true), $set($second, 'device_location', 'Lab'));
+        $this->assertSame('Lab', $this->row($second)['device_location']);
     }
 
     public function testWorkOnDevicesKeepsTheCaseFromStalling(): void

@@ -37,8 +37,8 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   encoding (see CLAUDE.md).
   Two more were added with the search improvements, `search_hint` and `search_years`, seventeen
   with the help page (`help_*` and `licenses_intro`, the user guide itself), one with the tool
-  reservation fixes (`reservation_in_past`) and one with the search limit (`search_limited`); they are
-  not on the review page yet.
+  reservation fixes (`reservation_in_past`) and one with the search limit (`search_limited`) and one with
+  the live device status (`not_saved`); they are not on the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
@@ -141,8 +141,10 @@ Working on a case:
   required-field check, and its overdue confiscation warning works. On phones the save bar shows its
   other buttons as icons.
 - Warn before leaving a device or notes page with unsaved text, or save drafts automatically.
-- The device status and location menus save at once without saying so: show a short "saved" mark.
-- "Reload page" under the progress bar is a workaround: update the progress when a device changes.
+- Done (November 2026): the device status and location menus save in the background and say so ("Changes
+  saved." or, when refused, "Not saved"), and a status change updates the device's bars, the case's progress
+  and its close button in place, so "Reload page" and the progress bar frames (`progress_bar_static.php`)
+  are gone. The menus are one partial, `device_controls.twig`, on the case and device pages.
 - A new request opens with a dialog that must be answered or closed every time until an examiner is
   assigned. Show it as a card on the page instead.
 - Attachments: drag and drop, a progress bar, and the size limit shown before choosing a file.

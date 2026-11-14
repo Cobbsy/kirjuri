@@ -110,8 +110,6 @@ final class DeviceAccessTest extends IntegrationTestCase
     public function testReadOnlyPagesRespectAccessGroups(): void
     {
         $this->expectLoggedError('out-of-bounds POST request');
-        // The progress bar showed the status of any device.
-        $this->assertSame('index.php', $this->user->get('progress_bar_static.php?uid=' . $this->restrictedDevice)->location());
         // The "move to case" list on the device page listed restricted cases, with their suspects.
         $page = $this->user->get('device_memo.php?uid=' . $this->ownDevice)->body;
         $this->assertStringContainsString('value="' . $this->ownCase . '"', $page);

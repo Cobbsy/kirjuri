@@ -136,4 +136,22 @@ final class CaseListTest extends TestCase
             $this->assertSame(array('9', '7', '8', '3'), array_column(kirjuri_order_restricted_cases($rows, $sort), 'id'), 'Visible columns keep the order.');
         }
     }
+
+    public static function deviceSteps(): array
+    {
+        // device_action => step, percent, bar colour, with nine steps as conf/settings.conf has.
+        return array(
+            'received' => array('1|Received', 1, 12, 'danger'),
+            'processed' => array('5|Processed', 5, 56, 'warning'),
+            'done' => array('9|Done', 9, 100, 'success'),
+            'no action' => array('0|No action', 0, 100, 'info'),
+        );
+    }
+
+    #[DataProvider('deviceSteps')]
+    public function testDeviceProgressIsDrawnAsTheCasePageDrawsIt(string $action, int $step, int $percent, string $bar): void
+    {
+        $progress = kirjuri_device_progress($action, '9');
+        $this->assertSame(array('step' => $step, 'label' => explode('|', $action)[1], 'percent' => $percent, 'bar' => $bar), $progress);
+    }
 }

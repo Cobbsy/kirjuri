@@ -15,8 +15,8 @@ final class UnauthenticatedAccessTest extends IntegrationTestCase
                 'timeline.php?case=1', 'statistics.php', 'settings.php', 'users.php', 'tools.php', 'messages.php',
                 'help.php', 'licenses.php', 'lang_editor.php', 'auditor.php', 'log.php', 'backup.php', 'download_csv.php?case=1',
                 'download_krf.php?case=1', 'get_file.php?file=1', 'upload.php', 'upload_IMEI.php',
-                // These three showed case data without a login.
-                'print_sticker.php?type=examination_request&uid=1', 'request.php?case_file_number=1', 'progress_bar_static.php?uid=2',
+                // These two showed case data without a login (as did progress_bar_static.php, now gone).
+                'print_sticker.php?type=examination_request&uid=1', 'request.php?case_file_number=1',
                 // This one imported cases, and injected SQL, without a login.
                 'import_krf.php',
                 'submit.php?type=examination_request', 'submit.php?type=change_device_status&uid=2',

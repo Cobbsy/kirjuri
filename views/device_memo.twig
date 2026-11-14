@@ -110,37 +110,7 @@ if (e.keyCode == 13) {
         {% if entry.device_identifier %}<i class="fa fa-barcode" aria-hidden="true"></i> {{ entry.device_identifier }}<br>{% endif %}
       </div>
       <div class="device-controls">
-        <form method="post" action="submit.php?type=change_device_status&uid={{ entry.id }}" target="submit_iframe{{ entry.id }}">
-          <input type="hidden" name="token" value="{{ session.user.token }}">
-          <input type="hidden" name="ct" value="{{ ct }}">
-          {% if (caserow.0.case_status != 3) and (session.user.access <= 1) %}
-          <select class="form-control device-select{% if not entry.device_action %} is-missing{% endif %}" name="device_action" aria-label="{{ lang.action_status }}" onchange="this.form.submit()">
-            <option value="{{ entry.device_action }}" selected="selected">{% set device_current_action = entry.device_action|split('|') %}{{ device_current_action.1 }}</option>
-            <option disabled>---</option>
-            {% for dev_act in device_actions %}
-            {% set device_current_action = dev_act|split('|') %}
-            <option value="{{ dev_act }}">{{ device_current_action.1 }}</option>
-            {% endfor %}
-          </select>
-          {% else %}
-          {% set show_action_status = entry.device_action|split('|') %}
-          <div class="device-status-text">{{ show_action_status.1 }}</div>
-          <input type="hidden" name="device_action" value="{{ entry.device_action }}">
-          {% endif %}
-        </form>
-        <form method="post" action="submit.php?type=change_device_location&uid={{ entry.id }}" target="submit_iframe{{ entry.id }}_void">
-          <input type="hidden" name="token" value="{{ session.user.token }}">
-          <input type="hidden" name="ct" value="{{ ct }}">
-          <select class="form-control device-select{% if not entry.device_location %} is-missing{% endif %}" name="device_location" aria-label="{{ lang.device_location }}" {% if session.user.access > 1 %}disabled{% else %}onchange="this.form.submit()"{% endif %}>
-            <option value="{{ entry.device_location }}" selected="selected">{{ entry.device_location }}</option>
-            <option disabled>---</option>
-            {% for dev_loc in device_locations %}
-            <option value="{{ dev_loc }}">{{ dev_loc }}</option>
-            {% endfor %}
-          </select>
-        </form>
-        <iframe class="device-progress-frame" name="submit_iframe{{ entry.id }}" title="{{ lang.device_progress }}" src="progress_bar_static.php?uid={{ entry.id }}"></iframe>
-        <iframe name="submit_iframe{{ entry.id }}_void" title="{{ lang.device_location }}" hidden></iframe>
+        {% include 'device_controls.twig' with {select_size: ''} %}
       </div>
     </div>
     {% if connectedmediarow or hostdevice or session.user.access <= 1 %}

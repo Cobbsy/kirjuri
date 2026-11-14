@@ -199,3 +199,60 @@ function kirjuri_remap_device_hosts(PDO $db, $case_id, array $new_ids) {
     $db->prepare('UPDATE exam_requests SET device_host_id = ' . ($cases === '' ? '"0"' : 'CASE device_host_id' . $cases . ' ELSE "0" END')
         . ' WHERE parent_id = :case AND id != parent_id AND device_host_id != "0"')->execute($params);
 }
+
+
+/**
+ * Where a device stands, from its device_action ("step|label"): its step and label, its progress in percent
+ * and the colour of its bar, as the case page draws them. Step 0 (no action, broken, empty) needs no work and
+ * shows a full bar. $steps is the device_action_count setting, the step of a finished device.
+ */
+function kirjuri_device_progress($action, $steps) {
+    $parts = explode('|', (string) $action, 2);
+    $step = (int) $parts[0];
+    $steps = max(1, (int) $steps);
+    if ($step === $steps) {
+        $bar = 'success';
+    } elseif ($step === 1) {
+        $bar = 'danger';
+    } elseif ($step === 0) {
+        $bar = 'info';
+    } else {
+        $bar = 'warning';
+    }
+    return array(
+        'step' => $step,
+        'label' => isset($parts[1]) ? $parts[1] : '',
+        'percent' => $step === 0 ? 100 : (int) ceil(100 / $steps * $step),
+        'bar' => $bar,
+    );
+}
+
+
+/**
+ * How far the examination of a case's devices has come, as the case page shows it: the devices that need work
+ * (step 1 and up) count, removed ones do not. percent is 0 until one has started; all_done is true when every
+ * counted device has reached $steps, which lets the case be closed.
+ */
+function kirjuri_case_progress(PDO $db, $case_id, $steps) {
+    $query = $db->prepare('SELECT device_action FROM exam_requests WHERE parent_id = :case AND id != parent_id AND is_removed != "1"');
+    $query->execute(array(':case' => $case_id));
+    $steps = max(1, (int) $steps);
+    $total = 0;
+    $done = 0;
+    foreach ($query->fetchAll(PDO::FETCH_COLUMN) as $action) {
+        $step = (int) explode('|', (string) $action, 2)[0];
+        if ($step >= 1) {
+            $total += $steps;
+            $done += $step;
+        }
+    }
+    $percent = $done > 0 ? (int) ceil(100 / $total * $done) : 0;
+    if ($percent <= 20) {
+        $bar = 'danger';
+    } elseif ($percent <= 80) {
+        $bar = 'warning';
+    } else {
+        $bar = 'success';
+    }
+    return array('percent' => $percent, 'bar' => $bar, 'started' => $done > 0, 'all_done' => $total === $done);
+}

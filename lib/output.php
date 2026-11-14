@@ -99,3 +99,12 @@ function kirjuri_send_security_headers() {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: same-origin');
 }
+
+
+/** Answer a request made by a page script with JSON, and end it. */
+function kirjuri_send_json(array $data) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode($data);
+    die;
+}
