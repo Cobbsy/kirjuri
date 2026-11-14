@@ -28,23 +28,24 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
 
 ## Open items
 
-- **Translations.** Eleven strings added during the redesign (back_up_database, find_a_string,
-  last_activity, missing_strings, no, no_tools, offline, online, reserve, stalled, yes) have German,
-  Spanish, Finnish and Brazilian Portuguese versions written without a native speaker. The review
-  page is https://claude.ai/artifact/BZc61pGDCQJBw8iPM6TEzP; translators need Contributor access to
-  save. Their answers are in the page's `reviews` collection, one document per `key~LANG`, read with
-  the `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's
-  encoding (see CLAUDE.md).
-  Two more were added with the search improvements, `search_hint` and `search_years`, seventeen
-  with the help page (`help_*` and `licenses_intro`, the user guide itself), one with the tool
-  reservation fixes (`reservation_in_past`) and one with the search limit (`search_limited`) and one with
-  the live device status (`not_saved`) and one with the examiner card (`assign_examiner_hint`); they are
-  not on the review page yet.
+- **Translations.** 34 strings added since the redesign have German, Spanish, Finnish and Brazilian
+  Portuguese versions written without a native speaker: eleven from the redesign, six hints and
+  messages (`search_hint`, `search_years`, `search_limited`, `assign_examiner_hint`, `not_saved`,
+  `reservation_in_past`) and the seventeen strings of the help and licences pages (`help_*` texts and
+  titles, `licenses_intro`). All of them are on the review page,
+  https://claude.ai/artifact/BZc61pGDCQJBw8iPM6TEzP, grouped by where they appear, with the current
+  text of each language file as of November 2026. Translators need Contributor access to save. Their
+  answers are in the page's `reviews` collection, one document per `key~LANG`, read with the
+  `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's encoding
+  (see CLAUDE.md), and add new strings to the page's `GROUPS` list as they are written.
+  Status (14 November 2026): German is confirmed for the eleven redesign strings (all "reads right",
+  16 October), so the files need no change yet. Nothing else has an answer. The help texts quote
+  button and tab names, and each quoted name was checked against the same language file and matches.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
-  so Codex sees everything since #5 in one diff. Codex was asked on it in November 2026 and was again
-  at its limit. When the limit resets, comment `@codex review` on #21 once, fix real findings with
+  so Codex sees everything since #5 in one diff. Codex was asked on it on 13 and 14 November 2026 and was
+  at its limit both times. When the limit resets, comment `@codex review` on #21 once, fix real findings with
   tests in a pull request against master, reply on each thread, then close #21 and delete
   `codex-review-base`.
 - **Findings of our own review (November 2026)** of the same diff, with code-review at high effort.
