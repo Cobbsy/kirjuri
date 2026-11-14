@@ -295,6 +295,28 @@ final class CaseWorkflowTest extends IntegrationTestCase
             'The device menu has a name.');
     }
 
+    public function testFormsWithTextWorthKeepingWarnBeforeLeaving(): void
+    {
+        // Leaving the device page, the notes or a new request with unsaved text lost it without a word. The forms
+        // are marked for kirjuri.js, and the device page's Enter key sends its form through requestSubmit(), which
+        // keeps the submit event; form.submit() skipped it, so the page would have warned about its own save.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Unsaved '));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('Unsaved '));
+        // The notes editors are there once an examiner is assigned.
+        $this->server->pdo()->exec("UPDATE exam_requests SET case_status = '2', forensic_investigator = 'Administrator' WHERE id = $caseId");
+        $device = $admin->get('device_memo.php?uid=' . $deviceId)->body;
+        $this->assertMatchesRegularExpression('/<form class="form-sections"[^>]*type=devicememo[^>]*data-warn-unsaved>/', $device);
+        $this->assertStringNotContainsString('form.submit();', str_replace('requestSubmit() : form.submit();', '', $device));
+        $case = $admin->get('edit_request.php?case=' . $caseId)->body;
+        foreach (array('report_notes', 'examiners_notes') as $notes) {
+            $this->assertMatchesRegularExpression('/action="submit\.php\?type=' . $notes . '" data-warn-unsaved>/', $case, $notes);
+        }
+        $this->assertMatchesRegularExpression('/type=examination_request" data-validate novalidate data-warn-unsaved>/', $admin->get('add_case.php')->body);
+        // The status and location menus save themselves: they are not in a form that warns.
+        $this->assertDoesNotMatchRegularExpression('/data-autosave[^>]*data-warn-unsaved|data-warn-unsaved[^>]*data-autosave/', $device . $case);
+    }
+
     public function testRequestDetailsDialogChecksItsFieldsAndWarnsOfOldConfiscations(): void
     {
         // The request details dialog marked nothing required, two labels pointed at the offence field, and the

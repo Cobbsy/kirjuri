@@ -109,3 +109,63 @@ function kirjuriShowCaseProgress(progress) {
         close.hidden = !progress.all_done;
     }
 }
+
+/* Forms marked data-warn-unsaved hold text worth keeping. Leaving the page while one of them has changes that were
+ * not sent asks first; browsers word that question themselves. A change is typing or choosing in the form, or in a
+ * text editor (TinyMCE) inside it. Sending the form is not leaving it, and clearing it with its reset button
+ * leaves nothing to lose. The status and location menus save on their own and are forms of their own. */
+(function () {
+    function editorsIn(form) {
+        if (!window.tinymce || typeof window.tinymce.get !== 'function') {
+            return [];
+        }
+        return window.tinymce.get().filter(function (editor) {
+            return form.contains(editor.getElement());
+        });
+    }
+
+    function hasUnsavedChanges(form) {
+        return form.hasAttribute('data-changed') || editorsIn(form).some(function (editor) {
+            return editor.isDirty();
+        });
+    }
+
+    function markChanged(event) {
+        var form = event.target.form;
+        if (form && form.hasAttribute('data-warn-unsaved')) {
+            form.setAttribute('data-changed', '');
+        }
+    }
+
+    document.addEventListener('input', markChanged);
+    document.addEventListener('change', markChanged);
+
+    document.addEventListener('reset', function (event) {
+        var form = event.target;
+        if (form.hasAttribute('data-warn-unsaved')) {
+            form.removeAttribute('data-changed');
+            editorsIn(form).forEach(function (editor) {
+                editor.setDirty(false);
+            });
+        }
+    });
+
+    // On window, so that it runs after the data-validate check (on document), which may stop the sending.
+    window.addEventListener('submit', function (event) {
+        if (!event.defaultPrevented && event.target.hasAttribute('data-warn-unsaved')) {
+            event.target.setAttribute('data-sending', '');
+        }
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+        var forms = document.querySelectorAll('form[data-warn-unsaved]:not([data-sending])');
+        for (var i = 0; i < forms.length; i++) {
+            if (hasUnsavedChanges(forms[i])) {
+                event.preventDefault();
+                event.returnValue = ''; // Older browsers ask only when this is set.
+                return '';
+            }
+        }
+        return undefined;
+    });
+})();

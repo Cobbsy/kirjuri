@@ -140,7 +140,9 @@ Working on a case:
   table and two sets of buttons. The request details dialog uses the add request form's field layout and
   required-field check, and its overdue confiscation warning works. On phones the save bar shows its
   other buttons as icons.
-- Warn before leaving a device or notes page with unsaved text, or save drafts automatically.
+- Done (November 2026): leaving the device page, the case's notes or a new request with changes that were not
+  saved asks first (forms marked `data-warn-unsaved`, kirjuri.js; TinyMCE's own change tracking for the
+  editors). Saving drafts automatically is still open, and would also keep text through a lost session.
 - Done (November 2026): the device status and location menus save in the background and say so ("Changes
   saved." or, when refused, "Not saved"), and a status change updates the device's bars, the case's progress
   and its close button in place, so "Reload page" and the progress bar frames (`progress_bar_static.php`)

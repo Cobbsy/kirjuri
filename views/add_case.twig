@@ -38,7 +38,7 @@
             </form>
         </div>
 
-        <form class="form-sections" role="form" method="post" action="submit.php?type=examination_request" data-validate novalidate>
+        <form class="form-sections" role="form" method="post" action="submit.php?type=examination_request" data-validate novalidate data-warn-unsaved>
             <input type="hidden" name="token" value="{{session.user.token}}">
 
             <section class="card form-section">
