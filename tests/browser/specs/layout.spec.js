@@ -1,7 +1,7 @@
 const { test, expect, createCase, startCase, openMenuIfFolded, expectNoSidewaysScroll, findDuplicateIds } = require('./fixtures');
 
 // statistics.php?year=1990 is a year without requests: the empty state.
-const pages = ['index.php', 'add_case.php', 'statistics.php', 'statistics.php?year=1990', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'lang_editor.php', 'log.php', 'help.php', 'licenses.php'];
+const pages = ['index.php', 'add_case.php', 'statistics.php', 'statistics.php?year=1990', 'tools.php', 'users.php', 'messages.php', 'settings.php', 'two_factor.php', 'two_factor.php?setup=1', 'lang_editor.php', 'log.php', 'help.php', 'licenses.php'];
 
 for (const url of pages) {
   test(`${url} renders without errors or sideways scrolling`, async ({ admin: page }) => {

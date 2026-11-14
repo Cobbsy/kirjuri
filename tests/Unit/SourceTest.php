@@ -87,7 +87,8 @@ final class SourceTest extends TestCase
     public function testTemplatePrintsRawOnlyForTrustedValues(string $template): void
     {
         preg_match_all('/\{\{\s*([\w.]+)\s*\|\s*raw\b/', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $matches);
-        $trusted = array('confCrimes'); // conf/crimes_autofill.conf, edited by the administrator.
+        // conf/crimes_autofill.conf, edited by the administrator, and the QR code SVG that Kirjuri draws for two-factor sign-in.
+        $trusted = array('confCrimes', 'setup.qr');
         $this->assertSame(array(), array_values(array_diff($matches[1], $trusted)), 'Use |purify for rich text.');
     }
 

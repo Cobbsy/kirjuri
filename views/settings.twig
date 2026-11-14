@@ -51,6 +51,19 @@
   </div>
 </form>
 
+{% if session.user.id != 1 %}
+<section class="card form-section">
+  <div class="card-header"><i class="fa fa-mobile" aria-hidden="true"></i> {{ lang.two_factor }}</div>
+  <div class="card-body">
+    <p class="two-factor-status">{% if two_factor %}<span class="chip chip-ready"><i class="fa fa-check" aria-hidden="true"></i> {{ lang.two_factor_on }}</span>{% else %}<span class="chip"><i class="fa fa-times" aria-hidden="true"></i> {{ lang.two_factor_off }}</span>{% endif %}</p>
+    <p>{% if two_factor %}{{ lang.two_factor_status_on }}{% else %}{{ lang.two_factor_status_off }}{% endif %}</p>
+  </div>
+  <div class="card-footer">
+    <a class="btn btn-default" href="two_factor.php"><i class="fa fa-mobile" aria-hidden="true"></i> {{ lang.two_factor_manage }}</a>
+  </div>
+</section>
+{% endif %}
+
 {% if session.user.access == "0" %}
 
 {% import _self as fields %}
@@ -71,6 +84,17 @@
           <option value="lang_{{ ccode }}" {% if 'lang_' ~ ccode == settings_contents.settings.lang|replace({'.conf': '', '.JSON': ''}) %}selected{% endif %}>{{ ccode }}</option>
           {% endfor %}
         </select>
+      </div>
+      {% elseif key == "two_factor_required" %}
+      {% set required = value|trim|lower %}
+      <div class="field">
+        <label for="setting_two_factor_required">{{ lang.two_factor_required_setting }}</label>
+        <select class="form-control" id="setting_two_factor_required" name="settings[two_factor_required]" aria-describedby="setting_two_factor_required_hint">
+          <option value="0"{% if required not in ["admins", "everyone"] %} selected{% endif %}>{{ lang.two_factor_required_no }}</option>
+          <option value="admins"{% if required == "admins" %} selected{% endif %}>{{ lang.two_factor_required_admins }}</option>
+          <option value="everyone"{% if required == "everyone" %} selected{% endif %}>{{ lang.two_factor_required_everyone }}</option>
+        </select>
+        <span class="field-hint" id="setting_two_factor_required_hint">{{ lang.two_factor_required_hint }}</span>
       </div>
       {% else %}
       {{ fields.setting_field(key, value, default_settings, false, lang) }}

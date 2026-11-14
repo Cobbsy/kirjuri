@@ -7,6 +7,8 @@ ksess_verify(0);
 $_GET['populate'] = isset($_GET['populate']) ? $_GET['populate'] : '';
 $fields = array();
 
+$two_factor = kirjuri_two_factor_status($kirjuri_database);
+
 $fields['whitelist'] = "";
 $fields['blacklist'] = "";
 
@@ -19,6 +21,7 @@ foreach ($_SESSION['all_users'] as $user) { // Get user information based on GET
         $fields['flags'] = $user['flags'];
         $fields['attr_1'] = $user['attr_1'];
         $fields['attr_3'] = $user['attr_3'];
+        $fields['two_factor'] = isset($two_factor[$user['id']]) ? $two_factor[$user['id']] : null;
         $ip_access_list = json_decode((string) $user['attr_2'], TRUE);
         foreach (get_users_with_credentials() as $user_credentials) {
             if ($user_credentials['id'] === $user['id']) {
@@ -49,5 +52,7 @@ $_SESSION['message_set'] = false;
 echo kirjuri_render('users.twig', array(
         'your_ip' => $_SERVER['REMOTE_ADDR'],
         'referer' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
-        'fields' => $fields
+        'fields' => $fields,
+        'two_factor' => $two_factor,
+        'two_factor_max_wrong' => TWO_FACTOR_MAX_WRONG,
     ));

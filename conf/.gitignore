@@ -1,4 +1,5 @@
 *.local
 mysql_credentials.php
 audit_credentials.php
+two_factor_key.php
 imei.txt

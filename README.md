@@ -8,7 +8,7 @@ As always, I can not guarantee the security of this software, and any users will
 
 # Kirjuri
 
-Kirjuri is a simple php/mysql web application for managing physical forensic evidence items. It is intended to be used as a workflow tool from receiving, booking, note-taking and possibly reporting findings. It simplifies and helps in case management when dealing with a large (or small!) number of devices submitted for forensic analysis. Kirjuri requires PHP 8.1 or newer with the pdo_mysql, mbstring and openssl extensions (and ldap if you use LDAP authentication).
+Kirjuri is a simple php/mysql web application for managing physical forensic evidence items. It is intended to be used as a workflow tool from receiving, booking, note-taking and possibly reporting findings. It simplifies and helps in case management when dealing with a large (or small!) number of devices submitted for forensic analysis. Kirjuri requires PHP 8.1 or newer with the pdo_mysql, mbstring, openssl and iconv extensions (and ldap if you use LDAP authentication).
 
 The `conf/`, `logs/` and `cache/` folders hold credentials, audit logs and session data, and `attachments/` holds case attachments stored by old versions. They ship with `.htaccess` files that deny web access on Apache. On other web servers, deny access to them in the server configuration, for example on nginx: `location ~ ^/(conf|logs|cache|attachments)/ { deny all; }`
 
@@ -42,13 +42,16 @@ php bin/kirjuri migrate [--status]          # apply or list database migrations
 php bin/kirjuri user:list
 php bin/kirjuri user:create <username> <name> <access 0-3> [--api]   # password from stdin
 php bin/kirjuri user:password <username>    # reset a password (e.g. a locked out admin) from stdin
-php bin/kirjuri user:unlock <username>      # clear the failed login counter
+php bin/kirjuri user:unlock <username>      # clear the failed login counter and wrong two-factor codes
 php bin/kirjuri user:unlock --ip <address>  # clear the failed login counter of an IP address
+php bin/kirjuri user:two-factor-reset <username>   # turn off two-factor sign-in (a lost phone)
 php bin/kirjuri errors [--id <id>] [--last <n>]
 php bin/kirjuri log [--case <uid>] [--last <n>]
 php bin/kirjuri audit:show <audit file>     # decrypt an audit log entry
 php bin/kirjuri cache:clear
 ```
+
+Two-factor sign-in (an authenticator app such as Google Authenticator, Microsoft Authenticator, FreeOTP or Aegis) is turned on by each user from the menu, or required for administrators or everyone with the `two_factor_required` setting. The app secrets are encrypted with the key in `conf/two_factor_key.php`, created when the first user sets it up: back it up with the database, as without it the apps stop working (recovery codes still sign in). An administrator who has lost both phone and recovery codes runs `user:two-factor-reset`. Codes depend on the server's clock, which `doctor` shows in UTC.
 
 When a page fails, Kirjuri shows a reference like `3f9a1c0b77de`, which is also sent in the `X-Request-Id` header. `php bin/kirjuri errors --id 3f9a1c0b77de` prints the full error and stack trace from `logs/error.log`.
 

@@ -197,6 +197,9 @@
           {% if session.user.username %}
           <div class="sidebar-user">{{ session.user.name }}</div>
           <ul class="nav nav-sidebar">
+            {% if session.user.id != 1 %}
+            <li{% if "two_factor.php" in settings.self %} class="active"{% endif %}><a href="two_factor.php"><i class="fa fa-mobile"></i> {{ lang.two_factor }}</a></li>
+            {% endif %}
             <li><a href="submit.php?type=logout" data-post><i class="fa fa-sign-out"></i> {{ lang.log_out }}</a></li>
           </ul>
           {% else %}

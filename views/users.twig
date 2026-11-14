@@ -43,6 +43,7 @@
       <th>{{ lang.name|capitalize }}</th>
       <th>{{ lang.access_level|capitalize }}</th>
       <th class="text-center">LDAP</th>
+      <th class="text-center"><abbr title="{{ lang.two_factor }}">{{ lang.two_factor_short }}</abbr></th>
       <th class="text-center">{{ lang.forensic_examiner_long|capitalize }}</th>
       <th class="text-center">{{ lang.mobile_examiner_long|capitalize }}</th>
       <th class="text-center">{{ lang.api_access|capitalize }}</th>
@@ -59,6 +60,7 @@
       <td>{{ user.name }}</td>
       <td>{% if user.access == 0 %}{{ lang.level_admin }}{% elseif user.access == 1 %}{{ lang.level_user }}{% elseif user.access == 2 %}{{ lang.level_viewonly }}{% elseif user.access == 3 %}{{ lang.level_addonly }}{% else %}???{% endif %}</td>
       <td class="text-center">{% if user.attr_3 == "LDAP_AUTH_ONLY" %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove icon-off"></i>{% endif %}</td>
+      <td class="text-center">{% if two_factor[user.id] is not defined %}<i class="fa fa-remove icon-off"></i>{% elseif two_factor[user.id].wrong_codes >= two_factor_max_wrong %}<i class="fa fa-lock text-danger" aria-hidden="true"></i><span class="sr-only">{{ lang.two_factor_blocked_short }}</span>{% else %}<i class="fa fa-check text-success"></i>{% endif %}</td>
       <td class="text-center">{% if 'F' in user.flags == true %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove icon-off"></i>{% endif %}</td>
       <td class="text-center">{% if 'M' in user.flags == true %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove icon-off"></i>{% endif %}</td>
       <td class="text-center">{% if 'A' in user.flags == true %}<i class="fa fa-check text-success"></i>{% else %}<i class="fa fa-remove icon-off"></i>{% endif %}</td>
