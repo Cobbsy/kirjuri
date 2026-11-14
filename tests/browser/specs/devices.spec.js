@@ -63,7 +63,7 @@ test('devices can be added, have their status changed and be edited', async ({ a
 
 test('the request details dialog checks its required fields before saving', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Details test ' + Date.now());
-  await startCase(page, caseId); // A new request opens with the examiner dialog.
+  await startCase(page, caseId);
   await page.goto(`edit_request.php?case=${caseId}`);
   await page.click('button[data-target="#perustiedot"]');
   const dialog = page.locator('#perustiedot');
@@ -82,4 +82,20 @@ test('the request details dialog checks its required fields before saving', asyn
   await page.click('button[data-target="#perustiedot"]');
   await expect(page.locator('#perustiedot #case_crime')).toHaveValue('Burglary');
   await expectNoSidewaysScroll(page);
+});
+
+test('a new request asks for its examiner in a card, without a dialog over the page', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Assign test ' + Date.now());
+  await page.goto(`edit_request.php?case=${caseId}`);
+  const card = page.locator('.assign-card');
+  await expect(card).toBeVisible();
+  await expect(page.locator('.modal.in')).toHaveCount(0); // The page can be used at once.
+  await expect(page.locator('h1.case-title')).toBeVisible();
+  expect(await findDuplicateIds(page)).toEqual([]);
+  await expectNoSidewaysScroll(page);
+
+  await card.locator('#assign_forensic_investigator').selectOption('-');
+  await card.locator('button[type="submit"]').click();
+  await expect(page.locator('.chip-open')).toBeVisible();
+  await expect(page.locator('.assign-card')).toHaveCount(0);
 });

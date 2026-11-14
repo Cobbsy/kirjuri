@@ -24,6 +24,7 @@
     "api_key": "API key",
     "archive_message": "Archive message",
     "archived": "Archived",
+    "assign_examiner_hint": "Choose who examines this request. Starting the investigation marks the request received and open.",
     "associate_with_device": "Associate with device...",
     "associated_devices": "Associated devices",
     "associated_with_device": "Associated with device",

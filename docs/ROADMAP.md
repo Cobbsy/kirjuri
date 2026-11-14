@@ -38,7 +38,8 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   Two more were added with the search improvements, `search_hint` and `search_years`, seventeen
   with the help page (`help_*` and `licenses_intro`, the user guide itself), one with the tool
   reservation fixes (`reservation_in_past`) and one with the search limit (`search_limited`) and one with
-  the live device status (`not_saved`); they are not on the review page yet.
+  the live device status (`not_saved`) and one with the examiner card (`assign_examiner_hint`); they are
+  not on the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
@@ -147,8 +148,10 @@ Working on a case:
   saved." or, when refused, "Not saved"), and a status change updates the device's bars, the case's progress
   and its close button in place, so "Reload page" and the progress bar frames (`progress_bar_static.php`)
   are gone. The menus are one partial, `device_controls.twig`, on the case and device pages.
-- A new request opens with a dialog that must be answered or closed every time until an examiner is
-  assigned. Show it as a card on the page instead.
+- Done (November 2026): a new request asks for its examiners in a card under its title instead of a dialog
+  that opened every time, and the card saves only the examiners (`assign_examiners`), where the dialog wrote
+  the whole request back from hidden copies of its fields. The old dialog's `pick_examiner` string is no
+  longer used.
 - Attachments: drag and drop, a progress bar, and the size limit shown before choosing a file.
 - The case log opens in a new tab without Kirjuri's menu; make it a tab of the case. Its zoom and move
   buttons have no names for screen readers (needs new language strings).

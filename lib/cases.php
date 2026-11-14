@@ -188,6 +188,35 @@ function kirjuri_update_case(PDO $db, $case_id, array $fields) {
 
 
 /**
+ * The status a case gets when its examiners are saved: open once it has a forensic examiner (or "-", mobile
+ * examination only), new without one. A finished case stays finished: it is reopened with its own button.
+ */
+function kirjuri_status_for_examiners($current_status, $forensic_investigator) {
+    if ((string) $current_status === '3') {
+        return '3';
+    }
+    return ((string) $forensic_investigator !== '') ? '2' : '1';
+}
+
+
+/**
+ * Assign the examiners of a case and leave the rest of the request as it is, which the assign card on a new
+ * request's page needs: it may have been open while someone else edited the details. Returns false for no case.
+ */
+function kirjuri_assign_examiners(PDO $db, $case_id, $forensic_investigator, $phone_investigator) {
+    $case = kirjuri_find_case($db, $case_id, false);
+    if ($case === null) {
+        return false;
+    }
+    $case['forensic_investigator'] = $forensic_investigator;
+    $case['phone_investigator'] = $phone_investigator;
+    $case['case_status'] = kirjuri_status_for_examiners($case['case_status'], $forensic_investigator);
+    kirjuri_update_case($db, $case_id, $case);
+    return true;
+}
+
+
+/**
  * Give the devices of a case the status of the case. Device rows carry their case's status, which the CSV
  * export and KRF files hold, so every change of a case's status or of a device's case goes through here or
  * through kirjuri_set_case_status(), which sets both in one statement.

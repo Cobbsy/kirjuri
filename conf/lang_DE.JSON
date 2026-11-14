@@ -24,6 +24,7 @@
     "api_key": "API Schl\u00fcssel",
     "archive_message": "Nachricht archivieren",
     "archived": "Archiviert",
+    "assign_examiner_hint": "W\u00e4hlen Sie, wer diesen Auftrag bearbeitet. Mit dem Start der Ermittlung wird der Auftrag als eingegangen und offen markiert.",
     "associate_with_device": "Verkn\u00fcpfe mit Ger\u00e4t ...",
     "associated_devices": "dazugeh\u00f6rige Ger\u00e4te",
     "associated_with_device": "Verkn\u00fcpft mit Ger\u00e4t",

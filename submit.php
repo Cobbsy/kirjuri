@@ -72,6 +72,7 @@ $actions = array(
     'case_access' => 'cases',
     'examination_request' => 'cases',
     'case_update' => 'cases',
+    'assign_examiners' => 'cases',
     'report_notes' => 'cases',
     'examiners_notes' => 'cases',
     'set_removed_case' => 'cases',
