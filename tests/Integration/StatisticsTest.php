@@ -100,6 +100,9 @@ final class StatisticsTest extends IntegrationTestCase
             VALUES (0, 0, 'Month end', 2, 0, 5, '2013-03-02 12:00:00')");
         $caseId = (int) $pdo->lastInsertId();
         $pdo->exec("UPDATE exam_requests SET parent_id = id WHERE id = $caseId");
+        for ($i = 0; $i < 5; $i++) {
+            $pdo->exec("INSERT INTO exam_requests (parent_id, is_removed, device_type, case_added_date) VALUES ($caseId, 0, 'Phone', '2013-03-02 12:00:00')");
+        }
         try {
             $page = $this->admin()->get('statistics.php?year=2013');
             $this->assertSame(200, $page->status);
@@ -108,7 +111,36 @@ final class StatisticsTest extends IntegrationTestCase
             $this->assertStringContainsString('data: [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]', $page->body);
             $this->assertStringNotContainsString('data: [0, 5, 5,', $page->body);
         } finally {
-            $pdo->exec("DELETE FROM exam_requests WHERE id = $caseId");
+            $pdo->exec("DELETE FROM exam_requests WHERE parent_id = $caseId");
+        }
+    }
+
+    public function testDeviceMonthsAddUpToTheYearsTotal(): void
+    {
+        // The monthly device counts summed the device counts of the requests added that month, while the total
+        // counted the devices added in the year: a device added in May to a March request counted in March, and
+        // one added in January to last December's request in neither year's months. A year with requests but no
+        // devices printed no cells at all, and its charts got no data.
+        $pdo = $this->server->pdo();
+        $pdo->exec("INSERT INTO exam_requests (parent_id, case_id, case_name, case_status, is_removed, case_devicecount, case_added_date)
+            VALUES (0, 0, 'Device months', 2, 0, 1, '2011-03-10 12:00:00'), (0, 0, 'No devices', 2, 0, 0, '2012-04-10 12:00:00')");
+        $pdo->exec("UPDATE exam_requests SET parent_id = id WHERE parent_id = 0 AND case_name IN ('Device months', 'No devices')");
+        $caseId = (int) $pdo->query("SELECT id FROM exam_requests WHERE case_name = 'Device months'")->fetchColumn();
+        $empty = (int) $pdo->query("SELECT id FROM exam_requests WHERE case_name = 'No devices'")->fetchColumn();
+        $pdo->exec("INSERT INTO exam_requests (parent_id, is_removed, device_type, device_size_in_gb, case_added_date) VALUES ($caseId, 0, 'Phone', 64, '2011-05-20 12:00:00')");
+        try {
+            $statistics = kirjuri_statistics($pdo, 2011, array('Unit 1'));
+            $this->assertSame(array(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0), $statistics['devices_per_month']);
+            $this->assertSame($statistics['device_count'], array_sum($statistics['devices_per_month']));
+            $this->assertSame(64, $statistics['gb_per_month'][4]);
+            $page = $this->admin()->get('statistics.php?year=2011')->body;
+            $this->assertStringContainsString('data: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, ]', $page, 'The device is in May, when it was added.');
+
+            $none = $this->admin()->get('statistics.php?year=2012')->body;
+            $this->assertStringContainsString('data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ]', $none, 'Twelve months of no devices.');
+            $this->assertInlineScriptsParse($none, 'statistics.php?year=2012');
+        } finally {
+            $pdo->exec("DELETE FROM exam_requests WHERE parent_id IN ($caseId, $empty)");
         }
     }
 

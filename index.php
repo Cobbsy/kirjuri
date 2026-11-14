@@ -10,6 +10,7 @@ $sort_j = isset($_GET['j']) ? $_GET['j'] : '';
 $sort_d = isset($_GET['d']) ? $_GET['d'] : '';
 $sort_s = isset($_GET['s']) && is_string($_GET['s']) && isset(KIRJURI_STATUS_FILTERS[$_GET['s']]) ? $_GET['s'] : '';
 $search_term = '';
+$search_limited = false;
 
 if (empty($_GET['year'])) {
     $year = date('Y'); // Use current year if none specified
@@ -39,7 +40,10 @@ if (isset($_GET['search']) && (!empty($_GET['search']))) {
         die;
     }
     // Searches cover every year. The year stays in the address, so removing the search returns to it.
-    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $sort_j, $ascending);
+    // One row more than is shown tells whether there were more.
+    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $sort_j, $ascending, KIRJURI_SEARCH_LIMIT + 1);
+    $search_limited = count($row_cases) > KIRJURI_SEARCH_LIMIT;
+    $row_cases = array_slice($row_cases, 0, KIRJURI_SEARCH_LIMIT);
 }
 else {
     $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending);
@@ -96,5 +100,7 @@ echo kirjuri_render('index.twig', array(
         'row_cases' => $row_cases,
         'status_counts' => $status_counts,
         'search_years' => ($search_term !== '') ? kirjuri_rows_per_year($row_cases, $cases_of_devices) : array(),
+        'search_limited' => $search_limited,
+        'search_limit' => KIRJURI_SEARCH_LIMIT,
         'row_devices' => $row_devices
     ));

@@ -302,6 +302,25 @@ final class AccessControlTest extends IntegrationTestCase
             ));
     }
 
+    public function testRenamedExaminersKeepTheirCases(): void
+    {
+        // Cases name their examiners by display name. A rename is carried into the cases, so "assigned to me"
+        // still finds them, in a session that was open before the rename too.
+        $username = $this->uniqueName('examiner');
+        $this->createUser($username, 'password1', 1);
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Assigned '));
+        $name = $this->server->pdo()->query("SELECT name FROM users WHERE username = '$username'")->fetchColumn();
+        $this->server->pdo()->prepare('UPDATE exam_requests SET case_status = "2", forensic_investigator = :name WHERE id = :id')
+            ->execute(array(':name' => $name, ':id' => $caseId));
+        $examiner = $this->login($username, 'password1');
+        $this->assertStringContainsString('edit_request.php?case=' . $caseId . '"', $examiner->get('index.php?s=4')->body);
+
+        $this->saveUser($admin, $username, array('name' => 'Renamed Examiner'));
+        $this->assertSame('Renamed Examiner', $this->row($caseId)['forensic_investigator']);
+        $this->assertStringContainsString('edit_request.php?case=' . $caseId . '"', $examiner->get('index.php?s=4')->body);
+    }
+
     public function testIpListsAreValidated(): void
     {
         $username = $this->uniqueName('iplist');

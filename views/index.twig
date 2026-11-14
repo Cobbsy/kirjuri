@@ -28,6 +28,7 @@
 {% if search_term %}
 <div class="search-summary">
   {% if search_years %}<p>{{ lang.search_years }}: {% for search_year, found in search_years %}<b>{{ search_year }}</b> ({{ found }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  {% if search_limited %}<p class="text-warning"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> {{ lang.search_limited|format(search_limit) }}</p>{% endif %}
   <p class="field-hint" id="search_hint">{{ lang.search_hint }}</p>
 </div>
 {% endif %}

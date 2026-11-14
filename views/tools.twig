@@ -241,7 +241,7 @@
                             center: 'title',
                             right: 'month,agendaWeek,agendaDay,listWeek'
                         },
-                        defaultDate: '{{ "now"|date("Y-m-d") }}',
+                        defaultDate: '{{ "now"|date("Y-m-d")|e('js') }}',
                         navLinks: true, // can click day/week names to navigate views
                         editable: false,
                         eventLimit: true, // allow "more" link when too many events
@@ -253,7 +253,7 @@
                                         {% for res_key, entry in res_value %}
                                             {
                                                 title: '{{ tool.product_name|e('js') }}: {{ entry.comment|e('js') }} ({{ entry.name|e('js') }})',
-                                                url: 'tools.php?populate={{ tool.id }}&highlight={{ res_key }}',
+                                                url: 'tools.php?populate={{ tool.id|e('js') }}&highlight={{ res_key|e('js') }}',
                                                 start: '{{ entry.reserve_start|e('js') }}',
                                                 end: '{{ entry.reserve_end|e('js') }}',
                                                 color: '{{ evcolor|e('js') }}'

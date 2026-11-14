@@ -77,6 +77,20 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
         $device_count_by_unit[$unit] = isset($by_unit[$i]) ? (int) $by_unit[$i]['devices'] : 0;
     }
 
+    // Devices and their data by the month each device was added, as the device tables count them, so that the
+    // months add up to the year's total. The request's month would put a device added later in the wrong month,
+    // and the wrong year.
+    $devices_per_month = array_fill(0, 12, 0);
+    $gb_per_month = array_fill(0, 12, 0);
+    foreach ($all_devices as $device) {
+        $added = strtotime((string) $device['case_added_date']);
+        if ($added !== false) {
+            $month = (int) date('n', $added) - 1;
+            $devices_per_month[$month]++;
+            $gb_per_month[$month] += (int) $device['device_size_in_gb'];
+        }
+    }
+
     $sizes = array_filter(array_column($all_devices, 'device_size_in_gb'), function ($size) {
         return $size !== null;
     });
@@ -84,6 +98,8 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
         'all_cases' => $all_cases,
         'all_devices' => $all_devices,
         'device_count' => count($all_devices),
+        'devices_per_month' => $devices_per_month,
+        'gb_per_month' => $gb_per_month,
         'count_total' => $count_total,
         'count_new' => $statuses['1'],
         'count_open' => $statuses['2'],

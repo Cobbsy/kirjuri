@@ -375,6 +375,7 @@
     "save_notes": "Tallenna muistiinpanot",
     "search_found_device": "Hakusanalla l\u00f6ytyi laite",
     "search_hint": "Hakee kaikilta vuosilta. Sana l\u00f6yt\u00e4\u00e4 my\u00f6s pidemm\u00e4t sanat, jotka alkavat sill\u00e4. Laita lause lainausmerkkeihin, niin se haetaan sellaisenaan, ja miinusmerkki sanan eteen, niin se j\u00e4tet\u00e4\u00e4n pois.",
+    "search_limited": "Vain %d ensimm\u00e4ist\u00e4 osumaa n\u00e4ytet\u00e4\u00e4n. Tarkenna hakua lis\u00e4\u00e4m\u00e4ll\u00e4 sana.",
     "search_reqs_and_devs": "Hae pyynn\u00f6ist\u00e4 ja laitteista...",
     "search_years": "L\u00f6ytyi vuosilta",
     "searching_with": "Haetaan hakusanalla",

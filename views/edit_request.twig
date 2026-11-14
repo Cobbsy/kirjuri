@@ -713,7 +713,7 @@ $(function() {
         {% endif %}
         </small>
       </h4>
-      <a href="submit.php?type=device_detach&uid={{ entry.id }}&returnid={{ entry.parent_id }}" data-post onclick="return confirm('{{ lang.remove_association_warning }}')"><i class="fa fa-unlink"></i> {{ lang.remove_association }}</a>
+      <a href="submit.php?type=device_detach&uid={{ entry.id }}&returnid={{ entry.parent_id }}" data-post data-ct="{{ ct }}" onclick="return confirm('{{ lang.remove_association_warning }}')"><i class="fa fa-unlink"></i> {{ lang.remove_association }}</a>
     </td>
     <td class="device-info">
       {% if hosting_dev_owner != entry.device_owner %}<span class="text-danger"><i class="fa fa-user"></i> {{ entry.device_owner }} {{ lang.different_owner }}</span><br>{% endif %}

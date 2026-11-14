@@ -448,17 +448,21 @@ function kirjuri_fulltext_query($search, $word_beginnings = false) {
 }
 
 
+/** How many rows the front page search shows at most. It covers every year, and a short word finds many. */
+const KIRJURI_SEARCH_LIMIT = 500;
+
+
 /**
  * Full text search over the cases and devices of every year, for the front page: a word also finds words
  * that start with it (see kirjuri_fulltext_query()). Devices of a removed case are left out with it: removing
  * a case marks the case row only. Access groups are not checked here; the caller leaves out what the user may
- * not open.
+ * not open. At most $limit rows, in the list's order.
  */
-function kirjuri_search_cases(PDO $db, $term, $sort, $ascending) {
+function kirjuri_search_cases(PDO $db, $term, $sort, $ascending, $limit = KIRJURI_SEARCH_LIMIT) {
     $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"
         AND parent_id IN (SELECT id FROM exam_requests WHERE id = parent_id AND is_removed = "0")
         AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
-        ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
+        ORDER BY ' . kirjuri_case_list_order($sort, $ascending) . ', id LIMIT ' . max(1, (int) $limit));
     $term = kirjuri_fulltext_query($term, true);
     if ($term === '') {
         return array(); // Only operators or punctuation: nothing to look for, and MATCH would match nothing anyway.

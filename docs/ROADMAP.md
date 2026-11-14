@@ -36,8 +36,9 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   the `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's
   encoding (see CLAUDE.md).
   Two more were added with the search improvements, `search_hint` and `search_years`, seventeen
-  with the help page (`help_*` and `licenses_intro`, the user guide itself), and one with the tool
-  reservation fixes (`reservation_in_past`); they are not on the review page yet.
+  with the help page (`help_*` and `licenses_intro`, the user guide itself), one with the tool
+  reservation fixes (`reservation_in_past`) and one with the search limit (`search_limited`); they are
+  not on the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
@@ -50,17 +51,12 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   and the counts leave them out (a match told an outsider what a case's notes or suspect held, prefix
   by prefix); the year list shows such cases without their name, suspect, file number, investigator,
   urgency justification or links, and sorting by a hidden column puts them last; devices of a removed
-  request are no longer found, on the front page or through the API. Still open, most valuable first:
-  - Changing a device's status or location, attaching or detaching it leaves the case's
-    `last_updated` alone, so a case worked on only through its devices is marked stalled.
-  - Searches cover every year with no limit: a short prefix on a large installation renders every
-    row. Page the results, or cap them with a note.
-  - `log.php` reads the whole event log into memory to show its last 2,000 lines; read from the end.
-  - `statistics.twig` writes device types into inline scripts without `|e('js')`: a custom language
-    with a quote or a bracket in a device type breaks the page.
-  - "Assigned to me" matches examiners by display name, so renaming a user drops their cases from it.
-  - The monthly device counts in statistics sum the year's requests' devices while the total counts
-    devices added in the year, so they do not add up (older than #6).
+  request are no longer found, on the front page or through the API. Also done (November 2026): work on a
+  device keeps its case from being marked stalled, detaching a device checks the case token, search shows
+  at most 500 rows with a note, the event log is read from its end, statistics count devices by the month
+  they were added (so the months add up) and give inline scripts only numbered ids, and the users page
+  loads the status of usernames with dots. One finding was wrong: "assigned to me" does follow a rename,
+  as renaming a user renames them in the cases (`kirjuri_rename_examiner`); a test now covers it.
 
 ## Testing stage plan
 
