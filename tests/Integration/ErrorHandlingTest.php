@@ -78,7 +78,7 @@ final class ErrorHandlingTest extends IntegrationTestCase
         }
     }
 
-    public function testAdminsSeeTheErrorWhenShowErrorsIsOn(): void
+    public function testAdminsSeeTheErrorOnlyWhenShowErrorsIsOn(): void
     {
         $this->expectLoggedError('Uncaught PDOException');
         $this->expectLoggedError('Base table or view not found');
@@ -86,7 +86,21 @@ final class ErrorHandlingTest extends IntegrationTestCase
         $this->withBrokenDatabase(function () use ($admin) {
             $response = $admin->get('index.php');
             $this->assertSame(500, $response->status);
-            $this->assertStringContainsString('PDOException', $response->body);
+            $this->assertStringNotContainsString('PDOException', $response->body, 'show_errors ships off.');
         });
+
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
+            'settings' => array('show_errors' => '1') + $defaults['settings'],
+            'inv_units' => implode(', ', $defaults['inv_units'])));
+        try {
+            $this->withBrokenDatabase(function () use ($admin) {
+                $response = $admin->get('index.php');
+                $this->assertSame(500, $response->status);
+                $this->assertStringContainsString('PDOException', $response->body);
+            });
+        } finally {
+            $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
+        }
     }
 }

@@ -26,7 +26,7 @@ RUNNING WITH DOCKER
 
 `docker compose up` starts Kirjuri with MariaDB at http://localhost:8080 (set `KIRJURI_PORT` for another port). It installs itself on the first start; log in as `admin` with the `KIRJURI_ADMIN_PASSWORD` from `docker-compose.yml`. The source folder is mounted into the container, so edits show up on reload, and pending migrations are applied on every start.
 
-The compose file is meant for development and testing: change the passwords, turn off `show_errors` and put a TLS proxy in front before using it for real data. `docker/smoke-test.sh` checks a running container, and CI runs it on every pull request.
+The compose file is meant for development and testing: change the passwords and put a TLS proxy in front before using it for real data. `show_errors` is off by default; turn it on in the settings only while debugging. `docker/smoke-test.sh` checks a running container, and CI runs it on every pull request.
 
 Without Docker, `php bin/kirjuri install` installs from a shell, reading `KIRJURI_DB_HOST`, `KIRJURI_DB_NAME`, `KIRJURI_DB_USER`, `KIRJURI_DB_PASSWORD` and `KIRJURI_ADMIN_PASSWORD` from the environment.
 

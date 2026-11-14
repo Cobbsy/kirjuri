@@ -502,7 +502,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $admin = $this->admin();
         $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
         $settings = $defaults['settings'];
-        $settings['title_text'] = "Kirjuri \"test\"\nshow_errors = \"0\"";
+        $settings['title_text'] = "Kirjuri \"test\"\nshow_errors = \"1\"";
         $response = $admin->post('submit.php?type=save_settings', array(
                 'token' => $this->token($admin),
                 'settings' => $settings,
@@ -511,8 +511,8 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame('settings.php', $response->location());
 
         $saved = parse_ini_file($this->server->dir . '/conf/settings.local', true);
-        $this->assertSame("Kirjuri 'test' show_errors = '0'", $saved['settings']['title_text']);
-        $this->assertSame('1', $saved['settings']['show_errors']);
+        $this->assertSame("Kirjuri 'test' show_errors = '1'", $saved['settings']['title_text']);
+        $this->assertSame('0', $saved['settings']['show_errors']);
         $this->assertStringContainsString("<title>Settings - Kirjuri &#039;test&#039;", $admin->get('settings.php')->body);
 
         // Put the defaults back for the other tests.
