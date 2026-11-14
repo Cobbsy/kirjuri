@@ -44,19 +44,27 @@ if (isset($_GET['search']) && (!empty($_GET['search']))) {
 else {
     $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending);
 }
-$stalled_before = strtotime((string) ($prefs['settings']['stalled_case'] ?? ''));
-$cases_of_devices = kirjuri_cases_of_devices($kirjuri_database, $row_cases);
-list($row_cases, $status_counts) = kirjuri_filter_case_list($row_cases, $sort_s, $_SESSION['user']['name'] ?? '', $stalled_before === false ? null : $stalled_before,
-    $cases_of_devices);
 $case_owners = array();
 foreach ($row_cases as $key => $case) {
-    // The template hides details of cases the user may not open. Search results can include
-    // devices, which take the access group of their case.
+    // Search results can include devices, which take the access group of their case.
     if (!array_key_exists($case['parent_id'], $case_owners)) {
         $case_owners[$case['parent_id']] = ($case['id'] === $case['parent_id']) ? $case['case_owner'] : kirjuri_case_owner_of($kirjuri_database, $case['id']);
     }
     $row_cases[$key]['can_access'] = kirjuri_user_can_access_case($_SESSION['user'], $case_owners[$case['parent_id']]);
 }
+if ($search_term !== '') {
+    // A match says what a case holds, its notes included, so search results and their counts leave out cases and
+    // devices the user may not open. The year list shows such cases, without their details (see index.twig).
+    $row_cases = array_values(array_filter($row_cases, function ($row) {
+        return $row['can_access'];
+    }));
+} else {
+    $row_cases = kirjuri_order_restricted_cases($row_cases, $sort_j);
+}
+$stalled_before = strtotime((string) ($prefs['settings']['stalled_case'] ?? ''));
+$cases_of_devices = kirjuri_cases_of_devices($kirjuri_database, $row_cases);
+list($row_cases, $status_counts) = kirjuri_filter_case_list($row_cases, $sort_s, $_SESSION['user']['name'] ?? '', $stalled_before === false ? null : $stalled_before,
+    $cases_of_devices);
 
 $row_devices = ($search_term !== '')
     ? kirjuri_device_actions_for_cases($kirjuri_database, array_column($row_cases, 'parent_id'))
@@ -87,7 +95,6 @@ echo kirjuri_render('index.twig', array(
         'dateStart' => $dateRange['start'],
         'row_cases' => $row_cases,
         'status_counts' => $status_counts,
-        // Devices of cases the user may not open are left out of the results, so they are not counted either.
-        'search_years' => ($search_term !== '') ? kirjuri_rows_per_year(array_filter($row_cases, fn ($row) => $row['can_access'] || $row['id'] === $row['parent_id']), $cases_of_devices) : array(),
+        'search_years' => ($search_term !== '') ? kirjuri_rows_per_year($row_cases, $cases_of_devices) : array(),
         'row_devices' => $row_devices
     ));

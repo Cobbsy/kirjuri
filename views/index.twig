@@ -182,11 +182,14 @@
       {% set ready_counter = "0" %}
       {% for entry in row_cases %}
       {% if (entry.id == entry.parent_id) and (entry.is_removed == "0") %}
+      {# A case the user may not open shows only what the lab's workload needs: its number, status, examiners, dates
+         and counts. Its name (or suspect), file number, investigator and urgency justification stay hidden, and
+         nothing links into it. Searches leave such cases out altogether (index.php). #}
       {% set counter = counter + 1 %}
       {% if entry.standing == "new" %}{% set new_counter = new_counter + 1 %}{% elseif entry.standing in ["open", "mine"] %}{% set open_counter = open_counter + 1 %}{% elseif entry.standing == "ready" %}{% set ready_counter = ready_counter + 1 %}{% endif %}
       <tr class="{{ {new: 'danger', mine: 'info', open: 'warning', ready: 'default'}[entry.standing] ?? '' }}">
       {% if show_columns.case_no != "hide" %}
-      <td style="width:1%;white-space:nowrap;"><a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{{ entry.case_id }}/{{ entry.case_added_date|date("y") }}</a></td>
+      <td style="width:1%;white-space:nowrap;">{% if entry.can_access %}<a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{{ entry.case_id }}/{{ entry.case_added_date|date("y") }}</a>{% else %}<b>{{ entry.case_id }}/{{ entry.case_added_date|date("y") }}</b>{% endif %}</td>
       {% endif %}
 
       {% if show_columns.case_name != "hide" %}
@@ -203,14 +206,18 @@
         {% endif %}
         {% endfor %}
         {% if has_new == true %}<span class="label label-danger pull-right">{{ newcount }}</span>{% endif %}
-        {% if (entry.case_urgency == "1") and ( entry.case_status <= "2") %}<i title="{{ entry.case_urg_justification}} " class="fa fa-bolt text-danger"></i>&nbsp;{% endif %}
+        {% if (entry.case_urgency == "1") and ( entry.case_status <= "2") %}<i{% if entry.can_access %} title="{{ entry.case_urg_justification}} "{% endif %} class="fa fa-bolt text-danger"></i>&nbsp;{% endif %}
+        {% if entry.can_access %}
         <a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{% if entry.case_name %}{{ entry.case_name }}{% elseif entry.case_suspect %}{{ lang.suspect_abbrev }} {{ entry.case_suspect }}{% else %}{{ lang.suspect_short }}{% endif %}</a>
+        {% else %}
+        <span class="text-faint" title="{{ lang.not_in_access_group }}"><i class="fa fa-lock" aria-hidden="true"></i><span class="sr-only">{{ lang.not_in_access_group }}</span></span>
+        {% endif %}
         {% if entry.stalled %}<span class="stalled-pill" title="{{ lang.latest_update|capitalize }} {{ entry.last_updated|date("d.m.Y") }}"><i class="fa fa-moon-o" aria-hidden="true"></i> {{ lang.stalled }} <span class="stalled-since">{{ entry.last_updated|date("d.m.Y") }}</span></span>{% endif %}
       </td>
       {% endif %}
 
       {% if show_columns.report_no != "hide" %}
-      <td style="width:1%;white-space:nowrap;"><a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{{ entry.case_file_number }}</a>
+      <td style="width:1%;white-space:nowrap;">{% if entry.can_access %}<a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{{ entry.case_file_number }}</a>{% else %}<span class="text-faint">-</span>{% endif %}
         {% if (settings.notify_after_4_months == "1") and (entry.case_confiscation_date != "0000-00-00") %}
           {% if (entry.case_confiscation_date|date("U") < ("-3 months"|date("U"))) %}
         &nbsp;<i class="fa fa-calendar-times-o text-warning"></i>
@@ -230,7 +237,7 @@
       {% endif %}
 
       {% if show_columns.investigator != "hide" %}
-      <td><a href="index.php?search={{ entry.case_investigator|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_investigator|length > 20 ? entry.case_investigator|slice(0, 20) ~ '...' : entry.case_investigator }}</a> </td>
+      <td>{% if entry.can_access %}<a href="index.php?search={{ entry.case_investigator|url_encode }}&year={{ entry.case_added_date|date("Y") }}">{{ entry.case_investigator|length > 20 ? entry.case_investigator|slice(0, 20) ~ '...' : entry.case_investigator }}</a>{% else %}<span class="text-faint">-</span>{% endif %}</td>
       {% endif %}
 
       {% if show_columns.forensic_examiner != "hide" %}
