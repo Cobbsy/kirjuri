@@ -24,6 +24,7 @@
     "api_key": "API-avain",
     "archive_message": "Arkistoi viesti",
     "archived": "Arkistoidut",
+    "assign_examiner_hint": "Valitse pyynn\u00f6n tutkija. Tutkinnan aloittaminen merkitsee pyynn\u00f6n vastaanotetuksi ja avoimeksi.",
     "associate_with_device": "Liit\u00e4 laitteeseen...",
     "associated_devices": "Liitetyt laitteet",
     "associated_with_device": "Liitetty laitteeseen",

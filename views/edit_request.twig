@@ -78,78 +78,6 @@ $(function() {
     <!-- Tab panes -->
     <div class="tab-content">
       <div role="tabpanel" class="tab-pane{% if not returntab %} active{% endif %}" id="tab-exam-request">
-        {% if ((not entry.forensic_investigator) and (not entry.phone_investigator)) and (entry.case_status <="2" )%}
-        <script type="text/javascript">
-          $(document).ready(function() { $('#add_forensic_examiner_modal').modal('show'); });
-        </script>
-        <div class="modal fade" id="add_forensic_examiner_modal" role="dialog" aria-labelledby="add_forensic_examiner_modal_title">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="add_forensic_examiner_modal_title">{{ lang.new_examination_request }} {{ entry.case_id }}/{{ entry.case_added_date|date("Y") }}</h4>
-              </div>
-              <div class="modal-body">
-                <b>{{ lang.no_examiner_assigned }}</b>
-                <p>{{ lang.pick_examiner }}</p>
-                <form name="add_forensic_investigator" class="form" role="form" method="post" action="submit.php?type=case_update&uid={{ entry.parent_id }}">
-                  <input type="hidden" name="token" value="{{session.user.token}}">
-                  <input type="hidden" name="ct" value="{{ct}}">
-                  <div class="form-group">
-                    <select style="text-align:left;width:100%;" class="btn btn-default" name="forensic_investigator" id="assign_forensic_investigator" aria-label="{{ lang.forensic_examiner_long }}">
-                      <option disabled>{{ lang.forensic_examiner_long }}</option>
-                      {% for user in session.all_users %}
-                        {% if 'F' in user.flags == true %}
-                          <option value="{{ user.name }}" {% if user.name == session.user.name %}selected{% endif %}>{{ user.name }} ({{user.username}})</option>
-                        {% endif %}
-                      {% endfor %}
-                      <option value="-">* {{ lang.mobile_examination_only }}</option>
-                    </select>
-                  </div>
-                  {% if entry.case_contains_mob_dev == "1" %}
-                  <b>{{ lang.request_contains_mobile_devices }}</b>
-                  <p>{{ lang.pick_mobile_examiner }}</p>
-                  <div class="form-group">
-                    <input type="hidden" name="phone_investigator" value="">
-                    <select style="text-align:left;width:100%;" class="btn btn-default" name="phone_investigator" id="assign_phone_investigator" aria-label="{{ lang.mobile_examiner_long }}">
-                      <option selected disabled>{{ lang.mobile_examiner_long }}</option>
-
-                      {% for user in session.all_users %}
-                        {% if 'M' in user.flags == true %}
-                          <option value="{{ user.name }}" {% if user.name == session.user.name %}selected{% endif %}>{{ user.name }} ({{user.username}})</option>
-                        {% endif %}
-                      {% endfor %}
-                      <option value="-">* {{ lang.no_mobile_examination }}</option>
-                    </select>
-                  </div>
-                  {% endif %}
-              </div>
-              <div class="modal-footer">
-              <button type="button" class="btn btn-default" data-dismiss="modal">{{ lang.close }}</button>
-              {% if entry.case_status == "1" %}
-              <button type="submit" class="btn btn-success"><i class="fa fa-save"></i> {{ lang.save }}</button>
-              {% elseif entry.case_status == "2" %}
-              <button type="submit" class="btn btn-success"><i class="fa fa-save"></i> {{ lang.update }}</button>
-              {% endif %}
-              <input type="hidden" name="case_request_description" value="{{ entry.case_request_description }}">
-              <input type="hidden" name="case_crime" value="{{ entry.case_crime }}">
-              <input type="hidden" name="classification" value="{{ entry.classification }}">
-              <input type="hidden" name="case_file_number" value="{{ entry.case_file_number }}">
-              <input type="hidden" name="case_urgency" value="{{ entry.case_urgency }}">
-              <input type="hidden" name="case_investigator" value="{{ entry.case_investigator }}">
-              <input type="hidden" name="case_investigation_lead" value="{{ entry.case_investigation_lead }}">
-              <input type="hidden" name="case_investigator_tel" value="{{ entry.case_investigator_tel }}">
-              <input type="hidden" name="case_investigator_unit" value="{{ entry.case_investigator_unit }}">
-              <input type="hidden" name="case_confiscation_date" value="{{ entry.case_confiscation_date }}">
-              <input type="hidden" name="case_suspect" value="{{ entry.case_suspect }}">
-              <input type="hidden" name="case_name" value="{{ entry.case_name }}">
-              <input type="hidden" name="case_contains_mob_dev" value="{{ entry.case_contains_mob_dev }}">
-              </form>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% endif %}
 
         {% set progress_total = 0 %}
         {% set progress_done = 0 %}
@@ -186,6 +114,55 @@ $(function() {
           </div>
           {% endif %}
         </div>
+
+        {# A new request waits for its examiners. The choice is a card at the top of the request, not a dialog that
+           opened every time the page did; saving it starts the examination (assign_examiners). #}
+        {% if (not entry.forensic_investigator) and (not entry.phone_investigator) and (entry.case_status <= "2") %}
+        <section class="card assign-card">
+          <div class="card-header"><i class="fa fa-user-plus" aria-hidden="true"></i> {{ lang.no_examiner_assigned }}</div>
+          {% if session.user.access <= 1 %}
+          <form method="post" action="submit.php?type=assign_examiners&uid={{ entry.id }}">
+            <input type="hidden" name="token" value="{{ session.user.token }}">
+            <input type="hidden" name="ct" value="{{ ct }}">
+            <div class="card-body">
+              <p class="field-hint">{{ lang.assign_examiner_hint }}</p>
+              <div class="field-grid field-grid-2">
+                <div class="field">
+                  <label for="assign_forensic_investigator">{{ lang.forensic_examiner_long }}</label>
+                  <select class="form-control" name="forensic_investigator" id="assign_forensic_investigator">
+                    {% for user in session.all_users %}
+                    {% if 'F' in user.flags %}
+                    <option value="{{ user.name }}" {% if user.name == session.user.name %}selected{% endif %}>{{ user.name }} ({{ user.username }})</option>
+                    {% endif %}
+                    {% endfor %}
+                    <option value="-">* {{ lang.mobile_examination_only }}</option>
+                  </select>
+                </div>
+                {% if entry.case_contains_mob_dev == "1" %}
+                <div class="field">
+                  <label for="assign_phone_investigator">{{ lang.mobile_examiner_long }}</label>
+                  <input type="hidden" name="phone_investigator" value="">
+                  <select class="form-control" name="phone_investigator" id="assign_phone_investigator" aria-describedby="assign_phone_hint">
+                    <option selected disabled value="">{{ lang.mobile_examiner_long }}</option>
+                    {% for user in session.all_users %}
+                    {% if 'M' in user.flags %}
+                    <option value="{{ user.name }}" {% if user.name == session.user.name %}selected{% endif %}>{{ user.name }} ({{ user.username }})</option>
+                    {% endif %}
+                    {% endfor %}
+                    <option value="-">* {{ lang.no_mobile_examination }}</option>
+                  </select>
+                  <span class="field-hint" id="assign_phone_hint">{{ lang.request_contains_mobile_devices }} {{ lang.pick_mobile_examiner }}</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="card-footer">
+              <button type="submit" class="btn btn-primary card-footer-end"><i class="fa fa-play" aria-hidden="true"></i> {{ lang.start_investigation }}</button>
+            </div>
+          </form>
+          {% endif %}
+        </section>
+        {% endif %}
 
         {% if samerequest_file_number %}
         <div class="alert alert-warning"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> <a href='index.php?search="{{ entry.case_file_number|url_encode }}"'>{{ lang.requests_with_matching_complaint_number }}</a>: {% for entry in samerequest_file_number %}<a href="edit_request.php?case={{ entry.id }}">{{ entry.case_id }}/{{ entry.case_added_date|date("Y") }}</a>{% if not loop.last%}, {% endif%}{% endfor %}</div>

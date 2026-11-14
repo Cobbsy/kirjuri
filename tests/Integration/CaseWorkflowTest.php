@@ -295,6 +295,29 @@ final class CaseWorkflowTest extends IntegrationTestCase
             'The device menu has a name.');
     }
 
+    public function testANewRequestAssignsItsExaminersInACardThatChangesNothingElse(): void
+    {
+        // A new request opened a dialog over its page every time until an examiner was assigned, and the dialog
+        // saved the whole request from hidden copies of its fields, so an edit made meanwhile was written over.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Assign '), array('case_contains_mob_dev' => '1'));
+        $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        $this->assertStringContainsString('<section class="card assign-card">', $page);
+        $this->assertStringNotContainsString(".modal('show')", $page, 'No dialog opens by itself.');
+        $this->assertMatchesRegularExpression('/<form method="post" action="submit\.php\?type=assign_examiners&uid=' . $caseId . '">/', $page);
+        $this->assertStringContainsString('<label for="assign_phone_investigator">', $page, 'With mobile devices, a mobile examiner too.');
+
+        // Someone corrects the offence while the card is open.
+        $this->server->pdo()->exec("UPDATE exam_requests SET case_crime = 'Corrected meanwhile' WHERE id = $caseId");
+        $response = $admin->post('submit.php?type=assign_examiners&uid=' . $caseId, array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'forensic_investigator' => 'Administrator', 'phone_investigator' => '-'));
+        $this->assertSame('edit_request.php?case=' . $caseId, $response->location());
+        $row = $this->row($caseId);
+        $this->assertSame(array('Administrator', '-', '2', 'Corrected meanwhile'), array($row['forensic_investigator'], $row['phone_investigator'], $row['case_status'], $row['case_crime']));
+        $this->assertNotNull($row['case_start_date'], 'Assigning starts the examination.');
+        $this->assertStringNotContainsString('assign-card', $admin->get('edit_request.php?case=' . $caseId)->body);
+    }
+
     public function testFormsWithTextWorthKeepingWarnBeforeLeaving(): void
     {
         // Leaving the device page, the notes or a new request with unsaved text lost it without a word. The forms

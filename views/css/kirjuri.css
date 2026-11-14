@@ -2105,6 +2105,11 @@ img[src^="views/img/svg/"] {
   margin-bottom: 4px;
 }
 
+/* A new request's examiner choice, at the top of the request until it is made. */
+.assign-card {
+  border-left: 3px solid var(--k-primary);
+}
+
 .case-actions {
   display: flex;
   flex-wrap: wrap;

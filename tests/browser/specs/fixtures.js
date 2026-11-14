@@ -144,15 +144,15 @@ async function createCase(page, name) {
 }
 
 /**
- * Open a new case and assign an examiner in the dialog that pops up, which starts it. A fresh
+ * Open a new case and assign an examiner in the card at the top of it, which starts it. A fresh
  * installation may have no users flagged as examiners, so "mobile examination only" is chosen.
  */
 async function startCase(page, caseId) {
   await page.goto('edit_request.php?case=' + caseId);
-  const dialog = page.locator('#add_forensic_examiner_modal');
-  await base.expect(dialog).toBeVisible();
-  await dialog.locator('select[name="forensic_investigator"]').selectOption('-');
-  await dialog.locator('button[type="submit"]').click();
+  const card = page.locator('.assign-card');
+  await base.expect(card).toBeVisible();
+  await card.locator('select[name="forensic_investigator"]').selectOption('-');
+  await card.locator('button[type="submit"]').click();
   await base.expect(page.locator('.chip-open')).toBeVisible();
 }
 

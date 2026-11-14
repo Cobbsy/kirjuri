@@ -24,6 +24,7 @@
     "api_key": "API key",
     "archive_message": "Mensaje de archivo",
     "archived": "Archivado",
+    "assign_examiner_hint": "Elija qui\u00e9n analizar\u00e1 esta solicitud. Al iniciar la investigaci\u00f3n, la solicitud queda recibida y abierta.",
     "associate_with_device": "Relacionado con dispositivo...",
     "associated_devices": "Dispositivos relacionados",
     "associated_with_device": "Relacionado con dispositivo",
