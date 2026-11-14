@@ -28,24 +28,26 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
 
 ## Open items
 
-- **Translations.** Eleven strings added during the redesign (back_up_database, find_a_string,
-  last_activity, missing_strings, no, no_tools, offline, online, reserve, stalled, yes) have German,
-  Spanish, Finnish and Brazilian Portuguese versions written without a native speaker. The review
-  page is https://claude.ai/artifact/BZc61pGDCQJBw8iPM6TEzP; translators need Contributor access to
-  save. Their answers are in the page's `reviews` collection, one document per `key~LANG`, read with
-  the `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's
-  encoding (see CLAUDE.md).
-  Two more were added with the search improvements, `search_hint` and `search_years`, seventeen
-  with the help page (`help_*` and `licenses_intro`, the user guide itself), one with the tool
-  reservation fixes (`reservation_in_past`) and one with the search limit (`search_limited`) and one with
-  the live device status (`not_saved`) and one with the examiner card (`assign_examiner_hint`); they are
-  not on the review page yet. Sixty more came with two-factor sign-in (the `two_factor_*` strings,
-  `help_two_factor_title` and `help_two_factor_text`), also written without a native speaker.
+- **Translations.** 34 strings added since the redesign have German, Spanish, Finnish and Brazilian
+  Portuguese versions written without a native speaker: eleven from the redesign, six hints and
+  messages (`search_hint`, `search_years`, `search_limited`, `assign_examiner_hint`, `not_saved`,
+  `reservation_in_past`) and the seventeen strings of the help and licences pages (`help_*` texts and
+  titles, `licenses_intro`). All of them are on the review page,
+  https://claude.ai/artifact/BZc61pGDCQJBw8iPM6TEzP, grouped by where they appear, with the current
+  text of each language file as of November 2026. Translators need Contributor access to save. Their
+  answers are in the page's `reviews` collection, one document per `key~LANG`, read with the
+  `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's encoding
+  (see CLAUDE.md), and add new strings to the page's `GROUPS` list as they are written.
+  Status (14 November 2026): German is confirmed for the eleven redesign strings (all "reads right",
+  16 October), so the files need no change yet. Nothing else has an answer. The help texts quote
+  button and tab names, and each quoted name was checked against the same language file and matches.
+  Sixty more came with two-factor sign-in (the `two_factor_*` strings, `help_two_factor_title` and
+  `help_two_factor_text`), also written without a native speaker. They are not on the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
-  so Codex sees everything since #5 in one diff. Codex was asked on it in November 2026 and was again
-  at its limit. When the limit resets, comment `@codex review` on #21 once, fix real findings with
+  so Codex sees everything since #5 in one diff. Codex was asked on it on 13 and 14 November 2026 and was
+  at its limit both times. When the limit resets, comment `@codex review` on #21 once, fix real findings with
   tests in a pull request against master, reply on each thread, then close #21 and delete
   `codex-review-base`. #21 covers everything up to #27. Two-factor sign-in came after it, from another
   branch, so Codex needs to be asked on that pull request separately.
@@ -60,6 +62,10 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   they were added (so the months add up) and give inline scripts only numbered ids, and the users page
   loads the status of usernames with dots. One finding was wrong: "assigned to me" does follow a rename,
   as renaming a user renames them in the cases (`kirjuri_rename_examiner`); a test now covers it.
+
+- **TinyMCE's licence.** TinyMCE 7 no longer gets public security fixes, and TinyMCE 8 adds Tiny's
+  own terms beside the GPL. Decide before go-live whether to move to 8 or to another editor; see
+  the TinyMCE advisory under Security.
 
 ## Testing stage plan
 
@@ -133,6 +139,50 @@ Code improvements, in suggested order:
 5. A full Content-Security-Policy, after moving the inline scripts into files.
 6. The defaults above changed in `conf/settings.conf`: `show_errors` off and a shorter idle
    timeout, so a new install starts safe.
+
+Advisories in bundled libraries. `composer audit`, run from the repository root, checks the locked
+versions against published advisories. CI does not run it, so run it before a release.
+
+**TinyMCE 7.9.3: GHSA-mf2p-h6hf-fcwm (CVE-2026-116675), rated high.** Checked in November 2026. It
+does not reach Kirjuri as Kirjuri is set up, and no public 7.x release fixes it, so TinyMCE stays at
+7.9.3 for now.
+
+The flaw is in TinyMCE's media plugin, which shows embedded videos and pages as placeholders while
+you edit. When the editor saves, the plugin turns each placeholder back into the real element on the
+live page and copies attributes from the content onto it, so an `onerror` written into a note runs
+as a script in the browser of whoever saves it. TinyMCE 8.9.3 builds the element in an inert
+document instead.
+
+Kirjuri is not affected because its editors never load that plugin. `tinymce.init()` in
+`views/base.twig` has no `plugins` option, and TinyMCE loads no plugins unless told to; the plugin's
+files are in `vendor/` but nothing asks for them. This was tried in Chromium with the bundled 7.9.3
+and a crafted note. With Kirjuri's settings the note saved as harmless attributes and nothing ran.
+With `plugins: "media"` added, its script ran on save. `testEditorsDoNotLoadTheMediaPlugin` in
+`tests/Unit/SourceTest.php` fails if an editor's settings name the media plugin, so do not add it
+while Kirjuri is on 7.9.3.
+
+HTML Purifier covers only part of this. It removes the plugin's `data-mce-*` attributes from notes
+saved through Kirjuri's forms and from everything printed with `|purify`. Notes added through the
+API or a KRF import are stored as sent, though, and the case and device pages put stored notes into
+the editor unpurified, as they must for editing. For those notes, the plugin not being loaded is
+the only protection.
+
+There is no update to apply. The advisory names 7.9.4 as the 7.x fix, but Tiny's release notes say
+7.9.4 was released for TinyMCE Enterprise and Tiny Cloud, and it is not on Packagist, npm or the
+public `tinymce-dist` repository, where 7.9.3 is the last 7.x. Going back to 7.9.2 would be worse,
+because 7.9.3 also fixed two stored XSS flaws in TinyMCE's core (`mce:protected` comments, and
+`data-mce-` prefixed `src`, `href` and `style` attributes) that do reach Kirjuri.
+
+What it means for later: the 7.x line no longer gets public security fixes, so the next flaw in
+TinyMCE's core may have no fix Kirjuri can use. The fixed releases are 8.9.3 and later, which still
+run offline with `license_key: "gpl"`. Their licence changed, though. Since 8.3.0 TinyMCE's
+`license.md` offers the GPL (version 2 or later) or Tiny's own terms, and adds "By use of this
+Software you have agreed to these Tiny Technologies, Inc Software Terms & Conditions of Use"; 8.2.2
+and earlier were under the GPL alone. (8.2.2 is outside this advisory's range but lacks the two core
+fixes, which reached 8.x in 8.5.1.) Whether labs can accept that wording is a licensing decision to
+make before go-live. If they can, move to TinyMCE 8 in its own pull request and check every editor:
+case and device notes, messages and the report notes template in settings. If they cannot, the way
+out is a different editor under a plain open source licence.
 
 ## Improvements found in the November 2026 review
 

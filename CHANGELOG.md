@@ -169,6 +169,7 @@ Unreleased
 * - tinymce/tinymce (4.7.9 => 7.9.3). TinyMCE 7 is licensed under GPLv2+.
 * - twbs/bootstrap (v3.3.7 => v3.4.1)
 * - jQuery (3.1.1 => 3.7.1) and jQuery UI (1.12.1 => 1.13.3)
+* TinyMCE stays at 7.9.3. Advisory GHSA-mf2p-h6hf-fcwm (CVE-2026-116675), a stored XSS in TinyMCE's media plugin, does not reach Kirjuri, whose editors load no TinyMCE plugins, and its 7.x fix (7.9.4) is not publicly released. A unit test fails if an editor loads the media plugin. The reasoning, and the licence question for TinyMCE 8, are under Security in docs/ROADMAP.md.
 
 2018-03 Version 0.9.2
 

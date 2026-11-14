@@ -257,6 +257,23 @@ final class SourceTest extends TestCase
         $this->assertStringContainsString('--k-chart-', $source);
     }
 
+    /**
+     * The bundled TinyMCE 7.9.3 has a stored XSS in its media plugin (GHSA-mf2p-h6hf-fcwm) with no public
+     * 7.x fix. Kirjuri is safe only because its editors do not load that plugin. See Security in docs/ROADMAP.md.
+     */
+    public function testEditorsDoNotLoadTheMediaPlugin(): void
+    {
+        $inits = array();
+        foreach (array_merge(glob(KIRJURI_ROOT . '/views/*.twig'), glob(KIRJURI_ROOT . '/views/js/*.js')) as $file) {
+            preg_match_all('/tinymce\.init\s*\((.*?)\);/s', file_get_contents($file), $matches);
+            foreach ($matches[1] as $options) {
+                $inits[] = $options;
+                $this->assertDoesNotMatchRegularExpression('/\bmedia\b/', $options, basename($file) . ' loads the TinyMCE media plugin.');
+            }
+        }
+        $this->assertNotEmpty($inits, 'No tinymce.init() call found to check.');
+    }
+
     /** Every stylesheet, script and image a template loads from the application exists. */
     #[DataProvider('templates')]
     public function testTemplateLoadsOnlyFilesThatExist(string $template): void
