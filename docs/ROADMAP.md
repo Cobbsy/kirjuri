@@ -41,6 +41,12 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   Status (14 November 2026): German is confirmed for the eleven redesign strings (all "reads right",
   16 October), so the files need no change yet. Nothing else has an answer. The help texts quote
   button and tab names, and each quoted name was checked against the same language file and matches.
+  The page also asks about three device statuses that look wrong, each shown only to its language:
+  German "unterbrochen" for Broken (suggested "defekt"), Spanish "Reanalizar" for Examination over
+  (suggested "Análisis terminado") and Brazilian Portuguese "Live investigation", still in English
+  (suggested "Exame ao vivo"). Device statuses are stored with their text ("9|Done"), so a corrected
+  label shows on a device only once its status is changed; only the number drives progress.
+  Finnish numbers its statuses differently from the others, so its list is not compared key by key.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
