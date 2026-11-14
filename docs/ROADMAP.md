@@ -39,14 +39,16 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   with the help page (`help_*` and `licenses_intro`, the user guide itself), one with the tool
   reservation fixes (`reservation_in_past`) and one with the search limit (`search_limited`) and one with
   the live device status (`not_saved`) and one with the examiner card (`assign_examiner_hint`); they are
-  not on the review page yet.
+  not on the review page yet. Sixty more came with two-factor sign-in (the `two_factor_*` strings,
+  `help_two_factor_title` and `help_two_factor_text`), also written without a native speaker.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
   so Codex sees everything since #5 in one diff. Codex was asked on it in November 2026 and was again
   at its limit. When the limit resets, comment `@codex review` on #21 once, fix real findings with
   tests in a pull request against master, reply on each thread, then close #21 and delete
-  `codex-review-base`.
+  `codex-review-base`. #21 covers everything up to #27. Two-factor sign-in came after it, from another
+  branch, so Codex needs to be asked on that pull request separately.
 - **Findings of our own review (November 2026)** of the same diff, with code-review at high effort.
   Done (November 2026): search no longer lists cases, or their devices, that the user may not open,
   and the counts leave them out (a match told an outsider what a case's notes or suspect held, prefix
@@ -86,7 +88,8 @@ username or 50 per IP address within 15 minutes; a new session ID at sign-in, Ht
 session cookies, an idle timeout; CSRF and case tokens in POST bodies; prepared statements for all
 SQL (enforced by a source test); HTMLPurifier on user-written HTML; X-Frame-Options, `frame-ancestors`
 and `nosniff` headers; access levels, per-case access groups and per-user IP allow and block lists;
-an event log and an AES-256 encrypted audit log; `.htaccess` rules keeping `conf/`, `logs/`, `cache/`
+an event log and an AES-256 encrypted audit log; two-factor sign-in with an authenticator app (November
+2026, see below); `.htaccess` rules keeping `conf/`, `logs/`, `cache/`
 and the code folders off the web; an installer that will not run twice.
 
 Minimum for go-live (deployment, not code):
@@ -100,6 +103,8 @@ Minimum for go-live (deployment, not code):
   from 12 hours.
 - Access groups on sensitive cases: a case without one is visible to every signed-in user. Few
   admin accounts.
+- Two-factor sign-in required at least for administrators (setting `two_factor_required`), and
+  `conf/two_factor_key.php` in the backups: without it the authenticator apps stop working.
 - A dedicated database user with rights on Kirjuri's database only; a password on the database's
   root account.
 - Encrypted backups kept off the machine and restored now and then, including `conf/`, which holds
@@ -109,7 +114,17 @@ Minimum for go-live (deployment, not code):
 
 Code improvements, in suggested order:
 
-1. Two-factor sign-in (TOTP), or LDAP sign-in against a directory that already has it.
+1. Done (November 2026): two-factor sign-in (TOTP). Users set it up with an authenticator app from a QR code
+   drawn on the server; after the password, signing in asks for the app's code (each works once, 30 seconds
+   of clock drift either side). Ten recovery codes, hashed, for a lost phone. Wrong codes count in the login
+   throttle, and 30 in a row block codes from the app until an admin resets it or runs `user:unlock`;
+   recovery codes still work, and the next sign-in reports the wrong codes. The `two_factor_required` setting
+   requires it for admins or everyone, who set it up at their next sign-in; setting up at sign-in is never
+   offered to an account that has it, so a password alone can not swap the phone. LDAP accounts get the code
+   step too (not tested end to end: CI has no directory server). The anonymous sign-in and API keys are
+   not covered. Secrets are encrypted with AES-256-GCM under `conf/two_factor_key.php`; admins reset it on the
+   users page or with `bin/kirjuri user:two-factor-reset`. Not done: remembering a browser, passkeys or
+   security keys, codes by e-mail or SMS.
 2. A tamper-evident audit log for chain of custody: authenticated encryption (AES-256-GCM) and a
    hash chain over entries, so an edited or deleted entry shows. The current IV is 16 hex characters
    (64 bits) rather than 16 random bytes.
@@ -179,7 +194,7 @@ Administration and help:
   Kirjuri itself is MIT.
 - The settings are labelled by their internal names ("Index table condensed"). Give each a readable
   label and a line of help, in the language files.
-- Password rules and two-factor sign-in, from the Security section.
+- Password rules, from the Security section. Two-factor sign-in is done (November 2026).
 - E-mail or in-app notice when a request is assigned to someone or a message arrives; today the unread
   counter is the only sign.
 - Done (November 2026): a tool reservation that has already ended is refused (one that has started is
@@ -206,7 +221,7 @@ Code health:
 ## Installing without Docker
 
 Kirjuri needs PHP 8.1 or newer (8.3 recommended) with `pdo_mysql`, `mbstring`, `openssl`, `zlib`,
-`json` and `session` (`ldap` for LDAP sign-in), MariaDB 10.11 or MySQL 8.0, a web server, and
+`json`, `session` and `iconv` (for the two-factor QR codes; `ldap` for LDAP sign-in), MariaDB 10.11 or MySQL 8.0, a web server, and
 mysqldump for backups. `vendor/` is committed, so Composer and Node are not needed to run it. Apache
 is preferred because it honours the `.htaccess` files that keep `conf/`, `logs/`, `cache/` and the
 code folders off the web; other servers need those rules in their own configuration. PHP's built-in
@@ -264,5 +279,9 @@ test install; phase 4 needs the signing accounts.
 - A browser test copy is a copy of the code served with `setsid nohup php -S 127.0.0.1:8099`.
   After copying changed templates into it, delete its compiled templates (`cache/??/`): Twig's
   `auto_reload` compares modification times to the second and can keep serving an old template.
+- Each two-factor code signs in once per account, so an integration test that signs the same user in twice
+  within 30 seconds needs the app's next code, or resets `two_factor.last_step` (`forgetUsedCodes()` in
+  `tests/Integration/TwoFactorTest.php`). The browser tests make users of their own for it: the admin
+  account of a test installation must keep signing in with its password alone.
 - Stop a test server with `kill $(pgrep -f '^php -S 127.0.0.1:8099')`, not `pkill -f`, which
   matches the shell running it.

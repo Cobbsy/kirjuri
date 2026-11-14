@@ -104,9 +104,10 @@ async function findReadabilityProblems(page, minContrast = 3) {
         const c = parse(getComputedStyle(el).backgroundColor);
         const rect = el.getBoundingClientRect();
         // An inline background is data, such as a tool's colour on the calendar; its text is still checked above.
-        // A mostly transparent element is a tint over what is behind it, not a box of its own.
+        // A mostly transparent element is a tint over what is behind it, not a box of its own. data-stays-light marks
+        // a box that is light on purpose: a QR code, which not every scanner reads inverted.
         const opaque = parseFloat(getComputedStyle(el).opacity) >= 0.5;
-        if (c && c.a > 0.5 && opaque && luminance(c) > 0.4 && rect.width * rect.height > 400 && !el.style.backgroundColor) problems.push(`${describe(el)}: light background ${getComputedStyle(el).backgroundColor}`);
+        if (c && c.a > 0.5 && opaque && luminance(c) > 0.4 && rect.width * rect.height > 400 && !el.style.backgroundColor && !el.closest('[data-stays-light]')) problems.push(`${describe(el)}: light background ${getComputedStyle(el).backgroundColor}`);
       }
     }
     return [...new Set(problems)];
