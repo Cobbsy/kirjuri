@@ -135,9 +135,11 @@ Finding things:
 
 Working on a case:
 
-- The device page (`device_memo.twig`) and the request details dialog still use the old form layout:
-  move them to the `.field-grid` layout of the add request form, with a sticky save bar, as the admin
-  pages have.
+- Done (November 2026): the device page is a summary card (status and location menus, attached devices,
+  removal) and one form in cards with a save bar that stays in view, replacing a form split across a
+  table and two sets of buttons. The request details dialog uses the add request form's field layout and
+  required-field check, and its overdue confiscation warning works. On phones the save bar shows its
+  other buttons as icons.
 - Warn before leaving a device or notes page with unsaved text, or save drafts automatically.
 - The device status and location menus save at once without saying so: show a short "saved" mark.
 - "Reload page" under the progress bar is a workaround: update the progress when a device changes.

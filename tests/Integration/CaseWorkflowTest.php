@@ -274,6 +274,53 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('3', $this->row($caseId)['case_status']);
     }
 
+    public function testDevicePageIsOneFormWithOneSaveBar(): void
+    {
+        // The device page opened its edit form inside a table cell and closed it after the table, and had a save
+        // button above the notes and another below them. It is now cards in one form, with a save bar.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Device page '));
+        $deviceId = $this->addDevice($admin, $caseId, $this->uniqueName('Page '));
+        $page = $admin->get('device_memo.php?uid=' . $deviceId)->body;
+
+        $this->assertSame(1, substr_count($page, 'id="save_button'), 'One save button.');
+        $this->assertMatchesRegularExpression('/<div class="form-actions">.*id="save_button".*<\/form>/s', $page);
+        $form = substr($page, strpos($page, 'type=devicememo'));
+        $form = substr($form, 0, strpos($form, '</form>'));
+        foreach (array('device_manuf', 'device_identifier', 'used_tool', 'report_notes', 'examiners_notes', 'device_contains_evidence') as $field) {
+            $this->assertStringContainsString('name="' . $field . '"', $form, "$field is in the form.");
+        }
+        $this->assertStringNotContainsString('<table', $form, 'The form is not split across a table.');
+        $this->assertStringContainsString('aria-label="Jump to device..."', $admin->get('device_memo.php?uid=' . $this->addDevice($admin, $caseId, $this->uniqueName('Other ')))->body,
+            'The device menu has a name.');
+    }
+
+    public function testRequestDetailsDialogChecksItsFieldsAndWarnsOfOldConfiscations(): void
+    {
+        // The request details dialog marked nothing required, two labels pointed at the offence field, and the
+        // warning for a confiscation over four months old compared the setting with " 1 " and never showed.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Dialog '), array('case_confiscation_date' => '2020-01-15'));
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^notify_after_4_months = .*$/m', 'notify_after_4_months = "1"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+        $dialog = substr($page, strpos($page, 'id="perustiedot"'));
+        $dialog = substr($dialog, 0, strpos($dialog, '</form>'));
+        $this->assertMatchesRegularExpression('/<form class="modal-content"[^>]*data-validate novalidate>/', $dialog);
+        foreach (array('case_file_number', 'case_crime', 'case_suspect', 'case_investigator', 'case_investigator_tel', 'case_request_description', 'case_confiscation_date') as $field) {
+            $this->assertMatchesRegularExpression('/<input[^>]* id="' . $field . '"[^>]*required>/', $dialog, "$field is required.");
+        }
+        $this->assertSame(1, substr_count($dialog, 'for="case_crime"'), 'One label for the offence.');
+        $this->assertStringContainsString('for="classification"', $dialog);
+        $this->assertStringContainsString('for="case_investigator_unit"', $dialog);
+        $this->assertMatchesRegularExpression('/<div class="field has-warning">\s*<label for="case_confiscation_date">/', $dialog, 'An old confiscation is marked.');
+    }
+
     public function testWorkOnDevicesKeepsTheCaseFromStalling(): void
     {
         // The stalled mark reads the case's last update, which changing a device's status or location, attaching
