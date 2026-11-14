@@ -751,7 +751,7 @@ $(function() {
 <div role="tabpanel" class="tab-pane{% if returntab == "report_notes" %} active{% endif %}" id="tab-report_notes">
   {% if (caserow.0.case_status <= "2") and (caserow.0.forensic_investigator or caserow.0.phone_investigator) %}
   <h3 class="page-heading">{{ lang.examination_report }}</h3>
-  <form class="form" role="form" method="post" action="submit.php?type=report_notes">
+  <form class="form" role="form" method="post" action="submit.php?type=report_notes" data-warn-unsaved>
     <input type="hidden" name="token" value="{{session.user.token}}">
     <input type="hidden" name="ct" value="{{ct}}">
   <div class="form-group form-horizontal">
@@ -777,7 +777,7 @@ $(function() {
 <div role="tabpanel" class="tab-pane{% if returntab == "examiners_notes" %} active{% endif %}" id="tab-examiners_notes">
   {% if (caserow.0.case_status <= "2") and (caserow.0.forensic_investigator or caserow.0.phone_investigator) %}
   <h3 class="page-heading">{{ lang.examiners_private_notes }}</h3>
-  <form class="form" role="form" method="post" action="submit.php?type=examiners_notes">
+  <form class="form" role="form" method="post" action="submit.php?type=examiners_notes" data-warn-unsaved>
     <input type="hidden" name="token" value="{{session.user.token}}">
     <input type="hidden" name="ct" value="{{ct}}">
   <div class="form-group form-horizontal">
