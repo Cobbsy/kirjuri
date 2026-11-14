@@ -101,8 +101,9 @@ Minimum for go-live (deployment, not code):
   database listening on 127.0.0.1.
 - Full-disk encryption (BitLocker, FileVault). The database, attachments included, is not encrypted
   at rest.
-- `show_errors` off (it ships on; `bin/kirjuri doctor` warns), and `session_idle_timeout` lowered
-  from 12 hours.
+- `show_errors` off and `session_idle_timeout` at an hour or less. Both are the defaults since November
+  2026, but an install that saved its settings earlier keeps its old values (`show_errors` on, 12 hours);
+  `bin/kirjuri doctor` warns about `show_errors`.
 - Access groups on sensitive cases: a case without one is visible to every signed-in user. Few
   admin accounts.
 - A dedicated database user with rights on Kirjuri's database only; a password on the database's
@@ -121,8 +122,8 @@ Code improvements, in suggested order:
 3. A stronger password rule than 8 characters, or a check against known breached passwords.
 4. Settings to redirect HTTP to HTTPS and send `Strict-Transport-Security`.
 5. A full Content-Security-Policy, after moving the inline scripts into files.
-6. The defaults above changed in `conf/settings.conf`: `show_errors` off and a shorter idle
-   timeout, so a new install starts safe.
+6. Done (November 2026): `conf/settings.conf` ships with `show_errors` off and a 60-minute
+   `session_idle_timeout`, so a new install starts safe.
 
 Advisories in bundled libraries. `composer audit`, run from the repository root, checks the locked
 versions against published advisories. CI does not run it, so run it before a release.

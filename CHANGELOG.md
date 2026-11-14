@@ -95,7 +95,7 @@ Unreleased
 * - The global IP allow and deny lists in conf/access_list.php did nothing for accounts without lists of their own, which is the default: their stored empty entry came first and switched both checks off.
 * - An IP allow or deny list entry ending in a slash ("10.0.0.1/") was accepted and matched every address, and an empty first entry switched the allow list off. Entries are now validated in one place, and ip_in_range() refuses an empty netmask.
 * - Changes to an account (access level, inactive flag, IP lists) took effect only at its next login, so a demoted or deactivated user kept their access until they logged out. Open sessions now follow the account on every request, and end when it is removed, made inactive or its IP lists exclude the address.
-* - Sessions now end after the session_idle_timeout setting (default 12 hours) with no Kirjuri page open. Before, a session lasted until its file was removed.
+* - Sessions now end after the session_idle_timeout setting (default 60 minutes) with no Kirjuri page open. Before, a session lasted until its file was removed.
 * - Changing a password, by the user, by an administrator or with `bin/kirjuri user:password`, left the account's other sessions logged in, so whoever knew the old password stayed in. A password change now ends all of the account's sessions.
 * - The CSV export let case values starting with =, +, - or @ run as formulas when opened in a spreadsheet. They are now prefixed with an apostrophe.
 * - Error redirects (bad CSRF or case token, insufficient access, invalid HTML) went to whatever Referer header the request carried, so a link from another site could bounce users back to it. They now only return to pages of the same site.
@@ -169,6 +169,7 @@ Unreleased
 * - twbs/bootstrap (v3.3.7 => v3.4.1)
 * - jQuery (3.1.1 => 3.7.1) and jQuery UI (1.12.1 => 1.13.3)
 * TinyMCE stays at 7.9.3. Advisory GHSA-mf2p-h6hf-fcwm (CVE-2026-116675), a stored XSS in TinyMCE's media plugin, does not reach Kirjuri, whose editors load no TinyMCE plugins, and its 7.x fix (7.9.4) is not publicly released. A unit test fails if an editor loads the media plugin. The reasoning, and the licence question for TinyMCE 8, are under Security in docs/ROADMAP.md.
+* A new install starts safe for real data: show_errors ships off, so pages no longer show PHP warnings and notices (which can include file paths) and the error page no longer shows administrators the details, and session_idle_timeout ships at 60 minutes instead of 12 hours, so a login on a shared machine ends after an hour with no Kirjuri page open. An install that has saved its settings keeps its own values; one that never has gets the new defaults.
 
 2018-03 Version 0.9.2
 
