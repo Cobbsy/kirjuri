@@ -59,6 +59,10 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   loads the status of usernames with dots. One finding was wrong: "assigned to me" does follow a rename,
   as renaming a user renames them in the cases (`kirjuri_rename_examiner`); a test now covers it.
 
+- **TinyMCE's licence.** TinyMCE 7 no longer gets public security fixes, and TinyMCE 8 adds Tiny's
+  own terms beside the GPL. Decide before go-live whether to move to 8 or to another editor; see
+  the TinyMCE advisory under Security.
+
 ## Testing stage plan
 
 1. **Automated checks stay green**: PHPUnit and PHPStan as in CLAUDE.md, and the Playwright browser
@@ -118,6 +122,50 @@ Code improvements, in suggested order:
 5. A full Content-Security-Policy, after moving the inline scripts into files.
 6. The defaults above changed in `conf/settings.conf`: `show_errors` off and a shorter idle
    timeout, so a new install starts safe.
+
+Advisories in bundled libraries. `composer audit`, run from the repository root, checks the locked
+versions against published advisories. CI does not run it, so run it before a release.
+
+**TinyMCE 7.9.3: GHSA-mf2p-h6hf-fcwm (CVE-2026-116675), rated high.** Checked in November 2026. It
+does not reach Kirjuri as Kirjuri is set up, and no public 7.x release fixes it, so TinyMCE stays at
+7.9.3 for now.
+
+The flaw is in TinyMCE's media plugin, which shows embedded videos and pages as placeholders while
+you edit. When the editor saves, the plugin turns each placeholder back into the real element on the
+live page and copies attributes from the content onto it, so an `onerror` written into a note runs
+as a script in the browser of whoever saves it. TinyMCE 8.9.3 builds the element in an inert
+document instead.
+
+Kirjuri is not affected because its editors never load that plugin. `tinymce.init()` in
+`views/base.twig` has no `plugins` option, and TinyMCE loads no plugins unless told to; the plugin's
+files are in `vendor/` but nothing asks for them. This was tried in Chromium with the bundled 7.9.3
+and a crafted note. With Kirjuri's settings the note saved as harmless attributes and nothing ran.
+With `plugins: "media"` added, its script ran on save. `testEditorsDoNotLoadTheMediaPlugin` in
+`tests/Unit/SourceTest.php` fails if an editor's settings name the media plugin, so do not add it
+while Kirjuri is on 7.9.3.
+
+HTML Purifier covers only part of this. It removes the plugin's `data-mce-*` attributes from notes
+saved through Kirjuri's forms and from everything printed with `|purify`. Notes added through the
+API or a KRF import are stored as sent, though, and the case and device pages put stored notes into
+the editor unpurified, as they must for editing. For those notes, the plugin not being loaded is
+the only protection.
+
+There is no update to apply. The advisory names 7.9.4 as the 7.x fix, but Tiny's release notes say
+7.9.4 was released for TinyMCE Enterprise and Tiny Cloud, and it is not on Packagist, npm or the
+public `tinymce-dist` repository, where 7.9.3 is the last 7.x. Going back to 7.9.2 would be worse,
+because 7.9.3 also fixed two stored XSS flaws in TinyMCE's core (`mce:protected` comments, and
+`data-mce-` prefixed `src`, `href` and `style` attributes) that do reach Kirjuri.
+
+What it means for later: the 7.x line no longer gets public security fixes, so the next flaw in
+TinyMCE's core may have no fix Kirjuri can use. The fixed releases are 8.9.3 and later, which still
+run offline with `license_key: "gpl"`. Their licence changed, though. Since 8.3.0 TinyMCE's
+`license.md` offers the GPL (version 2 or later) or Tiny's own terms, and adds "By use of this
+Software you have agreed to these Tiny Technologies, Inc Software Terms & Conditions of Use"; 8.2.2
+and earlier were under the GPL alone. (8.2.2 is outside this advisory's range but lacks the two core
+fixes, which reached 8.x in 8.5.1.) Whether labs can accept that wording is a licensing decision to
+make before go-live. If they can, move to TinyMCE 8 in its own pull request and check every editor:
+case and device notes, messages and the report notes template in settings. If they cannot, the way
+out is a different editor under a plain open source licence.
 
 ## Improvements found in the November 2026 review
 
