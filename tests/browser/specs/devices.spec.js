@@ -42,7 +42,34 @@ test('devices can be added, have their status changed and be edited', async ({ a
   await expect(page.locator('#device_manuf')).toHaveValue('Acme');
   expect(await findDuplicateIds(page)).toEqual([]);
   await page.fill('#device_manuf', 'Acme Corporation');
-  await page.locator('#save_button').first().click();
+  // One save bar, which stays in view at the bottom of the window while the page scrolls.
+  await expect(page.locator('#save_button')).toHaveCount(1);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator('#save_button')).toBeInViewport();
+  await page.locator('#save_button').click();
   await expect(page.locator('#device_manuf')).toHaveValue('Acme Corporation');
+  await expectNoSidewaysScroll(page);
+});
+
+test('the request details dialog checks its required fields before saving', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Details test ' + Date.now());
+  await startCase(page, caseId); // A new request opens with the examiner dialog.
+  await page.goto(`edit_request.php?case=${caseId}`);
+  await page.click('button[data-target="#perustiedot"]');
+  const dialog = page.locator('#perustiedot');
+  await expect(dialog).toBeVisible();
+  expect(await findDuplicateIds(page)).toEqual([]);
+
+  // An emptied required field is marked and focused instead of being saved.
+  await dialog.locator('#case_crime').fill('');
+  await dialog.locator('button[type="submit"]').click();
+  await expect(dialog.locator('.field.has-error')).toHaveCount(1);
+  await expect(dialog.locator('#case_crime')).toBeFocused();
+
+  await dialog.locator('#case_crime').fill('Burglary');
+  await dialog.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(new RegExp(`edit_request\\.php\\?case=${caseId}$`));
+  await page.click('button[data-target="#perustiedot"]');
+  await expect(page.locator('#perustiedot #case_crime')).toHaveValue('Burglary');
   await expectNoSidewaysScroll(page);
 });

@@ -1478,6 +1478,12 @@ input[type="file"] {
   border-radius: 0 0 10px 10px;
 }
 
+.modal-footer .form-actions-hint {
+  float: left;
+  margin-top: 7px;
+  text-align: left;
+}
+
 .modal-backdrop.in {
   opacity: 0.45;
 }
@@ -2927,16 +2933,51 @@ fieldset.field > legend {
   font-size: 13px;
 }
 
-/* Device page edit form */
-.device-edit-grid {
-  padding: 4px 4px 0;
-  text-align: left;
+/* Device page: a summary card with the status and location, then the edit form in cards with one save bar. */
+.device-jump {
+  width: auto;
+  max-width: 100%;
 }
 
-.device-edit-extra {
-  margin-top: 18px !important;
-  padding-top: 18px;
-  border-top: 1px solid var(--k-border);
+.device-summary {
+  max-width: 980px; /* As wide as the form cards under it. */
+}
+
+.device-summary-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 24px;
+}
+
+.device-summary .device-title {
+  flex: 1 1 260px;
+}
+
+.device-summary .device-info {
+  flex: 1 1 220px;
+}
+
+.device-summary .device-controls {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.device-summary.has-evidence .device-summary-body {
+  background: var(--k-row-evidence);
+  box-shadow: inset 3px 0 0 var(--k-success);
+}
+
+.device-summary-footer {
+  justify-content: space-between;
+}
+
+.form-sections textarea {
+  width: 100%;
+}
+
+.form-actions .form-actions-start {
+  margin-right: auto;
 }
 
 @media (max-width: 767px) {
@@ -2966,6 +3007,16 @@ fieldset.field > legend {
 
   .form-actions .btn-primary {
     flex: 1 1 auto;
+  }
+
+  /* The bar is one row: other buttons show their icon only, and keep their text for screen readers. */
+  .form-actions .form-actions-collapse {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .form-actions-hint {

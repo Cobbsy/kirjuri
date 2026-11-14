@@ -388,164 +388,125 @@ $(function() {
         </form>
         {% endif %}
 
-      <!-- Modal -->
+      {# The request details, in the field layout of the add request form. A finished request is not edited. #}
+      {% set locked = entry.case_status == "3" %}
+      {% set confiscation_overdue = (settings.notify_after_4_months == "1") and entry.case_confiscation_date and (entry.case_confiscation_date != "0000-00-00") and (entry.case_confiscation_date|date("U") < "-4 months"|date("U")) %}
       <div class="modal fade" id="perustiedot" role="dialog" aria-labelledby="perustiedot_title">
         <div class="modal-dialog modal-lg" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-              <h4 class="modal-title" id="perustiedot_title">{{ lang.edit_request_details }}</h4>
-            </div>
-            <div class="modal-body">
-              <!--- perustiedot -->
-              <form class="form form-horizontal" role="form" method="post" action="submit.php?type=case_update&uid={{ entry.parent_id }}">
-                <input type="hidden" name="token" value="{{session.user.token}}">
-                <input type="hidden" name="ct" value="{{ct}}">
-                <div class="form-group">
-                  <label for="examination_request" class="col-sm-2 control-label">{{ lang.case_name }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="examination_request" name="case_name" value="{{ entry.case_name }}" placeholder="{{ lang.specify_case_name }}">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_file_number" class="col-sm-2 control-label">{{ lang.crimnal_compl_number }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="case_file_number" name="case_file_number" placeholder="{{ settings.organization_specific_prefix }}" value="{{ entry.case_file_number }}">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_crime" class="col-sm-2 control-label">{{ lang.main_offense }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="case_crime" name="case_crime" placeholder="{{ lang.specify_main_offense }}" value="{{ entry.case_crime }}">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_crime" class="col-sm-2 control-label">{{ lang.classification }}</label>
-                  <div class="col-sm-2">
-                    <select style="text-align:left;" class="btn btn-default" name="classification" id="classification">
-                    {% for classification in classifications %}
-                    <option value="{{ classification }}" {% if entry.classification == classification %}selected{% endif %}>{{ classification }}</option>
-                    {% endfor %}
-                    </select>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_suspect" class="col-sm-2 control-label">{{ lang.suspect_short }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="case_suspect" name="case_suspect" placeholder="{{ lang.name }}" value="{{ entry.case_suspect }}">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_investigation_lead" class="col-sm-2 control-label">{{ lang.head_of_investigation }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="case_investigation_lead" name="case_investigation_lead" placeholder="{{ lang.head_of_investigation }}" value="{{ entry.case_investigation_lead }}">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_investigator" class="col-sm-2 control-label">{{ lang.case_investigator }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="case_investigator" name="case_investigator" placeholder="{{ lang.name_and_rank }}" value="{{ entry.case_investigator }}">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_investigator_tel" class="col-sm-2 control-label">{{ lang.case_investigators_tel_no }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="case_investigator_tel" name="case_investigator_tel" placeholder="{{ settings.phone_number_prefix }}xxxx" value="{{ entry.case_investigator_tel }}">
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_crime" class="col-sm-2 control-label">{{ lang.unit }}</label>
-                  <div class="col-sm-2">
-                    <select style="text-align:left;" class="btn btn-default" name="case_investigator_unit" id="case_investigator_unit">
-                      <option value="" disabled>{{ lang.investigating_unit }}</option>
-                      {% for yksikko in inv_units %}
-                      <option value="{{ yksikko }}" {% if entry.case_investigator_unit == yksikko %}selected{% endif %}>{{ yksikko }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label for="case_request_description" class="col-sm-2 control-label">{{ lang.description }}</label>
-                  <div class="col-sm-10">
-                    <input {% if entry.case_status=="3" %}disabled{% endif %} type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.evidence_description }}" value="{{ entry.case_request_description }}">
-                  </div>
-                </div>
-                <div class="form-group {% if (settings.notify_after_4_months == " 1 ") and (entry.case_confiscation_date != " 0000-00-00 ") and ((entry.case_confiscation_date|date("U ")) < ("-4 months "|date("U "))) %}has-error{%endif%}">
-                <label for="case_confiscation_date" class="col-sm-2 control-label">{{ lang.confiscation_date_abbrev }}</label>
-                <div class="col-sm-10">
-                  <input {% if entry.case_status=="3" %}disabled{% endif %} type="date" class="form-control warning" id="case_confiscation_date" name="case_confiscation_date" placeholder="{{ lang.date_format }}" value="{{ entry.case_confiscation_date }}">
-                </div>
-            </div>
-            <div class="form-group">
-            <label for="forensic_investigator" class="col-sm-2 control-label"><a class="text-success">{{ lang.forensic_examiner_long }}</a></label>
-            <div class="col-sm-10">
-            <select style="text-align:left;" class="btn btn-default" name="forensic_investigator" id="forensic_investigator">
-            {% if not entry.forensic_investigator %}<option selected disabled value =""></option>{% endif %}
-
-            {% for user in session.all_users %}
-              {% if 'F' in user.flags == true %}
-                <option {% if user.name == entry.forensic_investigator %}selected{% endif %} value="{{ user.name }}">{{ user.name }} ({{user.username}})</option>
-              {% endif %}
-            {% endfor %}
-            <option value="-">* {{ lang.mobile_examination_only }}</option>
-
-
-            </select>
-            </div>
-            </div>
-            <div class="form-group">
-            <label for="phone_investigator" class="col-sm-2 control-label"><a class="text-success">{{ lang.mobile_examiner_long }}</a></label>
-            <div class="col-sm-10">
-            <input type="hidden" name="phone_investigator" value="">
-            <select style="text-align:left;" class="btn btn-default" name="phone_investigator" id="phone_investigator">
-            {% if not entry.phone_investigator %}<option selected disabled value=""></option>{% endif %}
-
-            {% for user in session.all_users %}
-              {% if 'M' in user.flags == true %}
-                <option {% if user.name == entry.phone_investigator %}selected{% endif %} value="{{ user.name }}">{{ user.name }} ({{user.username}})</option>
-              {% endif %}
-            {% endfor %}
-            <option value="-">* {{ lang.no_mobile_examination }}</option>
-
-            </select>
-            </div>
-            </div>
-            <div class="form-group">
-            <div class="col-sm-10 col-sm-offset-2">
-            <input type="hidden" name="case_contains_mob_dev" value="0">
-            <input {% if entry.case_status=="3" %}disabled{% endif %} type="checkbox" name="case_contains_mob_dev" value="1" {% if entry.case_contains_mob_dev=="1" %}checked{%endif%}> {{ lang.contains_mobile_devices }}
-            </div>
-            </div>
-            <div class="form-group">
-            <label for="case_urgency" class="col-sm-2 control-label"><a class="text-success">{{ lang.urgency }}</a></label>
-            <div class="col-sm-10">
-            <select style="text-align:left;" class="btn btn-default" name="case_urgency" id="case_urgency">
-            <option value="1" {% if entry.case_urgency == "1" %}selected{% endif %}>{{ lang.urgency_urgent }}</option>
-            <option value="2" {% if entry.case_urgency == "2" %}selected{% endif %}>{{ lang.urgency_normal }}</option>
-            <option value="3" {% if entry.case_urgency == "3" %}selected{% endif %}>{{ lang.urgency_can_wait }}</option>
-            </select>
-            </div>
-            </div>
+          <form class="modal-content" role="form" method="post" action="submit.php?type=case_update&uid={{ entry.parent_id }}" data-validate novalidate>
+            <input type="hidden" name="token" value="{{ session.user.token }}">
+            <input type="hidden" name="ct" value="{{ ct }}">
             <input type="hidden" name="is_removed" value="{{ entry.is_removed }}">
             <input type="hidden" name="parent_id" value="{{ entry.id }}">
-            <div class="form-group">
-            <div class="col-sm-offset-2 col-sm-10">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-label="{{ lang.close }}"><span aria-hidden="true">&times;</span></button>
+              <h4 class="modal-title" id="perustiedot_title">{{ lang.edit_request_details }}</h4>
             </div>
+            <div class="modal-body field-grid field-grid-2">
+              <div class="field field-span-2">
+                <label for="examination_request">{{ lang.case_name }}</label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="examination_request" name="case_name" value="{{ entry.case_name }}" placeholder="{{ lang.specify_case_name }}">
+              </div>
+              <div class="field">
+                <label for="case_file_number">{{ lang.crimnal_compl_number }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="case_file_number" name="case_file_number" placeholder="{{ settings.organization_specific_prefix }}" value="{{ entry.case_file_number }}" required>
+              </div>
+              <div class="field">
+                <label for="case_crime">{{ lang.main_offense }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="case_crime" name="case_crime" placeholder="{{ lang.specify_main_offense }}" value="{{ entry.case_crime }}" required>
+              </div>
+              <div class="field">
+                <label for="classification">{{ lang.classification }} <span class="req" aria-hidden="true">*</span></label>
+                <select class="form-control" name="classification" id="classification" required>
+                  {% for classification in classifications %}
+                  <option value="{{ classification }}" {% if entry.classification == classification %}selected{% endif %}>{{ classification }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="case_suspect">{{ lang.suspect_short }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="case_suspect" name="case_suspect" placeholder="{{ lang.name }}" value="{{ entry.case_suspect }}" required>
+              </div>
+              <div class="field">
+                <label for="case_investigation_lead">{{ lang.head_of_investigation }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="case_investigation_lead" name="case_investigation_lead" placeholder="{{ lang.head_of_investigation }}" value="{{ entry.case_investigation_lead }}" required>
+              </div>
+              <div class="field">
+                <label for="case_investigator">{{ lang.case_investigator }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="case_investigator" name="case_investigator" placeholder="{{ lang.name_and_rank }}" value="{{ entry.case_investigator }}" required>
+              </div>
+              <div class="field">
+                <label for="case_investigator_tel">{{ lang.case_investigators_tel_no }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="case_investigator_tel" name="case_investigator_tel" placeholder="{{ settings.phone_number_prefix }}xxxx" value="{{ entry.case_investigator_tel }}" required>
+              </div>
+              <div class="field">
+                <label for="case_investigator_unit">{{ lang.unit }} <span class="req" aria-hidden="true">*</span></label>
+                <select class="form-control" name="case_investigator_unit" id="case_investigator_unit" required>
+                  <option value="" disabled{% if entry.case_investigator_unit not in inv_units %} selected{% endif %}>{{ lang.investigating_unit }}</option>
+                  {% for yksikko in inv_units %}
+                  <option value="{{ yksikko }}" {% if entry.case_investigator_unit == yksikko %}selected{% endif %}>{{ yksikko }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field{% if confiscation_overdue %} has-warning{% endif %}">
+                <label for="case_confiscation_date">{{ lang.confiscation_date_abbrev }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="date" class="form-control" id="case_confiscation_date" name="case_confiscation_date" placeholder="{{ lang.date_format }}" value="{{ entry.case_confiscation_date }}" required>
+              </div>
+              <div class="field field-span-2">
+                <label for="case_request_description">{{ lang.description }} <span class="req" aria-hidden="true">*</span></label>
+                <input {% if locked %}disabled{% endif %} type="text" class="form-control" id="case_request_description" name="case_request_description" placeholder="{{ lang.evidence_description }}" value="{{ entry.case_request_description }}" required>
+              </div>
+              <div class="field">
+                <label for="forensic_investigator">{{ lang.forensic_examiner_long }}</label>
+                <select class="form-control" name="forensic_investigator" id="forensic_investigator">
+                  {% if not entry.forensic_investigator %}<option selected disabled value=""></option>{% endif %}
+                  {% for user in session.all_users %}
+                  {% if 'F' in user.flags %}
+                  <option {% if user.name == entry.forensic_investigator %}selected{% endif %} value="{{ user.name }}">{{ user.name }} ({{ user.username }})</option>
+                  {% endif %}
+                  {% endfor %}
+                  <option value="-">* {{ lang.mobile_examination_only }}</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="phone_investigator">{{ lang.mobile_examiner_long }}</label>
+                <input type="hidden" name="phone_investigator" value="">
+                <select class="form-control" name="phone_investigator" id="phone_investigator">
+                  {% if not entry.phone_investigator %}<option selected disabled value=""></option>{% endif %}
+                  {% for user in session.all_users %}
+                  {% if 'M' in user.flags %}
+                  <option {% if user.name == entry.phone_investigator %}selected{% endif %} value="{{ user.name }}">{{ user.name }} ({{ user.username }})</option>
+                  {% endif %}
+                  {% endfor %}
+                  <option value="-">* {{ lang.no_mobile_examination }}</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="case_urgency">{{ lang.urgency }}</label>
+                <select class="form-control" name="case_urgency" id="case_urgency">
+                  <option value="1" {% if entry.case_urgency == "1" %}selected{% endif %}>{{ lang.urgency_urgent }}</option>
+                  <option value="2" {% if entry.case_urgency == "2" %}selected{% endif %}>{{ lang.urgency_normal }}</option>
+                  <option value="3" {% if entry.case_urgency == "3" %}selected{% endif %}>{{ lang.urgency_can_wait }}</option>
+                </select>
+              </div>
+              <div class="field">
+                <input type="hidden" name="case_contains_mob_dev" value="0">
+                <label class="checkbox-label"><input {% if locked %}disabled{% endif %} type="checkbox" name="case_contains_mob_dev" value="1" {% if entry.case_contains_mob_dev == "1" %}checked{% endif %}> {{ lang.contains_mobile_devices }}</label>
+              </div>
             </div>
-          </div>
-          <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">{{ lang.close }}</button>
-          {% if entry.case_status == "1" %}
-          <button type="submit" class="btn btn-success"><i class="fa fa-save"></i> {{ lang.save_case_details }}</button>
-          {% elseif entry.case_status == "2" %}
-          <button type="submit" class="btn btn-success"><i class="fa fa-save"></i> {{ lang.update_case_details }}</button>
-          {% endif %}
+            <div class="modal-footer">
+              <span class="form-actions-hint"><span class="req" aria-hidden="true">*</span> {{ lang.fill_all_fields_warning }}</span>
+              <button type="button" class="btn btn-default" data-dismiss="modal">{{ lang.close }}</button>
+              {% if entry.case_status == "1" %}
+              <button type="submit" class="btn btn-primary"><i class="fa fa-save" aria-hidden="true"></i> {{ lang.save_case_details }}</button>
+              {% elseif entry.case_status == "2" %}
+              <button type="submit" class="btn btn-primary"><i class="fa fa-save" aria-hidden="true"></i> {{ lang.update_case_details }}</button>
+              {% endif %}
+            </div>
           </form>
-          {% endfor %}
-          </div>
         </div>
       </div>
-    </div>
+      {% endfor %}
   </div>
 <div role="tabpanel" class="tab-pane{% if returntab == "devices" %} active{% endif %}" id="tab-devices">
   <div class="devices-toolbar">
