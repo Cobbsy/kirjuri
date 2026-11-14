@@ -176,13 +176,13 @@ $(function() {
             <h1 class="case-title">{% if entry.case_name %}{{ entry.case_name }}{% elseif entry.case_suspect %}{{ lang.suspect_abbrev }} {{ entry.case_suspect }}{% else %}{{ lang.suspect_short }}{% endif %}</h1>
             <div class="case-subtitle">{{ entry.case_file_number }} &middot; {{ entry.case_crime }} &middot; {{ entry.classification }}</div>
           </div>
-          {% if entry.case_status != "3" and progress_done > 0 %}
-          <div class="case-progress" title="{{ current_request_progress }}% {{ lang.devices_investigated }}">
-            <div class="case-progress-label"><strong>{{ current_request_progress }}%</strong> {{ lang.devices_investigated }}</div>
+          {# Updated in place when a device's status changes (kirjuri.js), so it is there, hidden, before any has started. #}
+          {% if entry.case_status != "3" and mediarow %}
+          <div class="case-progress" data-case-progress{% if progress_done == 0 %} hidden{% endif %}>
+            <div class="case-progress-label"><strong data-case-percent>{{ current_request_progress }}%</strong> {{ lang.devices_investigated }}</div>
             <div class="progress">
-              <div class="progress-bar progress-bar-{% if current_request_progress <= 20 %}danger{% elseif current_request_progress <= 80 %}warning{% else %}success{% endif %}" role="progressbar" aria-valuenow="{{ current_request_progress }}" aria-valuemin="0" aria-valuemax="100" style="width:{{ current_request_progress }}%"></div>
+              <div class="progress-bar progress-bar-{% if current_request_progress <= 20 %}danger{% elseif current_request_progress <= 80 %}warning{% else %}success{% endif %}" role="progressbar" aria-valuenow="{{ current_request_progress }}" aria-valuemin="0" aria-valuemax="100" style="width:{{ current_request_progress }}%" data-case-bar></div>
             </div>
-            <a class="case-progress-reload" href="edit_request.php?case={{ caserow.0.id }}"><i class="fa fa-refresh" aria-hidden="true"></i> {{ lang.reload_hint_link }}</a>
           </div>
           {% endif %}
         </div>
@@ -207,38 +207,22 @@ $(function() {
             </div>
           </div>
           <div class="case-actions-primary">
-            {% set progress_counter1 = "0" %}
-            {% set progress_counter2 = "0" %}
+            {# All devices done (or none that need work) lets an open case be closed. The close button of an open case is
+               always there, hidden until then, so that it shows as soon as the last device is marked done. #}
+            {% set all_done = progress_total == progress_done %}
             {% if not mediarow %}
             <input type="hidden" value="1" name="case_status">
             <button type="submit" class="btn btn-danger"><i class="fa fa-undo"></i> {{ lang.dismiss_request }}</button>
-            {% else %}
-            {% for entry in mediarow %}
-            {% set jutun_vaihe = entry.device_action|split('|') %}
-            {% if (jutun_vaihe.0 >= "1") and (entry.is_removed != "1") %}
-            {% set progress_counter1 = (progress_counter1 + settings.device_action_count) %}
-            {% set progress_counter2 = (progress_counter2 + jutun_vaihe.0) %}
-            {% endif%}
-            {% if (loop.last == true) and (progress_counter1 == progress_counter2) %}
-            {% for entry in caserow %}
-            {% if entry.case_status == "2" %}
+            {% elseif entry.case_status == "2" %}
             <input type="hidden" value="3" name="case_status">
-            <button type="submit" class="btn btn-success"><i class="fa fa-check"></i> {{ lang.close_ready_request }}</button>
-            {% elseif entry.case_status == "3" %}
+            <button type="submit" class="btn btn-success" data-close-request{% if not all_done %} hidden{% endif %}><i class="fa fa-check"></i> {{ lang.close_ready_request }}</button>
+            {% elseif entry.case_status == "3" and all_done %}
             <input type="hidden" value="2" name="case_status">
             <button type="submit" class="btn btn-default"><i class="fa fa-undo"></i> {{ lang.reopen_closed_request }}</button>
-            {% endif %}
-            {% endfor %}
-            {% elseif (loop.last == true) and (progress_counter1 != progress_counter2) %}
-            {% for entry in caserow %}
-            {% if entry.case_status == "1" %}
+            {% elseif entry.case_status == "1" and not all_done %}
             <input type="hidden" value="2" name="case_status">
             <button type="submit" class="btn btn-primary"><i class="fa fa-play"></i> {{ lang.start_investigation }}</button>
             {% endif %}
-            {% endfor %}
-            {% endif %}
-            {% endfor %}
-            {% endif%}
           </div>
         </form>
 
@@ -355,9 +339,9 @@ $(function() {
             <img src="views/img/svg/{% if entry.device_type %}{{ entry.device_type|lower|replace({" ": "_", "ä": "a", "ö": "o"}) }}{% else %}tuntematon{% endif %}.svg" alt="" width="32" height="32">
             <span class="device-progress-body">
               <span class="device-progress-name">{{ entry.device_type }} <span class="text-muted">{{ entry.device_manuf }} {{ entry.device_model }}</span></span>
-              <span class="device-progress-status">{{ jutun_vaihe.1 }}</span>
+              <span class="device-progress-status" data-device-status="{{ entry.id }}">{{ jutun_vaihe.1 }}</span>
               <span class="progress">
-                <span class="progress-bar progress-bar-{% if settings.device_action_count == jutun_vaihe.0 %}success{% elseif jutun_vaihe.0 == "1" %}danger{% elseif jutun_vaihe.0 == "0" %}info{% else %}warning{% endif %}" role="progressbar" aria-valuenow="{{ step_percent }}" aria-valuemin="0" aria-valuemax="100" style="width:{{ step_percent }}%"></span>
+                <span class="progress-bar progress-bar-{% if settings.device_action_count == jutun_vaihe.0 %}success{% elseif jutun_vaihe.0 == "1" %}danger{% elseif jutun_vaihe.0 == "0" %}info{% else %}warning{% endif %}" role="progressbar" aria-valuenow="{{ step_percent }}" aria-valuemin="0" aria-valuemax="100" style="width:{{ step_percent }}%" data-device-bar="{{ entry.id }}"></span>
               </span>
             </span>
           </a>
@@ -613,37 +597,7 @@ $(function() {
     </td>
 
     <td class="device-controls">
-      <form class="form form-horizontal" role="form" method="post" action="submit.php?type=change_device_status&uid={{ entry.id }}" target="submit_iframe{{entry.id}}">
-        <input type="hidden" name="token" value="{{session.user.token}}">
-        <input type="hidden" name="ct" value="{{ct}}">
-      {% if (caserow.0.case_status != 3) and (session.user.access <= 1) %}
-    <select class="form-control input-sm device-select{% if not entry.device_action %} is-missing{% endif %}" name="device_action" aria-label="{{ lang.status }}" onchange="this.form.submit()">
-      <option value="{{entry.device_action}}" selected="selected">{% set device_current_action = entry.device_action|split('|') %}{{device_current_action.1}}</option>
-      <option disabled>---</option>
-      {% for dev_act in device_actions %}
-      {% set device_current_action = dev_act|split('|') %}
-      <option value="{{dev_act}}">{{device_current_action.1}} </option>
-      {% endfor %}
-    </select>
-      {% else %}
-      {% set show_action_status = entry.device_action|split('|') %}
-      <div class="device-status-text">{{ show_action_status.1 }}</div>
-      <input type="hidden" name="device_action" value="{{ entry.device_action }}">
-      {% endif %}
-      </form>
-      <form class="form form-horizontal" role="form" method="post" action="submit.php?type=change_device_location&uid={{ entry.id }}" target="submit_iframe{{entry.id}}_void">
-        <input type="hidden" name="token" value="{{session.user.token}}">
-        <input type="hidden" name="ct" value="{{ct}}">
-      <select class="form-control input-sm device-select{% if not entry.device_location %} is-missing{% endif %}" name="device_location" aria-label="{{ lang.sort_label_location }}" {% if session.user.access > 1 %}disabled{% else %}onchange="this.form.submit()"{% endif %}>
-      <option value="{{entry.device_location}}" selected="selected">{{entry.device_location}}</option>
-      <option disabled>---</option>
-      {% for dev_loc in device_locations %}
-      <option value="{{dev_loc}}">{{dev_loc}}</option>
-      {% endfor %}
-      </select>
-    </form>
-    <iframe class="device-progress-frame" name="submit_iframe{{entry.id}}" title="{{ lang.status }}" src="progress_bar_static.php?uid={{entry.id}}"></iframe>
-    <iframe name="submit_iframe{{entry.id}}_void" style="display:none;"></iframe>
+      {% include 'device_controls.twig' with {select_size: 'input-sm'} %}
     </td>
   </tr>
 
@@ -697,37 +651,7 @@ $(function() {
       {% endif %}
     </td>
     <td class="device-controls">
-      <form class="form form-horizontal" role="form" method="post" action="submit.php?type=change_device_status&uid={{ entry.id }}" target="submit_iframe{{entry.id}}">
-        <input type="hidden" name="token" value="{{session.user.token}}">
-<input type="hidden" name="ct" value="{{ct}}">
-      {% if (caserow.0.case_status != 3) and (session.user.access <= 1) %}
-    <select class="form-control input-sm device-select{% if not entry.device_action %} is-missing{% endif %}" name="device_action" aria-label="{{ lang.status }}" onchange="this.form.submit()">
-      <option value="{{entry.device_action}}" selected="selected">{% set device_current_action = entry.device_action|split('|') %}{{device_current_action.1}}</option>
-      <option disabled>---</option>
-      {% for dev_act in device_actions %}
-      {% set device_current_action = dev_act|split('|') %}
-      <option value="{{dev_act}}">{{device_current_action.1}} </option>
-      {% endfor %}
-    </select>
-      {% else %}
-      {% set show_action_status = entry.device_action|split('|') %}
-      <div class="device-status-text">{{ show_action_status.1 }}</div>
-      <input type="hidden" name="device_action" value="{{ entry.device_action }}">
-      {% endif %}
-      </form>
-      <form class="form form-horizontal" role="form" method="post" action="submit.php?type=change_device_location&uid={{ entry.id }}" target="submit_iframe{{entry.id}}_void">
-        <input type="hidden" name="token" value="{{session.user.token}}">
-        <input type="hidden" name="ct" value="{{ct}}">
-      <select class="form-control input-sm device-select{% if not entry.device_location %} is-missing{% endif %}" name="device_location" aria-label="{{ lang.sort_label_location }}" {% if session.user.access > 1 %}disabled{% else %}onchange="this.form.submit()"{% endif %}>
-      <option value="{{entry.device_location}}" selected="selected">{{entry.device_location}}</option>
-      <option disabled>---</option>
-      {% for dev_loc in device_locations %}
-      <option value="{{dev_loc}}">{{dev_loc}}</option>
-      {% endfor %}
-      </select>
-    </form>
-    <iframe class="device-progress-frame" name="submit_iframe{{entry.id}}" title="{{ lang.status }}" src="progress_bar_static.php?uid={{entry.id}}"></iframe>
-    <iframe name="submit_iframe{{entry.id}}_void" style="display:none;"></iframe>
+      {% include 'device_controls.twig' with {select_size: 'input-sm'} %}
     </td>
   </tr>
 

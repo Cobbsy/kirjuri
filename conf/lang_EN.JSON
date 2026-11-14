@@ -297,6 +297,7 @@
     "no_tools": "No tools yet.",
     "not_in_access_group": "You are not in case access group.",
     "not_received": "Not received",
+    "not_saved": "Not saved. Reload the page and try again.",
     "notice": "NOTICE",
     "notice_duplicate_request": "NOTICE! Possible duplicate request",
     "number_abbrev": "No.",

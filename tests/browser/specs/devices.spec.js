@@ -31,9 +31,19 @@ test('devices can be added, have their status changed and be edited', async ({ a
   const status = card.locator('select[name="device_action"]');
   const options = await status.locator('option:not([disabled])').evaluateAll((all) => all.map((o) => o.value));
   const next = options[options.length - 1];
+  const closeHidden = () => page.locator('[data-close-request]').evaluate((button) => button.hidden);
+  expect(await closeHidden()).toBe(true); // A device is still being worked on.
   const saved = page.waitForResponse((r) => r.url().includes('type=change_device_status') && r.request().method() === 'POST');
   await status.selectOption(next);
   await saved;
+  // The menus say they saved, and the case can be closed at once: its only device needs no more work.
+  await expect(card.locator('.autosave-status')).toHaveText('Changes saved.');
+  expect(await closeHidden()).toBe(false);
+  const location = card.locator('select[name="device_location"]');
+  const located = page.waitForResponse((r) => r.url().includes('type=change_device_location') && r.request().method() === 'POST');
+  await location.selectOption({ index: 3 });
+  expect(await (await located).json()).toEqual({ saved: true });
+  await expect(card.locator('.autosave-status')).toHaveText('Changes saved.');
   await page.reload();
   await expect(page.locator('table.device-card', { hasText: model }).locator('select[name="device_action"] option[selected]')).toHaveAttribute('value', next);
 

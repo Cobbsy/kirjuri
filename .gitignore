@@ -3,3 +3,5 @@ phpinfo.php
 .DS_store
 i**/.DS_Store
 .phptidy-cache
+# Output of the graphify code map tool
+graphify-out/
