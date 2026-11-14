@@ -38,6 +38,14 @@ function kirjuri_migrations() {
             'description' => 'Move exam_requests from MyISAM to InnoDB, with full text indexes for case and device searches',
             'up' => 'kirjuri_migration_006_exam_requests_innodb',
         ),
+        '007_device_status' => array(
+            'description' => 'Give devices the status of their case, which saving the request details did not copy to them',
+            'up' => 'kirjuri_migration_007_device_status',
+        ),
+        '008_reservation_usernames' => array(
+            'description' => 'Store the username with each tool reservation, which named the user by display name only',
+            'up' => 'kirjuri_migration_008_reservation_usernames',
+        ),
     );
 }
 
@@ -235,6 +243,50 @@ function kirjuri_migration_006_exam_requests_innodb(PDO $db) {
         }
     } finally {
         $db->exec('SET SESSION innodb_ft_enable_stopword = ' . ((int) $stopwords === 1 ? 'ON' : 'OFF'));
+    }
+}
+
+
+function kirjuri_migration_007_device_status(PDO $db) {
+    if (!kirjuri_column_exists($db, 'exam_requests', 'case_status')) {
+        return; // A database from before statuses has nothing to copy.
+    }
+    $db->exec('UPDATE exam_requests d JOIN exam_requests c ON c.id = d.parent_id AND c.parent_id = c.id
+        SET d.case_status = c.case_status WHERE d.id != d.parent_id');
+}
+
+
+function kirjuri_migration_008_reservation_usernames(PDO $db) {
+    // A reservation gets the username of the one user whose display name it holds. A name that no user,
+    // or more than one, has is left as it is, and the reservation goes on matching users by display name.
+    if (!kirjuri_column_exists($db, 'tools', 'attr_4') || !kirjuri_column_exists($db, 'users', 'name')) {
+        return;
+    }
+    $users = array();
+    foreach ($db->query('SELECT username, name FROM users')->fetchAll(PDO::FETCH_ASSOC) as $user) {
+        $users[(string) $user['name']][] = $user['username'];
+    }
+    $tools = $db->query('SELECT id, attr_4 FROM tools WHERE attr_4 IS NOT NULL AND attr_4 != ""')->fetchAll(PDO::FETCH_ASSOC);
+    $save = $db->prepare('UPDATE tools SET attr_4 = :attr_4 WHERE id = :id');
+    foreach ($tools as $tool) {
+        $reservations = json_decode($tool['attr_4'], true);
+        if (!is_array($reservations)) {
+            continue;
+        }
+        $changed = false;
+        foreach ($reservations as $key => $reservation) {
+            if (!is_array($reservation) || isset($reservation['username'])) {
+                continue;
+            }
+            $name = isset($reservation['reserved_for']) ? (string) $reservation['reserved_for'] : '';
+            if (isset($users[$name]) && count($users[$name]) === 1) {
+                $reservations[$key]['username'] = $users[$name][0];
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $save->execute(array(':attr_4' => json_encode($reservations), ':id' => $tool['id']));
+        }
     }
 }
 

@@ -1,21 +1,14 @@
 <?php
-// Authenticate before any output so that the redirect headers can still be sent.
+// The event log, newest first, for administrators.
 require_once './include_functions.php';
 ksess_verify(0);
-?>
-<html>
-<head>
-</head>
-<body>
-	<h1>kirjuri.log</h1>
-<pre>
-<?php
-$log = file_exists('logs/kirjuri.log') ? file('logs/kirjuri.log') : array();
-$log = array_reverse($log);
-foreach ($log as $line) {
-    echo htmlspecialchars(str_replace(";", " ", $line));
+
+// The newest lines only: the file grows for as long as the installation lives. bin/kirjuri log reads all of it.
+const LOG_PAGE_LINES = 2000;
+$lines = array_reverse(kirjuri_last_lines('logs/kirjuri.log', LOG_PAGE_LINES));
+foreach ($lines as $key => $line) {
+    $lines[$key] = str_replace(';', ' ', $line);
 }
-?>
-</pre>
-</body>
-</html>
+
+$_SESSION['message_set'] = false;
+echo kirjuri_render('log.twig', array('lines' => $lines));

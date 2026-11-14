@@ -12,7 +12,7 @@ $active_session_found = false;
 $username = isset($_GET['user']) ? (string) $_GET['user'] : '';
 // Only an existing account: the name becomes part of a folder path whose old files are deleted below.
 if (!in_array($username, array_column($_SESSION['all_users'], 'username'), true)) {
-    echo '<i title="passive" style="color:gray;" class="fa fa-circle-o"></i>';
+    echo '<i title="passive" class="fa fa-circle-o text-faint"></i>';
     die;
 }
 $user_dir = 'cache/user_'.$username;
@@ -31,16 +31,16 @@ if (file_exists('cache/user_'.$username)) {
     }
 
     if ($active_session_found === true) {
-        echo '<i title="online" style="color:#0D0;" class="fa fa-circle"></i>';
+        echo '<i title="online" class="fa fa-circle text-success"></i>';
         die;
     }
     else {
-        echo '<i title="offline" style="color:gray;" class="fa fa-circle"></i>';
+        echo '<i title="offline" class="fa fa-circle text-faint"></i>';
         die;
     }
 
 }
 else {
-    echo '<i title="passive" style="color:gray;" class="fa fa-circle-o"></i>';
+    echo '<i title="passive" class="fa fa-circle-o text-faint"></i>';
     die;
 }

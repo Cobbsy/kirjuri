@@ -8,8 +8,9 @@ if ($_SESSION['user']['access'] === "3") {
 
 $sort_j = isset($_GET['j']) ? $_GET['j'] : '';
 $sort_d = isset($_GET['d']) ? $_GET['d'] : '';
-$sort_s = isset($_GET['s']) ? $_GET['s'] : '';
+$sort_s = isset($_GET['s']) && is_string($_GET['s']) && isset(KIRJURI_STATUS_FILTERS[$_GET['s']]) ? $_GET['s'] : '';
 $search_term = '';
+$search_limited = false;
 
 if (empty($_GET['year'])) {
     $year = date('Y'); // Use current year if none specified
@@ -38,22 +39,40 @@ if (isset($_GET['search']) && (!empty($_GET['search']))) {
         header('Location: device_memo.php?uid='.$get_uid_result['id']); // Jump to device.
         die;
     }
-    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $year, $sort_j, $ascending, $sort_s);
+    // Searches cover every year. The year stays in the address, so removing the search returns to it.
+    // One row more than is shown tells whether there were more.
+    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $sort_j, $ascending, KIRJURI_SEARCH_LIMIT + 1);
+    $search_limited = count($row_cases) > KIRJURI_SEARCH_LIMIT;
+    $row_cases = array_slice($row_cases, 0, KIRJURI_SEARCH_LIMIT);
 }
 else {
-    $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending, $sort_s);
+    $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending);
 }
 $case_owners = array();
 foreach ($row_cases as $key => $case) {
-    // The template hides details of cases the user may not open. Search results can include
-    // devices, which take the access group of their case.
+    // Search results can include devices, which take the access group of their case.
     if (!array_key_exists($case['parent_id'], $case_owners)) {
         $case_owners[$case['parent_id']] = ($case['id'] === $case['parent_id']) ? $case['case_owner'] : kirjuri_case_owner_of($kirjuri_database, $case['id']);
     }
     $row_cases[$key]['can_access'] = kirjuri_user_can_access_case($_SESSION['user'], $case_owners[$case['parent_id']]);
 }
+if ($search_term !== '') {
+    // A match says what a case holds, its notes included, so search results and their counts leave out cases and
+    // devices the user may not open. The year list shows such cases, without their details (see index.twig).
+    $row_cases = array_values(array_filter($row_cases, function ($row) {
+        return $row['can_access'];
+    }));
+} else {
+    $row_cases = kirjuri_order_restricted_cases($row_cases, $sort_j);
+}
+$stalled_before = strtotime((string) ($prefs['settings']['stalled_case'] ?? ''));
+$cases_of_devices = kirjuri_cases_of_devices($kirjuri_database, $row_cases);
+list($row_cases, $status_counts) = kirjuri_filter_case_list($row_cases, $sort_s, $_SESSION['user']['name'] ?? '', $stalled_before === false ? null : $stalled_before,
+    $cases_of_devices);
 
-$row_devices = kirjuri_device_actions_for_year($kirjuri_database, $year);
+$row_devices = ($search_term !== '')
+    ? kirjuri_device_actions_for_cases($kirjuri_database, array_column($row_cases, 'parent_id'))
+    : kirjuri_device_actions_for_year($kirjuri_database, $year);
 $attachments = kirjuri_cases_with_attachments($kirjuri_database);
 
 $_SESSION['message_set'] = false;
@@ -79,5 +98,9 @@ echo kirjuri_render('index.twig', array(
         'order_by' => $order_by,
         'dateStart' => $dateRange['start'],
         'row_cases' => $row_cases,
+        'status_counts' => $status_counts,
+        'search_years' => ($search_term !== '') ? kirjuri_rows_per_year($row_cases, $cases_of_devices) : array(),
+        'search_limited' => $search_limited,
+        'search_limit' => KIRJURI_SEARCH_LIMIT,
         'row_devices' => $row_devices
     ));

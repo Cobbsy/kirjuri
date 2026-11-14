@@ -177,8 +177,53 @@ function kirjuri_update_case(PDO $db, $case_id, array $fields) {
         $assignments[] = $column . ' = :' . $column;
         $values[':' . $column] = isset($fields[$column]) ? $fields[$column] : null;
     }
-    $db->prepare('UPDATE exam_requests SET ' . implode(', ', $assignments) . ', case_start_date = NOW(), last_updated = NOW(), is_removed = "0"
+    // The examination starts when the case goes from new to open, or is open without a start date. The start
+    // date is assigned first, as it reads the status the case had before this update.
+    $values[':started_status'] = isset($fields['case_status']) ? $fields['case_status'] : null;
+    $db->prepare('UPDATE exam_requests SET case_start_date = IF(:started_status = "2" AND (case_status != "2" OR case_start_date IS NULL), NOW(), case_start_date), '
+        . implode(', ', $assignments) . ', last_updated = NOW(), is_removed = "0"
         WHERE id = :id AND parent_id = :id')->execute($values);
+    kirjuri_sync_device_status($db, $case_id);
+}
+
+
+/**
+ * The status a case gets when its examiners are saved: open once it has a forensic examiner (or "-", mobile
+ * examination only), new without one. A finished case stays finished: it is reopened with its own button.
+ */
+function kirjuri_status_for_examiners($current_status, $forensic_investigator) {
+    if ((string) $current_status === '3') {
+        return '3';
+    }
+    return ((string) $forensic_investigator !== '') ? '2' : '1';
+}
+
+
+/**
+ * Assign the examiners of a case and leave the rest of the request as it is, which the assign card on a new
+ * request's page needs: it may have been open while someone else edited the details. Returns false for no case.
+ */
+function kirjuri_assign_examiners(PDO $db, $case_id, $forensic_investigator, $phone_investigator) {
+    $case = kirjuri_find_case($db, $case_id, false);
+    if ($case === null) {
+        return false;
+    }
+    $case['forensic_investigator'] = $forensic_investigator;
+    $case['phone_investigator'] = $phone_investigator;
+    $case['case_status'] = kirjuri_status_for_examiners($case['case_status'], $forensic_investigator);
+    kirjuri_update_case($db, $case_id, $case);
+    return true;
+}
+
+
+/**
+ * Give the devices of a case the status of the case. Device rows carry their case's status, which the CSV
+ * export and KRF files hold, so every change of a case's status or of a device's case goes through here or
+ * through kirjuri_set_case_status(), which sets both in one statement.
+ */
+function kirjuri_sync_device_status(PDO $db, $case_id) {
+    $db->prepare('UPDATE exam_requests d JOIN exam_requests c ON c.id = d.parent_id AND c.parent_id = c.id
+        SET d.case_status = c.case_status WHERE d.parent_id = :id AND d.id != d.parent_id')->execute(array(':id' => $case_id));
 }
 
 
@@ -233,8 +278,8 @@ function kirjuri_find_uid(PDO $db, $uid) {
 
 
 /**
- * The front page sort orders by column number (the j parameter), and the status filters (s).
- * Anything else falls back to the default order and no filter.
+ * The front page sort orders by column number (the j parameter). Anything else falls back to the
+ * default order.
  */
 function kirjuri_case_list_order($sort, $ascending) {
     $columns = array('1' => 'case_id', '2' => 'case_name', '3' => 'case_file_number', '4' => 'case_crime', '5' => 'case_suspect',
@@ -243,14 +288,129 @@ function kirjuri_case_list_order($sort, $ascending) {
 }
 
 
-function kirjuri_case_status_filter($status) {
-    return in_array((string) $status, array('1', '2', '3'), true) ? ' AND case_status = "' . $status . '"' : '';
+/** The front page sort columns (j) that a case the user may not open hides: name, file number, crime, suspect, investigator. */
+const KIRJURI_SORTS_HIDDEN_FROM_OUTSIDERS = array('2', '3', '4', '5', '6');
+
+
+/**
+ * Front page rows, marked with can_access, sorted by a column that a case the user may not open hides would put
+ * each such case among the others by the hidden value: between "Smith" and "Smyth" it gives its suspect away.
+ * Then those cases go last, by UID, which is no secret. Other sorts keep the order. $sort is the j parameter.
+ */
+function kirjuri_order_restricted_cases(array $rows, $sort) {
+    if (!is_scalar($sort) || !in_array((string) $sort, KIRJURI_SORTS_HIDDEN_FROM_OUTSIDERS, true)) {
+        return $rows;
+    }
+    $open = array();
+    $restricted = array();
+    foreach ($rows as $row) {
+        if (empty($row['can_access'])) {
+            $restricted[] = $row;
+        } else {
+            $open[] = $row;
+        }
+    }
+    usort($restricted, function ($a, $b) {
+        return (int) $a['id'] <=> (int) $b['id'];
+    });
+    return array_merge($open, $restricted);
 }
 
 
-/** The cases added in $year for the front page, sorted and filtered as kirjuri_case_list_order() describes. */
-function kirjuri_list_cases(PDO $db, $year, $sort, $ascending, $status) {
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = parent_id' . kirjuri_case_status_filter($status) . ' AND is_removed = "0"
+/** The front page's status filters by the value of its s parameter. 1 to 3 are the case statuses. */
+const KIRJURI_STATUS_FILTERS = array('1' => 'new', '2' => 'open', '4' => 'mine', '5' => 'stalled', '3' => 'ready');
+
+
+/**
+ * Where a case stands on the front page for the user called $user_name: its status ('new', 'open' or
+ * 'ready', or 'mine' for an open case with the user as an examiner), and whether it is stalled: open
+ * with no update since $stalled_before, a Unix time (null when stalling is not tracked).
+ */
+function kirjuri_case_standing(array $case, $user_name, $stalled_before) {
+    $status = array('1' => 'new', '2' => 'open', '3' => 'ready')[(string) $case['case_status']] ?? '';
+    $examiners = array($case['forensic_investigator'] ?? '', $case['phone_investigator'] ?? '');
+    if ($status === 'open' && (string) $user_name !== '' && in_array((string) $user_name, $examiners, true)) {
+        $status = 'mine';
+    }
+    $updated = strtotime((string) ($case['last_updated'] ?? ''));
+    $stalled = ($status === 'open' || $status === 'mine') && $stalled_before !== null && $updated !== false && $updated < $stalled_before;
+    return array('status' => $status, 'stalled' => $stalled);
+}
+
+
+/**
+ * Mark each front page row with where it stands (see kirjuri_case_standing()), count the cases for
+ * each status filter and keep the rows the filter $filter (a KIRJURI_STATUS_FILTERS key, anything else
+ * shows all) lets through. Search results can include devices: they stand where their case does, and
+ * are filtered but not counted. $cases has the case rows, by id, of devices whose case is not in $rows
+ * (see kirjuri_cases_of_devices()).
+ */
+function kirjuri_filter_case_list(array $rows, $filter, $user_name, $stalled_before, array $cases = array()) {
+    $counts = array('all' => 0, 'new' => 0, 'open' => 0, 'mine' => 0, 'stalled' => 0, 'ready' => 0);
+    $shown = KIRJURI_STATUS_FILTERS[(string) $filter] ?? 'all';
+    foreach ($rows as $row) {
+        if ((string) $row['id'] === (string) $row['parent_id']) {
+            $cases[$row['id']] = $row;
+        }
+    }
+    $kept = array();
+    foreach ($rows as $row) {
+        // A device row has its case's status but not its examiners or last update.
+        $standing = kirjuri_case_standing($cases[$row['parent_id']] ?? $row, $user_name, $stalled_before);
+        $row['standing'] = $standing['status'];
+        $row['stalled'] = $standing['stalled'];
+        $matches = array(
+            'all' => true,
+            'new' => $standing['status'] === 'new',
+            'open' => $standing['status'] === 'open' || $standing['status'] === 'mine',
+            'mine' => $standing['status'] === 'mine',
+            'stalled' => $standing['stalled'],
+            'ready' => $standing['status'] === 'ready',
+        );
+        if ((string) $row['id'] === (string) $row['parent_id']) {
+            foreach (array_keys(array_filter($matches)) as $name) {
+                $counts[$name]++;
+            }
+        }
+        if ($matches[$shown]) {
+            $kept[] = $row;
+        }
+    }
+    return array($kept, $counts);
+}
+
+
+/** The case rows, by id, of the devices in $rows whose case is not among $rows, for kirjuri_filter_case_list(). */
+function kirjuri_cases_of_devices(PDO $db, array $rows) {
+    $present = array();
+    foreach ($rows as $row) {
+        if ((string) $row['id'] === (string) $row['parent_id']) {
+            $present[(string) $row['id']] = true;
+        }
+    }
+    $missing = array();
+    foreach ($rows as $row) {
+        if (!isset($present[(string) $row['parent_id']])) {
+            $missing[(string) $row['parent_id']] = (int) $row['parent_id'];
+        }
+    }
+    if (empty($missing)) {
+        return array();
+    }
+    $query = $db->prepare('SELECT id, parent_id, case_status, forensic_investigator, phone_investigator, last_updated, case_added_date FROM exam_requests
+        WHERE id = parent_id AND id IN (' . implode(', ', array_fill(0, count($missing), '?')) . ')');
+    $query->execute(array_values($missing));
+    $cases = array();
+    foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $case) {
+        $cases[$case['id']] = $case;
+    }
+    return $cases;
+}
+
+
+/** The cases added in $year for the front page, sorted as kirjuri_case_list_order() describes. */
+function kirjuri_list_cases(PDO $db, $year, $sort, $ascending) {
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE id = parent_id AND is_removed = "0"
         AND case_added_date BETWEEN :start AND :stop ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
     $query->execute(kirjuri_year_range($year));
     return $query->fetchAll(PDO::FETCH_ASSOC);
@@ -285,9 +445,10 @@ function kirjuri_fulltext_match($index, $placeholder) {
  * operator ("@", "<>", a lone "+" or "-") with a syntax error. Each term keeps a leading + or - and a
  * trailing * (on a single word); a term or quoted phrase that punctuation splits into several words, such
  * as an e-mail address or an IMEI written with dashes, becomes a phrase of those words. Other operators
- * (~ < > and parentheses) are left out.
+ * (~ < > and parentheses) are left out. With $word_beginnings, every single word gets a trailing *, so
+ * "phone" also finds "phones"; phrases stay exact.
  */
-function kirjuri_fulltext_query($search) {
+function kirjuri_fulltext_query($search, $word_beginnings = false) {
     preg_match_all('/([+-]?)"([^"]*)"?|\S+/u', (string) $search, $matches, PREG_SET_ORDER);
     $terms = array();
     foreach ($matches as $match) {
@@ -307,7 +468,7 @@ function kirjuri_fulltext_query($search) {
             continue;
         }
         if (count($words) === 1 && !isset($match[2])) {
-            $terms[] = $prefix . $words[0] . ($wildcard ? '*' : '');
+            $terms[] = $prefix . $words[0] . (($wildcard || $word_beginnings) ? '*' : '');
         } else {
             $terms[] = $prefix . '"' . implode(' ', $words) . '"';
         }
@@ -316,13 +477,64 @@ function kirjuri_fulltext_query($search) {
 }
 
 
-/** Full text search over the cases and devices added in $year. */
-function kirjuri_search_cases(PDO $db, $term, $year, $sort, $ascending, $status) {
-    $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"' . kirjuri_case_status_filter($status)
-        . ' AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
-        AND case_added_date BETWEEN :start AND :stop ORDER BY ' . kirjuri_case_list_order($sort, $ascending));
-    $term = kirjuri_fulltext_query($term);
-    $query->execute(array(':cases' => $term, ':devices' => $term) + kirjuri_year_range($year));
+/** How many rows the front page search shows at most. It covers every year, and a short word finds many. */
+const KIRJURI_SEARCH_LIMIT = 500;
+
+
+/**
+ * Full text search over the cases and devices of every year, for the front page: a word also finds words
+ * that start with it (see kirjuri_fulltext_query()). Devices of a removed case are left out with it: removing
+ * a case marks the case row only. Access groups are not checked here; the caller leaves out what the user may
+ * not open. At most $limit rows, in the list's order.
+ */
+function kirjuri_search_cases(PDO $db, $term, $sort, $ascending, $limit = KIRJURI_SEARCH_LIMIT) {
+    $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"
+        AND parent_id IN (SELECT id FROM exam_requests WHERE id = parent_id AND is_removed = "0")
+        AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
+        ORDER BY ' . kirjuri_case_list_order($sort, $ascending) . ', id LIMIT ' . max(1, (int) $limit));
+    $term = kirjuri_fulltext_query($term, true);
+    if ($term === '') {
+        return array(); // Only operators or punctuation: nothing to look for, and MATCH would match nothing anyway.
+    }
+    $query->execute(array(':cases' => $term, ':devices' => $term));
+    return $query->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+/**
+ * How many of the front page rows (cases and found devices) belong to requests of each year, newest year
+ * first. Search results span years; this says which. A device counts in its request's year, from the
+ * request's row in $rows or in $cases (see kirjuri_cases_of_devices()), as it may have been added later.
+ */
+function kirjuri_rows_per_year(array $rows, array $cases = array()) {
+    foreach ($rows as $row) {
+        if (isset($row['id'], $row['parent_id']) && (string) $row['id'] === (string) $row['parent_id']) {
+            $cases[$row['id']] = $row;
+        }
+    }
+    $years = array();
+    foreach ($rows as $row) {
+        $request = isset($row['parent_id'], $cases[$row['parent_id']]) ? $cases[$row['parent_id']] : $row;
+        $time = strtotime((string) ($request['case_added_date'] ?? ''));
+        if ($time !== false) {
+            $year = (int) date('Y', $time);
+            $years[$year] = ($years[$year] ?? 0) + 1;
+        }
+    }
+    krsort($years);
+    return $years;
+}
+
+
+/** Device status per case for the cases with these ids, whatever year their devices were added in. */
+function kirjuri_device_actions_for_cases(PDO $db, array $case_ids) {
+    $case_ids = array_values(array_unique(array_map('intval', $case_ids)));
+    if (empty($case_ids)) {
+        return array();
+    }
+    $query = $db->prepare('SELECT parent_id, device_action FROM exam_requests WHERE id != parent_id AND is_removed = "0"
+        AND parent_id IN (' . implode(', ', array_fill(0, count($case_ids), '?')) . ') ORDER BY parent_id, device_action ASC');
+    $query->execute($case_ids);
     return $query->fetchAll(PDO::FETCH_ASSOC);
 }
 

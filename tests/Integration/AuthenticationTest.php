@@ -121,7 +121,7 @@ final class AuthenticationTest extends IntegrationTestCase
         $this->assertSame((string) LOGIN_MAX_FAILURES_PER_IP, $defaults['settings']['login_max_failures_per_ip']);
         $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
             'settings' => array('login_max_failures_per_ip' => '0') + $defaults['settings'],
-            'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+            'inv_units' => implode(', ', $defaults['inv_units'])));
         try {
             $username = $this->uniqueName('proxied');
             $this->createUser($username, 'correct-password', 1);
@@ -156,7 +156,7 @@ final class AuthenticationTest extends IntegrationTestCase
         $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
         $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
             'settings' => array('login_max_failures_per_ip' => ' ') + $defaults['settings'],
-            'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+            'inv_units' => implode(', ', $defaults['inv_units'])));
         try {
             $username = $this->uniqueName('blank');
             $this->createUser($username, 'correct-password', 1);

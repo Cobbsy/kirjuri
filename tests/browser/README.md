@@ -2,7 +2,8 @@
 
 Playwright tests that drive Kirjuri in a real browser, at desktop and phone widths. They cover
 what the PHP tests cannot see: the page scripts (form checks, dialogs, the phone menu, case
-tabs, device status changes) and the layout (no page scrolls sideways on a phone). Every test
+tabs, device status changes), the layout (no page scrolls sideways on a phone) and the colours (text
+on every main page, in light and dark mode, has enough contrast with what is behind it). Every test
 also fails on any JavaScript error on the page.
 
 They run against a running installation and change its data (they add cases and devices), so
@@ -19,6 +20,7 @@ Settings, as environment variables:
 
 - `KIRJURI_URL`: the installation to test, default `http://localhost:8080/`
 - `KIRJURI_ADMIN_PASSWORD`: the admin password, default `admin-password` (the Docker setup's)
+- `KIRJURI_CHROMIUM`: the path of a Chromium to use instead of the one `npx playwright install` downloads
 
 `npx playwright test --project=phone` runs only the phone width, `--headed` shows the browser,
 and `npx playwright show-report` opens the report of the last run. In CI the report and the

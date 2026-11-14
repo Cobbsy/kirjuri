@@ -147,10 +147,121 @@ final class SourceTest extends TestCase
         $this->assertSame(array(), array_values(array_diff(array_unique($labels[1]), $ids[1])));
     }
 
+    /**
+     * Text inside an inline script is escaped for JavaScript. HTML escaping there turns an apostrophe or an
+     * ampersand in a translation into &#039; or &amp;, which the calendar and charts then show as is.
+     */
+    #[DataProvider('templates')]
+    public function testScriptsEscapeTheirTextForJavaScript(string $template): void
+    {
+        preg_match_all('/<script(?![^>]*\\bsrc=)[^>]*>(.*?)<\/script>/s', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $scripts);
+        preg_match_all('/\{\{\s*(lang\.[\w.]+)((?:(?!\}\}).)*)\}\}/', implode("\n", $scripts[1]), $values, PREG_SET_ORDER);
+        $unescaped = array();
+        foreach ($values as $value) {
+            if (!preg_match('/\|\s*e\(\s*[\'"]js[\'"]\s*\)/', $value[2])) {
+                $unescaped[] = $value[1];
+            }
+        }
+        $this->assertSame(array(), $unescaped, "Use |e('js') for text inside <script>.");
+    }
+
+    /**
+     * Any value printed inside a quoted string of an inline script is escaped for JavaScript, not only language
+     * strings: statistics wrote device types into a jQuery selector, and the users page usernames, so a custom
+     * device type with a quote, or a username such as j.smith, broke the script or the selector.
+     */
+    #[DataProvider('templates')]
+    public function testScriptsEscapeEveryValueInsideAString(string $template): void
+    {
+        preg_match_all('/<script(?![^>]*\\bsrc=)[^>]*>(.*?)<\/script>/s', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $scripts);
+        $unescaped = array();
+        foreach (explode("\n", implode("\n", $scripts[1])) as $line) {
+            $line = preg_replace('/\{%.*?%\}/', '', $line); // Tags print nothing.
+            preg_match_all('/\{\{((?:(?!\}\}).)*)\}\}/', $line, $values, PREG_OFFSET_CAPTURE);
+            foreach ($values[1] as $i => $value) {
+                $before = preg_replace('/\{\{.*?\}\}/', '', substr($line, 0, $values[0][$i][1]));
+                $inside_string = preg_match_all('/(?<!\\\\)["\']/', $before) % 2 === 1;
+                if ($inside_string && !preg_match('/\|\s*e\(\s*[\'"]js[\'"]\s*\)\s*$/', $value[0])) {
+                    $unescaped[] = trim($value[0]);
+                }
+            }
+        }
+        $this->assertSame(array(), $unescaped, "Use |e('js') for values inside a string in <script>.");
+    }
+
     /** CSRF and case tokens are sent in POST bodies only: URLs end up in logs, history and Referer headers. */
     #[DataProvider('templates')]
     public function testTemplateLinksCarryNoTokens(string $template): void
     {
         $this->assertDoesNotMatchRegularExpression('/[?&](token|ct)=/', file_get_contents(KIRJURI_ROOT . '/views/' . $template));
+    }
+
+    /**
+     * Colours live in kirjuri.css as classes on its variables, so a theme change reaches every page. Colours that are
+     * data, such as an administrator's chart colour printed with {{ }}, may still go in a style attribute.
+     */
+    #[DataProvider('templates')]
+    public function testTemplateSetsNoColoursOfItsOwn(string $template): void
+    {
+        $source = preg_replace('/\{\{.*?\}\}|\{%.*?%\}/s', '', file_get_contents(KIRJURI_ROOT . '/views/' . $template));
+        $colour = '#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|var)\(|\b(?:red|darkred|green|blue|orange|yellow|black|white|grey|gray|lightgrey)\b';
+        $found = array();
+        preg_match_all('/\sstyle="([^"]*)"/', $source, $styles);
+        foreach ($styles[1] as $style) {
+            if (preg_match('/(?:^|;)\s*(?:color|background|border)[\w-]*\s*:[^;]*(?:' . $colour . ')/i', $style)) {
+                $found[] = 'style="' . $style . '"';
+            }
+        }
+        preg_match_all('/<style\b[^>]*>(.*?)<\/style>/si', $source, $blocks);
+        foreach ($blocks[1] as $block) {
+            if (preg_match('/(?:color|background|border)[\w-]*\s*:[^;}]*(?:' . $colour . ')/i', $block, $match)) {
+                $found[] = '<style> ' . trim($match[0]);
+            }
+        }
+        preg_match_all('/\.css\(\s*[\'"](?:color|background[\w-]*|border[\w-]*)[\'"][^)]*\)/i', $source, $scripts);
+        $found = array_merge($found, $scripts[0]);
+        $this->assertSame(array(), $found, 'Use a class from views/css/kirjuri.css.');
+    }
+
+    /** Every colour variable in kirjuri.css has a dark mode value, so a new colour cannot stay light in dark mode. */
+    public function testEveryThemeColourHasADarkModeValue(): void
+    {
+        $css = file_get_contents(KIRJURI_ROOT . '/views/css/kirjuri.css');
+        $this->assertSame(1, preg_match('/^:root \{(.*?)^\}/ms', $css, $light));
+        $this->assertSame(1, preg_match('/prefers-color-scheme: dark\) \{\s*:root:not\(\.paper\) \{(.*?)^  \}/ms', $css, $dark));
+        preg_match_all('/(--k-[\w-]+):\s*(?:#|rgba?\()/', $light[1], $colours);
+        preg_match_all('/(--k-[\w-]+):/', $dark[1], $darkValues);
+        // The sidebar is dark in both modes, and calendar events have pale colours in both.
+        $sameInBoth = array('--k-sidebar-text', '--k-sidebar-muted', '--k-event-text');
+        $this->assertGreaterThan(40, count($colours[1]));
+        $this->assertSame(array(), array_values(array_diff($colours[1], $darkValues[1], $sameInBoth)));
+    }
+
+    /** The same for HTML that PHP pages print themselves. install.php runs before the theme exists. */
+    #[DataProvider('phpFiles')]
+    public function testPhpPrintsNoColoursOfItsOwn(string $file): void
+    {
+        if (basename($file) === 'install.php') {
+            $this->assertTrue(true);
+            return;
+        }
+        $this->assertDoesNotMatchRegularExpression('/style=\\\\?["\'][^"\']*(?:color|background)\s*:/i', file_get_contents($file), 'Use a class from views/css/kirjuri.css.');
+    }
+
+    /** The statistics charts take their colours from the theme's --k-chart-* palette, which has light and dark values. */
+    public function testStatisticsChartsUseTheThemePalette(): void
+    {
+        $source = file_get_contents(KIRJURI_ROOT . '/views/statistics.twig');
+        $this->assertDoesNotMatchRegularExpression('/["\']#[0-9a-fA-F{]|rgba?\(\d|\brandom\(/', $source, 'Use themeColour("--k-chart-N").');
+        $this->assertStringContainsString('--k-chart-', $source);
+    }
+
+    /** Every stylesheet, script and image a template loads from the application exists. */
+    #[DataProvider('templates')]
+    public function testTemplateLoadsOnlyFilesThatExist(string $template): void
+    {
+        preg_match_all('/\b(?:href|src)="((?:views|vendor)\/[^"{}?#]+)"/', file_get_contents(KIRJURI_ROOT . '/views/' . $template), $matches);
+        $missing = array_values(array_filter(array_unique($matches[1]), fn ($path) => !file_exists(KIRJURI_ROOT . '/' . $path)));
+        $this->assertSame(array(), $missing);
     }
 }

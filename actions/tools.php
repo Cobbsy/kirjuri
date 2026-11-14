@@ -21,11 +21,18 @@ case 'reserve_tool':
     $res_start = $_POST['reserve_start_date'] . " " . $_POST['reserve_start_time'];
     $res_end   = $_POST['reserve_end_date'] . " " . $_POST['reserve_end_time'];
     // If tool ID is set in POST, then this is a reservation, check for empty vars.
+    $reserved_for = null;
     if (isset($_POST['tool_id'])) {
         $returnid = filter_numbers($_POST['tool_id']);
+        // The reservation is for a user, chosen by username: display names change.
+        foreach ($_SESSION['all_users'] as $user) {
+            if (isset($_POST['reserved_for']) && $user['username'] === $_POST['reserved_for']) {
+                $reserved_for = $user;
+            }
+        }
         // Check the submitted fields: the concatenated strings above always contain at least a space.
         if (empty($_POST['reserve_start_date']) || empty($_POST['reserve_start_time']) || empty($_POST['reserve_end_date'])
-            || empty($_POST['reserve_end_time']) || empty($returnid)
+            || empty($_POST['reserve_end_time']) || empty($returnid) || $reserved_for === null
             || strtotime($res_start) === false || strtotime($res_end) === false) {
             message('error', $_SESSION['lang']['missing_form_field']);
             header('Location: tools.php?populate=' . $returnid);
@@ -43,34 +50,41 @@ case 'reserve_tool':
         $res_start = $tmp;
         unset($tmp);
     }
+    // A reservation that has already ended is a mistake, most likely a wrong date. One that has started is fine.
+    if (isset($_POST['tool_id']) && strtotime($res_end) <= time()) {
+        message('error', $_SESSION['lang']['reservation_in_past']);
+        header('Location: tools.php?populate=' . $returnid);
+        die;
+    }
     $res_arr = kirjuri_tool_reservations($kirjuri_database, $returnid);
     // A new reservation must not collide with existing ones; highlight the first conflict.
     if (isset($_POST['tool_id'])) {
         $conflict = kirjuri_find_reservation_conflict($res_arr, $res_start, $res_end);
         if ($conflict !== null) {
-            $compare = $res_arr[$conflict];
-            message('error', $_SESSION['lang']['calendar_conflict'] . ": " . $compare['reserve_start'] . ' -> ' . $compare['reserve_end'] . ": " . $compare['reserved_for']);
+            $compare = kirjuri_present_reservations(array($res_arr[$conflict]), $_SESSION['all_users'], $_SESSION['user'])[0];
+            message('error', $_SESSION['lang']['calendar_conflict'] . ": " . $compare['reserve_start'] . ' -> ' . $compare['reserve_end'] . ": " . $compare['name']);
             header('Location: tools.php?populate=' . $returnid . '&highlight=' . $conflict);
             die;
         }
     }
     // If dropping a reservation, check that the user is admin or the reservation is for them.
-    // Using real names here, so changing user's real name will prevent removing old reservations.
     if (isset($_GET['drop'])) {
-        if (isset($res_arr[$_GET['drop']]) && (($_SESSION['user']['access'] === "0") || ($res_arr[$_GET['drop']]['reserved_for'] === $_SESSION['user']['name']))) {
+        if (isset($res_arr[$_GET['drop']]) && is_array($res_arr[$_GET['drop']])
+            && (($_SESSION['user']['access'] === "0") || kirjuri_reservation_belongs_to($res_arr[$_GET['drop']], $_SESSION['user']))) {
             event_log_write('0', "Calendar", "Removed tool ID " . $returnid . " reservation: " . $res_arr[$_GET['drop']]['reserve_start'] . " -> " . $res_arr[$_GET['drop']]['reserve_end'] . " for " . $res_arr[$_GET['drop']]['reserved_for']);
             // Remove the reservation from the reservations array.
             unset($res_arr[$_GET['drop']]);
         }
-    } else {
-        event_log_write('0', "Calendar", "Reserved tool ID " . $returnid . ": " . $res_start . " -> " . $res_end . " for " . $_POST['reserved_for']);
+    } elseif ($reserved_for !== null) {
+        event_log_write('0', "Calendar", "Reserved tool ID " . $returnid . ": " . $res_start . " -> " . $res_end . " for " . $reserved_for['name'] . " (" . $reserved_for['username'] . ")");
         // Count from zero and find the next free array number.
         $i = 0;
         while (isset($res_arr[$i]) === true) {
             $i++;
         }
         // Populate the free number.
-        $res_arr[$i]['reserved_for']  = $_POST['reserved_for'];
+        $res_arr[$i]['username']      = $reserved_for['username'];
+        $res_arr[$i]['reserved_for']  = $reserved_for['name'];
         $res_arr[$i]['reserve_start'] = $res_start;
         $res_arr[$i]['reserve_end']   = $res_end;
         // Do not allow oversized comments. 500 characters should be enough.

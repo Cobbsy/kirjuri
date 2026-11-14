@@ -79,19 +79,15 @@ case 'case_update':
     ksess_verify(1);
     ksess_validate($_POST['token']);
     $_GET['uid'] = filter_numbers($_GET['uid']);
+    csrf_case_validate(posted_case_token(), $_GET['uid']);
     verify_case_ownership($_GET['uid']);
     if (!isset($_POST['phone_investigator'])) {
         $_POST['phone_investigator'] = "-";
     }
     $audit_stamp = audit_log_write($_POST);
-    if ($_POST['forensic_investigator'] !== '') {
-        // Set the case as started if an f.investigator is assigned.
-
-        $case_status = '2';
-    }
-    else {
-        $case_status = '1';
-    }
+    $current_case = kirjuri_find_case($kirjuri_database, $_GET['uid']);
+    // Assigning a forensic examiner starts the case; a finished case stays finished.
+    $case_status = kirjuri_status_for_examiners($current_case === null ? '1' : $current_case['case_status'], $_POST['forensic_investigator']);
     kirjuri_update_case($kirjuri_database, $_GET['uid'], array(
             'case_name' => $_POST['case_name'],
             'case_file_number' => $_POST['case_file_number'],
@@ -115,6 +111,25 @@ case 'case_update':
     $_SESSION['post_cache'] = '';
     show_saved_succesfully();
     header('Location: edit_request.php?case=' . $_POST['returnid']);
+    die;
+
+case 'assign_examiners':
+    // The examiners of a new request, from the card on its page. Only they change: the card may have been open
+    // while someone else edited the request's details.
+    $id = filter_numbers(isset($_GET['uid']) ? $_GET['uid'] : '');
+    ksess_verify(1);
+    ksess_validate(posted_token());
+    csrf_case_validate(posted_case_token(), $id);
+    verify_case_ownership($id);
+    $audit_stamp = audit_log_write($_POST);
+    $forensic = isset($_POST['forensic_investigator']) ? (string) $_POST['forensic_investigator'] : '';
+    $phone = isset($_POST['phone_investigator']) ? (string) $_POST['phone_investigator'] : '-'; // submit.php turns an empty one into "-".
+    if (kirjuri_assign_examiners($kirjuri_database, $id, $forensic, $phone)) {
+        event_log_write($id, 'Update', 'Assigned examiners: ' . $forensic . ', ' . $phone . '. ', $audit_stamp);
+        show_saved_succesfully();
+    }
+    $_SESSION['post_cache'] = '';
+    header('Location: edit_request.php?case=' . $id);
     die;
 
 case 'report_notes':

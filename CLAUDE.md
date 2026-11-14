@@ -31,6 +31,11 @@ MySQL 8.0, plus the Docker image and the browser tests.
     KIRJURI_TEST_DB_HOST=127.0.0.1 KIRJURI_TEST_DB_USER=root KIRJURI_TEST_DB_PASSWORD=... vendor/bin/phpunit
     vendor/bin/phpstan analyse --memory-limit=1G     # level 5, must be clean
 
+In Claude Code on the web, `.claude/hooks/session-start.sh` does the setup when a session starts:
+it installs and starts MariaDB, sets the three `KIRJURI_TEST_DB_*` variables, and installs the
+packages in `tests/` and `tests/browser`. If the container restarts mid-session and MariaDB is down,
+run the hook again.
+
 The integration tests install a throwaway copy of the app into a new database and serve it with
 `php -S`. The database user needs to be able to create and drop databases.
 
@@ -53,6 +58,8 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
   kept in sorted order. Each file keeps its own encoding: DE uses CRLF line endings and `\u`
   escapes, ES and FI use `\u` escapes, EN and PT_BR are raw UTF-8. Custom language files get
   missing strings from English at load time; the language editor sees the raw file.
+  `php tests/tools/add_lang_strings.php strings.json` adds new strings to all five files that way,
+  from a JSON object of language code to `{key: text}`.
 - Every `<label for>` points at an `id` in the same template. When a partial is included more than
   once, prefix its ids so they stay unique.
 - Passwords need at least 8 characters.
@@ -62,11 +69,24 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
 
 - Use the CSS variables in `kirjuri.css` (`--k-primary`, `--k-danger`, `--k-border` and so on)
   instead of hard-coded colours or inline `style=` colours.
+- Dark mode follows the operating system. Every colour variable gets a dark value in the
+  `prefers-color-scheme: dark` block. The accents (`--k-primary` and so on) are fills with white text
+  on them; coloured text uses the `-text` variants (`--k-primary-text`), which dark mode lightens.
+  Printouts and the case report (`<html class="paper">`) stay light.
+- Charts take series colours from `--k-chart-1` to `--k-chart-8` in that order, never cycled, and
+  name their series in a legend or labels. Counts per category are labelled bars in one colour, not
+  pie charts.
 - Pages must not scroll sideways at 390px wide. Wide tables scroll inside their own box. The
   browser tests check this.
 - Forms: labels go above the fields in a `.field-grid` of `.field` elements. Required fields get
   `required` and a `<span class="req">*</span>`, and the form gets `data-validate novalidate`.
 - Keep text in the language files, not in templates, including `aria-label` and `confirm()` text.
+
+## Roadmap
+
+`docs/ROADMAP.md` says where development stands, what is still open (translations, an outside
+review), the testing stage plan, the security assessment and go-live checklist, and the plans for
+native installs and installers on Windows and macOS. Read it before planning new work, and update it when an item moves.
 
 ## Git and pull requests
 
@@ -74,3 +94,16 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
   requests in this repository. Fix real findings (with a test), reply on each thread, then merge
   with a merge commit.
 - After a PR merges, start new work from a fresh `origin/master`.
+
+## Working with the owner
+
+- At the start of every session, and whenever you suggest the next piece of work, say which effort
+  level to set for it:
+  - **Medium** for routine work: merging a green PR, checking CI, applying translators' answers, small
+    text or CHANGELOG edits.
+  - **High** (the default) for most features and bug fixes, which touch PHP, templates, the five
+    language files and the tests together.
+  - **xhigh** for work where a mistake is costly or hard to spot: security work (two-factor sign-in,
+    the audit log), the installers, and large refactors such as splitting `edit_request.twig`.
+  - Not **low**: even small changes here usually need a test and edits in several language files.
+- Write to the owner in plain paragraphs, without jargon, and give the reason for a recommendation.

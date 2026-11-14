@@ -2,6 +2,22 @@
 // Figures for the statistics page.
 
 /**
+ * How many of $rows have each of $values in $column, in the order of $values. Values match exactly,
+ * as the statistics page has always compared them.
+ */
+function kirjuri_count_by(array $rows, $column, array $values) {
+    $counts = array_fill_keys(array_map('strval', array_values($values)), 0);
+    foreach ($rows as $row) {
+        $value = (string) ($row[$column] ?? '');
+        if (isset($counts[$value])) {
+            $counts[$value]++;
+        }
+    }
+    return $counts;
+}
+
+
+/**
  * Cases and devices of $year and the totals shown on the statistics page, or null when the year
  * has no cases. $units are the investigating units from the settings, in display order.
  */
@@ -61,6 +77,20 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
         $device_count_by_unit[$unit] = isset($by_unit[$i]) ? (int) $by_unit[$i]['devices'] : 0;
     }
 
+    // Devices and their data by the month each device was added, as the device tables count them, so that the
+    // months add up to the year's total. The request's month would put a device added later in the wrong month,
+    // and the wrong year.
+    $devices_per_month = array_fill(0, 12, 0);
+    $gb_per_month = array_fill(0, 12, 0);
+    foreach ($all_devices as $device) {
+        $added = strtotime((string) $device['case_added_date']);
+        if ($added !== false) {
+            $month = (int) date('n', $added) - 1;
+            $devices_per_month[$month]++;
+            $gb_per_month[$month] += (int) $device['device_size_in_gb'];
+        }
+    }
+
     $sizes = array_filter(array_column($all_devices, 'device_size_in_gb'), function ($size) {
         return $size !== null;
     });
@@ -68,6 +98,8 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
         'all_cases' => $all_cases,
         'all_devices' => $all_devices,
         'device_count' => count($all_devices),
+        'devices_per_month' => $devices_per_month,
+        'gb_per_month' => $gb_per_month,
         'count_total' => $count_total,
         'count_new' => $statuses['1'],
         'count_open' => $statuses['2'],
@@ -81,5 +113,22 @@ function kirjuri_statistics(PDO $db, $year, array $units) {
         'device_count_by_unit' => $device_count_by_unit,
         'dateStart' => $range[':start'],
         'dateStop' => $range[':stop'],
+    );
+}
+
+
+/**
+ * The nearest years before and after $year that have requests, for the statistics page's year arrows, as
+ * array('previous' => year or null, 'next' => year or null). Empty years are skipped rather than linked.
+ */
+function kirjuri_statistics_neighbours(PDO $db, $year) {
+    $query = $db->prepare('SELECT
+        (SELECT MAX(YEAR(case_added_date)) FROM exam_requests WHERE is_removed != "1" AND id = parent_id AND case_added_date < :start) AS previous,
+        (SELECT MIN(YEAR(case_added_date)) FROM exam_requests WHERE is_removed != "1" AND id = parent_id AND case_added_date >= :stop) AS next');
+    $query->execute(kirjuri_year_range($year));
+    $row = $query->fetch(PDO::FETCH_ASSOC);
+    return array(
+        'previous' => $row['previous'] === null ? null : (int) $row['previous'],
+        'next' => $row['next'] === null ? null : (int) $row['next'],
     );
 }

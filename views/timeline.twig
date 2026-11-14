@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html>
+<html{% if html_lang %} lang="{{ html_lang }}"{% endif %}>
   <head>
     {% block title %}
     <title>{{ settings.title_text }} - {{ lang.case_log }} {{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date('Y') }}</title>
@@ -13,25 +14,15 @@
     <link href="views/js/vis-4.18.0/dist/vis-timeline-graph2d.min.css" rel="stylesheet" type="text/css" />
     <link href="vendor/twbs/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="views/font-awesome-4.6.3/css/font-awesome.min.css">
-
-    <style>
-    .vis-item.vis-background.timeline-waiting {
-      background-color: rgba(255, 0, 255, 0.2);
-    }
-    .vis-item.vis-background.timeline-pending {
-      background-color: rgba(255, 0, 0, 0.2);
-    }
-    .vis-item.vis-background.timeline-active {
-      background-color: rgba(0, 255, 0, 0.2);
-    }
-    </style>
+    <link href="views/css/kirjuri.css" rel="stylesheet">
+    <link rel="icon" href="views/img/favicon.svg" type="image/svg+xml">
     <script src="vendor/twbs/bootstrap/dist/js/bootstrap.min.js"></script>
   </head>
   <body>
 
   <div class="container container-fluid col-md-12 col-sm-12">
     <h3 class="page-heading">{{ lang.case_log }} {{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date('Y') }}</h3>
-    <div id="visualization" style="background-color:#FFF;"></div>
+    <div id="visualization" class="bg-surface"></div>
     <h3 class="page-heading text-center">&nbsp;
       <button  class="btn btn-info" id="moveLeft"><i class="fa fa-arrow-left"></i>&nbsp;</button>
       <button  class="btn btn-info" id="fit"><i class="fa fa-chevron-right"></i>...<i class="fa fa-chevron-left"></i></button>
@@ -42,7 +33,8 @@
     </h3>
     <div class="col-md-12"><br></div>
   {% if caselog %}
-    <table class="table table-condensed" style=";background-color:#FFF;">
+    <div class="table-responsive">
+    <table class="table table-condensed bg-surface">
       <thead>
         <th style="width:100px;white-space:nowrap;">{{ lang.timestamp }}</th>
         <th style="width:60px;white-space:nowrap;">{{ lang.user }}</th>
@@ -60,6 +52,7 @@
       </tr>
   {% endfor %}
   </table>
+  </div>
   {% else %}
   <div class="alert alert-danger" role="alert">{{ lang.no_events }}</div>
   {% endif %}
@@ -69,11 +62,11 @@
   var container = document.getElementById('visualization');
   // Create a DataSet (allows two way data-binding)
   var items = new vis.DataSet([
-    {id: 'A', content: '{{ lang.confiscation_date }}', start: '{{ caserow.0.case_confiscation_date|date("Y-m-d") }}', end: '{{ caserow.0.case_added_date|date("Y-m-d") }}', type: 'background', className: 'timeline-waiting'},
-    {id: 'B', content: '{{ lang.requested }}', start: '{{ caserow.0.case_added_date|date("Y-m-d") }}', end: '{{ caserow.0.case_start_date|date("Y-m-d") }}', type: 'background', className: 'timeline-pending'},
-    {id: 'C', content: '{{ lang.started }}', start: '{{ caserow.0.case_start_date|date("Y-m-d") }}', end: '{{ caserow.0.last_updated|date("Y-m-d") }}', type: 'background', className: 'timeline-active'},
+    {id: 'A', content: '{{ lang.confiscation_date|e('js') }}', start: '{{ caserow.0.case_confiscation_date|date("Y-m-d")|e('js') }}', end: '{{ caserow.0.case_added_date|date("Y-m-d")|e('js') }}', type: 'background', className: 'timeline-waiting'},
+    {id: 'B', content: '{{ lang.requested|e('js') }}', start: '{{ caserow.0.case_added_date|date("Y-m-d")|e('js') }}', end: '{{ caserow.0.case_start_date|date("Y-m-d")|e('js') }}', type: 'background', className: 'timeline-pending'},
+    {id: 'C', content: '{{ lang.started|e('js') }}', start: '{{ caserow.0.case_start_date|date("Y-m-d")|e('js') }}', end: '{{ caserow.0.last_updated|date("Y-m-d")|e('js') }}', type: 'background', className: 'timeline-active'},
     {% set line_id = 0 %} {% for line in caselog %} {% set line_id = line_id + 1%} {% set line = line|split(';') %}
-    {id: {{ line_id }}, title: '{{ line.0|e('js') }} {{ line.1|e('js') }}', content: '{% if line.2 == "Add" %}<i class="fa fa-plus" style="color:green;"></i>{% elseif line.2 == "Access" %}<i class="fa fa-user" style="color:black;"></i>{% elseif line.2 == "Update" %}<i class="fa fa-refresh" style="color:blue;"></i>{% elseif line.2 == "Remove" %}<i class="fa fa-minus" style="color:red;"></i>{% elseif line.2 == "Error" %}<i class="fa fa-times" style="color:red;"></i>{% elseif line.2 == "Action" %}<i class="fa fa-arrow-right" style="color:blue;"></i>{% endif %} {{ line.2|e('js') }}', start: '{{ line.0|date("Y-m-d") }}'}{% if not loop.last %},{% endif %}
+    {id: {{ line_id }}, title: '{{ line.0|e('js') }} {{ line.1|e('js') }}', content: '{% if line.2 == "Add" %}<i class="fa fa-plus text-success"></i>{% elseif line.2 == "Access" %}<i class="fa fa-user"></i>{% elseif line.2 == "Update" %}<i class="fa fa-refresh text-primary"></i>{% elseif line.2 == "Remove" %}<i class="fa fa-minus text-danger"></i>{% elseif line.2 == "Error" %}<i class="fa fa-times text-danger"></i>{% elseif line.2 == "Action" %}<i class="fa fa-arrow-right text-primary"></i>{% endif %} {{ line.2|e('js') }}', start: '{{ line.0|date("Y-m-d")|e('js') }}'}{% if not loop.last %},{% endif %}
 
     {% endfor %}
   ]);
@@ -88,8 +81,8 @@
   }
   var options = {
     clickToUse: true,
-    start: '{{ caserow.0.case_added_date|date('Y-m-d') }}',
-    end: '{{ caserow.0.last_updated|date('Y-m-d') }}',
+    start: '{{ caserow.0.case_added_date|date('Y-m-d')|e('js') }}',
+    end: '{{ caserow.0.last_updated|date('Y-m-d')|e('js') }}',
     min: new Date({{ (caserow.0.case_added_date|date('Y')) - 1 }}, {{ (caserow.0.case_added_date|date('m')) - 1 }}, {{ caserow.0.case_added_date|date('d') }}),                // lower limit of visible range
     max: new Date({{ (caserow.0.last_updated|date('Y')) + 1}}, {{ (caserow.0.last_updated|date('m')) - 1 }}, {{ caserow.0.last_updated|date('d') }}),                // upper limit of visible range
     showCurrentTime: true
@@ -104,16 +97,16 @@
   {% set line_id = 0 %}
   {% for line in caselog %}
     {% set line_id = line_id + 1%}
-  document.getElementById('focus{{ line_id }}').onclick = function() {
+  document.getElementById('focus{{ line_id|e('js') }}').onclick = function() {
     timeline.setSelection({{ line_id }}, {focus: focus.checked});
     timeline.focus({{ line_id }});
-    $("tr").css("background-color", "#FFF");
-    $("tr[name=table-line-{{ line_id }}]").css("background-color", "#fcfbae");
+    $("tr").removeClass("timeline-selected");
+    $("tr[name=table-line-{{ line_id|e('js') }}]").addClass("timeline-selected");
   };
   {% endfor %}
   timeline.on('select', function (properties) {
-    $("tr").css("background-color", "#FFF");
-    $("tr[name=table-line-" + properties.items + "]").css("background-color", "#fcfbae");
+    $("tr").removeClass("timeline-selected");
+    $("tr[name=table-line-" + properties.items + "]").addClass("timeline-selected");
   });
   window.onload = function() {
     timeline.fit();

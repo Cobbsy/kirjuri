@@ -66,10 +66,6 @@ case 'save_settings':
         $unit_key++;
         $settings_output = $settings_output . $unit_key . " = \"" . ini_value(trim($value)) . "\";\r\n";
     }
-    $settings_output = $settings_output . "\r\n[statistics_chart_colors]\r\n";
-    foreach ($_POST['chart'] as $key => $value) {
-        $settings_output = $settings_output . filter_letters_and_numbers($key) . " = \"" . ini_value($value) . "\";\r\n";
-    }
     file_put_contents('conf/settings.local', $settings_output);
     event_log_write('0', 'Admin', 'Settings saved.', $audit_stamp);
     show_saved_succesfully();

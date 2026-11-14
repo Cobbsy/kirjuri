@@ -4,7 +4,6 @@ require_once './include_functions.php';
 ksess_verify(3);
 
 $open = isset($_GET['open']) ? $_GET['open'] : '';
-$prefill_msgto = isset($_GET['msgto']) ? $_GET['msgto'] : '';
 if (isset($_GET['subject'])) {
     $_SESSION['post_cache'] = array('subject' => urldecode($_GET['subject']));
 }
@@ -21,6 +20,8 @@ foreach ($_POST as $key => $value) // Sanitize all POST data
 }
 
 $open = filter_numbers($open);
+// Copy to new keeps the recipient: a username.
+$prefill_msgto = isset($_POST['copy_msgto']) ? (string) $_POST['copy_msgto'] : '';
 
 if ($open > 0) {
     kirjuri_mark_message_read($kirjuri_database, $open, $_SESSION['user']['username']);

@@ -177,4 +177,29 @@ final class HelpersTest extends TestCase
         $this->assertFileExists($base . '/outside/keep.txt', 'The symlink target must not be deleted.');
         delete_directory($base);
     }
+
+    public function testLastLinesReadsOnlyTheEndOfAFile(): void
+    {
+        // The event log page read the whole log, which grows for as long as the installation lives, to show its end.
+        $file = tempnam(sys_get_temp_dir(), 'log');
+        try {
+            $lines = array();
+            for ($i = 1; $i <= 300; $i++) {
+                $lines[] = 'line ' . $i . ' ' . str_repeat('x', $i % 7);
+            }
+            file_put_contents($file, implode("\n", $lines) . "\n");
+            foreach (array(1, 5, 16, 64, 100000) as $block) {
+                $this->assertSame(array_slice($lines, -3), kirjuri_last_lines($file, 3, $block), "Block of $block bytes.");
+                $this->assertSame($lines, kirjuri_last_lines($file, 1000, $block), 'More lines asked for than there are.');
+            }
+            file_put_contents($file, "first\r\nsecond\r\nlast");
+            $this->assertSame(array('second', 'last'), kirjuri_last_lines($file, 2, 4), 'CRLF, and no newline at the end.');
+            file_put_contents($file, '');
+            $this->assertSame(array(), kirjuri_last_lines($file, 10));
+            $this->assertSame(array(), kirjuri_last_lines($file . '.missing', 10));
+            $this->assertSame(array(), kirjuri_last_lines($file, 0));
+        } finally {
+            unlink($file);
+        }
+    }
 }

@@ -16,6 +16,7 @@ require KIRJURI_ROOT . '/lib/attachments.php';
 require KIRJURI_ROOT . '/lib/statistics.php';
 require KIRJURI_ROOT . '/lib/install.php';
 require KIRJURI_ROOT . '/lib/tools.php';
+require KIRJURI_ROOT . '/lib/licenses.php';
 
 spl_autoload_register(function ($class) {
     $prefix = 'Kirjuri\\Tests\\';

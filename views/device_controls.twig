@@ -1,0 +1,39 @@
+{# A device's status and location menus and its progress bar, on the case page and the device page. The menus save
+   as soon as they change (data-autosave in kirjuri.js), which says so beside them and updates this bar, the case's
+   progress and its close button from the answer. Takes entry (the device), caserow, ct, device_actions,
+   device_locations and select_size ('input-sm' or ''). #}
+{% set step = entry.device_action|split('|') %}
+{% set step_percent = step.0 == "0" ? 100 : ((100 / settings.device_action_count) * step.0)|round(0, "ceil") %}
+<div class="device-autosave" data-device="{{ entry.id }}">
+  <form method="post" action="submit.php?type=change_device_status&uid={{ entry.id }}" data-autosave>
+    <input type="hidden" name="token" value="{{ session.user.token }}">
+    <input type="hidden" name="ct" value="{{ ct }}">
+    {% if (caserow.0.case_status != 3) and (session.user.access <= 1) %}
+    <select class="form-control {{ select_size }} device-select{% if not entry.device_action %} is-missing{% endif %}" name="device_action" aria-label="{{ lang.action_status }}">
+      <option value="{{ entry.device_action }}" selected="selected">{{ step.1 }}</option>
+      <option disabled>---</option>
+      {% for dev_act in device_actions %}
+      {% set option_step = dev_act|split('|') %}
+      <option value="{{ dev_act }}">{{ option_step.1 }}</option>
+      {% endfor %}
+    </select>
+    {% else %}
+    <div class="device-status-text">{{ step.1 }}</div>
+    {% endif %}
+  </form>
+  <form method="post" action="submit.php?type=change_device_location&uid={{ entry.id }}" data-autosave>
+    <input type="hidden" name="token" value="{{ session.user.token }}">
+    <input type="hidden" name="ct" value="{{ ct }}">
+    <select class="form-control {{ select_size }} device-select{% if not entry.device_location %} is-missing{% endif %}" name="device_location" aria-label="{{ lang.device_location }}"{% if session.user.access > 1 %} disabled{% endif %}>
+      <option value="{{ entry.device_location }}" selected="selected">{{ entry.device_location }}</option>
+      <option disabled>---</option>
+      {% for dev_loc in device_locations %}
+      <option value="{{ dev_loc }}">{{ dev_loc }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <div class="progress device-progress-bar" title="{{ lang.device_progress }}"{% if not entry.device_action %} hidden{% endif %}>
+    <div class="progress-bar {{ settings.progress_bar_style }} progress-bar-{% if settings.device_action_count == step.0 %}success{% elseif step.0 == "1" %}danger{% elseif step.0 == "0" %}info{% else %}warning{% endif %}" role="progressbar" aria-valuenow="{{ step_percent }}" aria-valuemin="0" aria-valuemax="100" style="width:{{ step_percent }}%" data-device-bar="{{ entry.id }}"></div>
+  </div>
+  <span class="autosave-status" role="status" aria-live="polite" data-saved="{{ lang.changes_saved }}" data-failed="{{ lang.not_saved }}"></span>
+</div>

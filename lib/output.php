@@ -57,7 +57,22 @@ function kirjuri_render($template, $variables = array()) {
             'session' => kirjuri_template_session(),
             'settings' => $prefs['settings'],
             'lang' => isset($_SESSION['lang']) ? $_SESSION['lang'] : array(),
+            'html_lang' => kirjuri_html_lang(isset($prefs['settings']['lang']) ? $prefs['settings']['lang'] : ''),
         ));
+}
+
+
+/**
+ * The language tag for <html lang> from the language setting: "lang_PT_BR" is "pt-BR". Screen readers
+ * pick their voice by it and browsers their hyphenation and translation offer. '' for a name that is
+ * not a language code.
+ */
+function kirjuri_html_lang($setting) {
+    $code = preg_replace('/\.(conf|JSON)$/', '', preg_replace('/^lang_/', '', (string) $setting));
+    if (!preg_match('/^([A-Za-z]{2,3})(?:_([A-Za-z]{2}))?$/', $code, $parts)) {
+        return '';
+    }
+    return strtolower($parts[1]) . (isset($parts[2]) ? '-' . strtoupper($parts[2]) : '');
 }
 
 
@@ -83,4 +98,13 @@ function kirjuri_send_security_headers() {
     header("Content-Security-Policy: frame-ancestors 'self'");
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: same-origin');
+}
+
+
+/** Answer a request made by a page script with JSON, and end it. */
+function kirjuri_send_json(array $data) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode($data);
+    die;
 }

@@ -48,6 +48,7 @@ case 'device_detach':
     ksess_verify(1);
     ksess_validate(posted_token());
     $_GET['returnid'] = filter_numbers($_GET['returnid']);
+    csrf_case_validate(posted_case_token(), $_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
     kirjuri_detach_device($kirjuri_database, $_GET['returnid'], filter_numbers($_GET['uid'])); // Only devices of this case.
     $_POST['returnid'] = $_GET['returnid'];
@@ -83,10 +84,13 @@ case 'change_device_status':
     kirjuri_update_device_field($kirjuri_database, $case_id['parent_id'], $_GET['uid'], 'device_action', $_POST['device_action']);
     $_SESSION['post_cache'] = '';
     event_log_write($case_id['parent_id'], "Update", "Changed device UID".$_GET['uid']." status to " .$_POST['device_action']. ". " , $audit_stamp);
-    echo kirjuri_render('progress_bar.twig', array(
-            'device_action' => $_POST['device_action']
+    // The page's script updates the device's bar, the case's progress and its close button from this.
+    $steps = $prefs['settings']['device_action_count'] ?? 9;
+    kirjuri_send_json(array(
+            'saved' => true,
+            'device' => kirjuri_device_progress($_POST['device_action'], $steps),
+            'case' => kirjuri_case_progress($kirjuri_database, $case_id['parent_id'], $steps),
         ));
-    die;
 
 case 'change_device_location':
     // Dynamically set device location.
@@ -99,7 +103,7 @@ case 'change_device_location':
     kirjuri_update_device_field($kirjuri_database, $case_id['parent_id'], $_GET['uid'], 'device_location', $_POST['device_location']);
     $_SESSION['post_cache'] = '';
     event_log_write($case_id['parent_id'], "Update", "Changed device UID".$_GET['uid']." location to " .$_POST['device_location']. ". " , $audit_stamp);
-    die;
+    kirjuri_send_json(array('saved' => true));
 
 case 'devicememo':
     // Update individual device details.
@@ -246,9 +250,7 @@ case 'device':
     $audit_stamp = audit_log_write($_POST);
     event_log_write($id, 'Add', 'Added device UID' . $new_uid['id'] . ": ". $_POST['device_type'] . ' ' . $_POST['device_manuf'] . ' ' . $_POST['device_model'] . ' ' . $_POST['device_identifier'] . ' to case ' . $id . '. ' , $audit_stamp);
     $_SESSION['post_cache'] = '';
-    $_SESSION['message']['type'] = 'info';
-    $_SESSION['message']['content'] = 'Changes saved.';
-    $_SESSION['message_set'] = true;
+    show_saved_succesfully();
     header('Location: edit_request.php?case=' . $_POST['parent_id'] . '&tab=devices');
     die;
 }

@@ -31,20 +31,24 @@ foreach ($_SESSION['all_tools'] as $tool) { // Get tool information based on GET
         $fields['attr_1'] = $tool['attr_1'];
         $fields['attr_2'] = explode(",", $tool['attr_2']);
         $fields['attr_3'] = $tool['attr_3'];
-        $fields['attr_4'] = json_decode($tool['attr_4'], true);
+        // NULL until the tool's first reservation. Each gets its user's current name and whether it may be dropped.
+        $reservations = json_decode((string) $tool['attr_4'], true);
+        $fields['attr_4'] = is_array($reservations) ? kirjuri_present_reservations($reservations, $_SESSION['all_users'], $_SESSION['user']) : null;
     }
 }
 
 $tool_reservations = array();
 foreach ($_SESSION['all_tools'] as $tool) {
-    $tool_reservations[$tool['id']] = json_decode($tool['attr_4'], true);
+    $reservations = json_decode((string) $tool['attr_4'], true);
+    $tool_reservations[$tool['id']] = is_array($reservations) ? kirjuri_present_reservations($reservations, $_SESSION['all_users'], $_SESSION['user']) : null;
 }
 
 
 
 $i = 0;
 while ($i < 100) {
-    $evcolors[] = "#" . substr(str_shuffle("5566778899AABBCC"), 0, 6);
+    // Pale colours only, so the calendar's dark text reads on every one of them.
+    $evcolors[] = "#" . substr(str_shuffle("AABBCCDDEEFF"), 0, 6);
     $i++;
 }
 

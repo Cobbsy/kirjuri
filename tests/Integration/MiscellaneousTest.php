@@ -25,6 +25,46 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertSame('1', $this->server->pdo()->query("SELECT archived_to FROM messages WHERE id = $id")->fetchColumn());
     }
 
+    public function testANoteToOneselfCanBeRepliedTo(): void
+    {
+        // A note to oneself is stored as from "Myself", and the reply form sent that as the recipient, which no
+        // account has, so the reply was refused.
+        $admin = $this->admin();
+        $subject = $this->uniqueName('Note ');
+        $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => 'admin', 'subject' => $subject, 'body' => '<p>Remember</p>'));
+        // Subjects are stored encoded, so the note is found as the newest one from "Myself".
+        $id = $this->server->pdo()->query("SELECT MAX(id) FROM messages WHERE msgfrom = 'Myself' AND msgto = 'admin'")->fetchColumn();
+        $this->assertNotNull($id, 'The note was saved.');
+        $page = $admin->get('messages.php?open=' . $id)->body;
+        $this->assertStringContainsString('<input type="hidden" name="msgto" value="admin">', $page);
+        $this->assertStringNotContainsString('name="msgto" value="Myself"', $page);
+
+        $reply = $admin->post('submit.php?type=send_message', array('token' => $this->token($admin), 'msgto' => 'admin', 'subject' => 'Re: ' . $subject, 'body' => '<p>Done</p>'));
+        $this->assertSame('messages.php', $reply->location());
+    }
+
+    public function testPagesNameTheirLanguageAndTheDeviceAddedMessageIsInIt(): void
+    {
+        // Pages had no lang attribute, so screen readers read them in the wrong voice. "Changes saved." after
+        // adding a device was written in English in the code.
+        $admin = $this->admin();
+        $this->assertStringContainsString('<html lang="en">', $this->client()->get('login.php')->body);
+        $caseId = $this->createCase($admin, $this->uniqueName('Language '));
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_PT_BR"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $this->assertStringContainsString('<html lang="pt-BR">', $admin->get('index.php')->body);
+            $this->addDevice($admin, $caseId, $this->uniqueName('L'));
+            $page = $admin->get('edit_request.php?case=' . $caseId . '&tab=devices')->body;
+            $portuguese = json_decode(file_get_contents(KIRJURI_ROOT . '/conf/lang_PT_BR.JSON'), true);
+            $this->assertStringContainsString($portuguese['changes_saved'], $page);
+            $this->assertStringNotContainsString('Changes saved.', $page);
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+    }
+
     public function testOnlyTheRecipientCanArchiveOrDeleteTheirCopy(): void
     {
         $sender = $this->uniqueName('sender');
@@ -135,7 +175,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $admin->post('submit.php?type=add_tool', array('token' => $token, 'product_name' => $name, 'hw_version' => '1', 'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
         $toolId = $this->server->pdo()->query("SELECT id FROM tools WHERE product_name = '$name'")->fetchColumn();
         $reserve = function ($start, $end) use ($admin, $token, $toolId) {
-            return $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'Administrator', 'comment' => '',
+            return $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'admin', 'comment' => '',
                 'reserve_start_date' => $start, 'reserve_start_time' => '08:00', 'reserve_end_date' => $end, 'reserve_end_time' => '08:00'));
         };
 
@@ -145,11 +185,77 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertCount(2, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
 
         // Missing dates used to pass the check, because " " (date and time joined by a space) is not empty.
-        $incomplete = $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'Administrator', 'comment' => '',
+        $incomplete = $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => 'admin', 'comment' => '',
             'reserve_start_date' => '', 'reserve_start_time' => '', 'reserve_end_date' => '2030-02-01', 'reserve_end_time' => '08:00'));
         $this->assertSame('tools.php?populate=' . $toolId, $incomplete->location());
         $this->assertCount(2, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
         $this->assertSame(200, $admin->get('tools.php?populate=' . $toolId)->status);
+    }
+
+    public function testReservationsBelongToAUsernameAndCannotBeInThePast(): void
+    {
+        // Reservations stored the user's display name, so renaming a user left their reservations to nobody and
+        // they could no longer drop them; and a reservation could be made for a time already gone.
+        $admin = $this->admin();
+        $token = $this->token($admin);
+        $name = $this->uniqueName('Duplicator ');
+        $admin->post('submit.php?type=add_tool', array('token' => $token, 'product_name' => $name, 'hw_version' => '1', 'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
+        $toolId = $this->server->pdo()->query("SELECT id FROM tools WHERE product_name = '$name'")->fetchColumn();
+        $username = 'rs' . strtolower(generate_token(6));
+        $this->createUser($username, 'Password-123', 1);
+        $reserve = function (array $fields) use ($admin, $token, $toolId, $username) {
+            return $admin->post('submit.php?type=reserve_tool', $fields + array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => $username, 'comment' => '',
+                'reserve_start_date' => '2032-01-01', 'reserve_start_time' => '08:00', 'reserve_end_date' => '2032-01-01', 'reserve_end_time' => '16:00'));
+        };
+        $stored = fn () => json_decode((string) $this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true) ?? array();
+
+        // The form's own default, 08:00 to 16:00, moves to tomorrow once today's has ended.
+        $form = $admin->get('tools.php?populate=' . $toolId)->body;
+        $this->assertMatchesRegularExpression("/name=\"reserve_end_date\" value='(\\d{4}-\\d\\d-\\d\\d)'/", $form);
+        preg_match("/name=\"reserve_end_date\" value='([^']+)'/", $form, $endDate);
+        $this->assertGreaterThan(time(), strtotime($endDate[1] . ' 16:00'), 'The default reservation has not ended.');
+
+        $past = $reserve(array('reserve_start_date' => '2020-01-01', 'reserve_end_date' => '2020-01-02'));
+        $this->assertSame('tools.php?populate=' . $toolId, $past->location());
+        $this->assertSame(array(), $stored(), 'A reservation in the past is refused.');
+        $reserve(array('reserved_for' => 'nobody' . generate_token(6)));
+        $this->assertSame(array(), $stored(), 'A reservation for an unknown user is refused.');
+        $reserve(array());
+        $this->assertCount(1, $stored());
+        $this->assertSame($username, $stored()[0]['username']);
+        $ongoing = $reserve(array('reserve_start_date' => date('Y-m-d', strtotime('-1 day')), 'reserve_end_date' => date('Y-m-d', strtotime('+1 day'))));
+        $this->assertSame('tools.php?populate=' . $toolId, $ongoing->location());
+        $this->assertCount(2, $stored(), 'A reservation that has started but not ended is fine.');
+
+        $this->server->pdo()->prepare('UPDATE users SET name = :name WHERE username = :username')->execute(array(':name' => 'Renamed Examiner', ':username' => $username));
+        $user = $this->login($username, 'Password-123');
+        $page = $user->get('tools.php?populate=' . $toolId)->body;
+        $this->assertStringContainsString('<td>Renamed Examiner</td>', $page, 'Reservations show the current name.');
+        $this->assertStringContainsString('drop=1&returnid=' . $toolId, $page, 'The renamed user can still drop their reservation.');
+        $user->post('submit.php?type=reserve_tool&drop=1&returnid=' . $toolId, array('token' => $this->token($user)));
+        $this->assertCount(1, $stored());
+    }
+
+    public function testMigrationGivesOldReservationsTheirUsername(): void
+    {
+        $pdo = $this->server->pdo();
+        $username = 'mg' . strtolower(generate_token(6));
+        $this->createUser($username, 'Password-123', 1);
+        $display = 'Migrated ' . generate_token(6);
+        $pdo->prepare('UPDATE users SET name = :name WHERE username = :username')->execute(array(':name' => $display, ':username' => $username));
+        $reservations = array(
+            array('reserved_for' => $display, 'reserve_start' => '2033-01-01 08:00', 'reserve_end' => '2033-01-01 16:00', 'comment' => ''),
+            array('reserved_for' => 'Left the lab', 'reserve_start' => '2033-01-02 08:00', 'reserve_end' => '2033-01-02 16:00', 'comment' => ''),
+        );
+        $toolId = kirjuri_add_tool($pdo, array('product_name' => $this->uniqueName('Old tool '), 'hw_version' => '', 'sw_version' => '', 'serialno' => '', 'flags' => '', 'comment' => ''));
+        kirjuri_save_tool_reservations($pdo, $toolId, $reservations);
+
+        kirjuri_migration_008_reservation_usernames($pdo);
+        kirjuri_migration_008_reservation_usernames($pdo);
+        $migrated = kirjuri_tool_reservations($pdo, $toolId);
+        $this->assertSame($username, $migrated[0]['username']);
+        $this->assertSame($display, $migrated[0]['reserved_for']);
+        $this->assertArrayNotHasKey('username', $migrated[1], 'A name no user has is left as it is.');
     }
 
     public function testToolUpdatesKeepAVersionHistoryAndToolsCanBeRemoved(): void
@@ -224,8 +330,12 @@ final class MiscellaneousTest extends IntegrationTestCase
         $admin->post('submit.php?type=add_tool', array('token' => $token, 'product_name' => $name, 'hw_version' => '1', 'sw_version' => '1', 'serialno' => 'S', 'comment' => '', 'flag1' => '', 'flag2' => ''));
         $toolId = $this->server->pdo()->query("SELECT id FROM tools WHERE product_name = '$name'")->fetchColumn();
         // A newline or a trailing backslash used to end the JavaScript string early and break the calendar for everyone.
-        $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => "Name\\", 'comment' => "Line one\nLine two \\",
+        $username = 'bs' . strtolower(generate_token(6));
+        $this->createUser($username, 'Password-123', 1);
+        $this->server->pdo()->prepare('UPDATE users SET name = :name WHERE username = :username')->execute(array(':name' => "Name\\", ':username' => $username));
+        $admin->post('submit.php?type=reserve_tool', array('token' => $token, 'tool_id' => $toolId, 'reserved_for' => $username, 'comment' => "Line one\nLine two \\",
             'reserve_start_date' => '2031-01-01', 'reserve_start_time' => '08:00', 'reserve_end_date' => '2031-01-02', 'reserve_end_time' => '08:00'));
+        $this->assertCount(1, json_decode($this->server->pdo()->query("SELECT attr_4 FROM tools WHERE id = $toolId")->fetchColumn(), true));
         $caseId = $this->createCase($admin, $this->uniqueName('Scripted case '));
 
         // The calendar is on the tools overview; statistics and the timeline are checked as well.
@@ -250,6 +360,87 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testLanguageEditorShowsTheEnglishTextForOtherLanguages(): void
+    {
+        $admin = $this->admin();
+        $english = $admin->get('lang_editor.php')->body;
+        $this->assertStringNotContainsString('EN: ', $english, 'The English file needs no English text beside it.');
+        $this->assertMatchesRegularExpression('/<label for="string_password">[^<]*<\/label>\s*<input type="text" class="form-control" id="string_password" name="password"/', $english, 'Each label leads to its field.');
+
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_FI"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $finnish = $admin->get('lang_editor.php')->body;
+            $this->assertMatchesRegularExpression('/id="string_password" name="password" value="Salasana">\s*<span class="field-hint">EN: Password<\/span>/', $finnish);
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+    }
+
+    public function testToolsCalendarGetsShortMonthNamesAndScriptEscapedText(): void
+    {
+        // The short month names for August to December were the full names, and the calendar's texts were
+        // escaped for HTML inside its script, so a custom language's "Aujourd'hui" showed as Aujourd&#039;hui.
+        $admin = $this->admin();
+        $english = $admin->get('tools.php')->body;
+        $this->assertMatchesRegularExpression("/monthNamesShort: \\[\\s*'Jan',(\\s*'\\w+',){6}\\s*'Aug',\\s*'Sep',\\s*'Oct',\\s*'Nov',\\s*'Dec'\\s*\\]/", $english);
+
+        $settings = $this->server->dir . '/conf/settings.local';
+        $custom = $this->server->dir . '/conf/lang_XT.JSON';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($custom, json_encode(array('today' => "Aujourd'hui", 'month' => 'R&D')));
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_XT"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $page = $admin->get('tools.php')->body;
+            $this->assertStringContainsString("today: 'Aujourd\\u0027hui'", $page);
+            $this->assertStringContainsString("month: 'R\\u0026D'", $page);
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+            @unlink($custom);
+        }
+    }
+
+    public function testSettingsShowTheCurrentLanguageAndEveryYesNoChoice(): void
+    {
+        // The language list marked every code found in the setting, so a custom "PT" was selected along with
+        // PT_BR. A Yes/No setting that was neither 0 nor 1, such as an unquoted off in settings.local, had
+        // neither button checked and was dropped on the next save; Kirjuri reads it as off.
+        $admin = $this->admin();
+        $settings = $this->server->dir . '/conf/settings.local';
+        $custom = $this->server->dir . '/conf/lang_PT.JSON';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        $defaults = file_get_contents(KIRJURI_ROOT . '/conf/settings.conf');
+        try {
+            file_put_contents($custom, '{}');
+            file_put_contents($settings, preg_replace(array('/^lang = .*$/m', '/^show_log = .*$/m'), array('lang = "lang_PT_BR"', 'show_log = off'), $defaults));
+            $page = $admin->get('settings.php')->body;
+            preg_match_all('/<option value="(lang_\w+)" selected>/', $page, $selected);
+            $this->assertSame(array('lang_PT_BR'), $selected[1]);
+            $this->assertStringContainsString('name="settings[show_log]" value="0" checked', $page);
+
+            file_put_contents($settings, preg_replace('/^lang = .*$/m', 'lang = "lang_FI.conf"', $defaults));
+            preg_match_all('/<option value="(lang_\w+)" selected>/', $admin->get('settings.php')->body, $selected);
+            $this->assertSame(array('lang_FI'), $selected[1], 'Older installations name the file.');
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+            @unlink($custom);
+        }
+    }
+
+    public function testCopyToNewKeepsTheRecipient(): void
+    {
+        // The compose form looked for the recipient in a URL parameter that nothing sets, and compared it with
+        // names instead of usernames, so a copied message always started with no recipient.
+        $recipient = $this->uniqueName('copyto');
+        $this->createUser($recipient, 'password1', 1);
+        $admin = $this->admin();
+        $page = $admin->post('messages.php?show=compose', array('token' => $this->token($admin), 'copy_msgto' => $recipient,
+            'copy_subject' => 'Copied', 'copy_body' => '<p>Text</p>'))->body;
+        $this->assertStringContainsString('<option value="' . $recipient . '" selected>', $page);
+        $this->assertStringNotContainsString('<option value="" selected disabled>', $page);
+    }
+
     public function testNumericSettingsStayTextFieldsAtZero(): void
     {
         // The page showed any setting whose value was 0 or 1 as Yes/No buttons, so a limit set to 0 could
@@ -258,7 +449,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
         $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
             'settings' => array('login_max_failures_per_ip' => '0', 'session_idle_timeout' => '1') + $defaults['settings'],
-            'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+            'inv_units' => implode(', ', $defaults['inv_units'])));
         try {
             $page = $admin->get('settings.php')->body;
             $this->assertStringContainsString('<input type="text" class="form-control" name="settings[login_max_failures_per_ip]" value="0"', $page);
@@ -285,7 +476,7 @@ final class MiscellaneousTest extends IntegrationTestCase
         $save = function (string $binary) use ($admin, $defaults) {
             $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
                 'settings' => array('mysqldump_location' => $binary) + $defaults['settings'],
-                'inv_units' => implode(', ', $defaults['inv_units']), 'chart' => $defaults['statistics_chart_colors']));
+                'inv_units' => implode(', ', $defaults['inv_units'])));
         };
         try {
             $backups = fn () => count(array_filter($this->server->eventLog(), fn ($line) => strpos($line, 'Backed up database') !== false));
@@ -316,7 +507,6 @@ final class MiscellaneousTest extends IntegrationTestCase
                 'token' => $this->token($admin),
                 'settings' => $settings,
                 'inv_units' => implode(', ', $defaults['inv_units']),
-                'chart' => $defaults['statistics_chart_colors'],
             ));
         $this->assertSame('settings.php', $response->location());
 
@@ -330,10 +520,32 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertFileDoesNotExist($this->server->dir . '/conf/settings.local');
     }
 
+    public function testHelpPageIsAUserGuideWithTheLicencesOnTheirOwnPage(): void
+    {
+        $admin = $this->admin();
+        $help = $admin->get('help.php');
+        $this->assertSame(200, $help->status);
+        // It printed the developer README, which opens with a 2021 notice that the project is not developed.
+        $this->assertStringNotContainsString('SECURITY UPDATE', $help->body);
+        $this->assertStringNotContainsString('MIT License', $help->body);
+        $this->assertStringContainsString('<h2 class="card-header"><i class="fa fa-plus" aria-hidden="true"></i> Adding a request</h2>', $help->body);
+        $this->assertStringContainsString('Kirjuri ' . trim(file_get_contents($this->server->dir . '/conf/RELEASE')), $help->body);
+        $this->assertStringContainsString('href="licenses.php"', $help->body);
+
+        $licenses = $admin->get('licenses.php');
+        $this->assertSame(200, $licenses->status);
+        $this->assertStringContainsString('<span class="license-name">twig/twig</span>', $licenses->body);
+        $this->assertStringContainsString('<span class="license-kind">BSD-3-Clause</span>', $licenses->body);
+        $this->assertStringContainsString('Copyright (c) 2016 Antti Kurittu', $licenses->body);
+        // Licence files are shown as text: TinyMCE's Markdown link stays escaped.
+        $this->assertStringContainsString('[&lt;https://github.com/tinymce/tinymce&gt;]', $licenses->body);
+        $this->assertStringContainsString('<li class="active"><a href="help.php">', preg_replace('/\s+/', ' ', $licenses->body));
+    }
+
     public function testAdminPagesRender(): void
     {
         $admin = $this->admin();
-        foreach (array('users.php?populate=2', 'settings.php', 'lang_editor.php', 'log.php', 'help.php', 'tools.php', 'auditor.php') as $page) {
+        foreach (array('users.php?populate=2', 'settings.php', 'lang_editor.php', 'log.php', 'help.php', 'licenses.php', 'tools.php', 'auditor.php') as $page) {
             $this->assertSame(200, $admin->get($page)->status, $page);
         }
         $caseId = $this->createCase($admin, $this->uniqueName('Audited '));
