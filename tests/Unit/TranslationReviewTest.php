@@ -49,6 +49,22 @@ final class TranslationReviewTest extends TestCase
         $this->assertNotSame('Two-factor sign-in', $entries['two_factor_enter_code']['where'], 'A string used on one page says which.');
     }
 
+    public function testAuditGroupHasEveryAuditString(): void
+    {
+        $english = json_decode(file_get_contents(KIRJURI_ROOT . '/conf/lang_EN.JSON'), true);
+        $expected = array_values(array_filter(array_keys($english), fn ($key) => strpos($key, 'audit_') === 0));
+        $this->assertNotEmpty($expected);
+        $groups = array_column(kirjuri_translation_review_data(KIRJURI_ROOT), null, 'id');
+        $this->assertArrayHasKey('audit', $groups);
+        $keys = array_column($groups['audit']['strings'], 'key');
+        sort($keys);
+        sort($expected);
+        $this->assertSame($expected, $keys);
+        foreach ($groups['audit']['strings'] as $entry) {
+            $this->assertNotSame('', $entry['context'], $entry['key'] . ' says where it shows and what it means.');
+        }
+    }
+
     public function testPlaceholdersAreNamedForTranslators(): void
     {
         $this->assertSame('%d is replaced by a number or a date. Keep %d exactly as it is.', kirjuri_translation_review_placeholders('Recovery codes left: %d.'));

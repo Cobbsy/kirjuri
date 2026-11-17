@@ -85,6 +85,26 @@ function kirjuri_translation_review_groups(string $root): array
     }
     $groups[] = $two_factor;
 
+    // The audit log: every audit_* string, with what it means, as the audit log is new to most readers.
+    $audit = array('id' => 'audit', 'title' => 'Audit log', 'blurb' => 'Kirjuri keeps a record of every change to cases, devices, users and settings, for chain of custody. Each entry is sealed (encrypted so that any change to it shows) and chained to the entry before it, so a removed or edited entry shows too. Administrators read most of these texts; the last one is printed on every case report.', 'strings' => array());
+    $audit_context = array(
+        'audit_failed' => array('Any page, after saving', 'Error shown when a change was not saved because its entry could not be written to the audit log.'),
+        'audit_entry_sealed' => array('Audit log viewer, for administrators', 'Shown above one entry of the audit log when all is well. "Sealed" means encrypted so that any change shows; "in sequence" means it follows the entry before it.'),
+        'audit_entry_unreadable' => array('Audit log viewer, for administrators', 'Shown above an entry that is intact, but whose encryption key has since been lost or replaced, so its contents can not be shown.'),
+        'audit_entry_old_unchanged' => array('Audit log viewer, for administrators', 'Shown above an entry written by an older version of Kirjuri, before entries were chained.'),
+        'audit_entry_old_unrecorded' => array('Audit log viewer, for administrators', 'Warning above an entry in the old format that appeared after the upgrade: someone may have added it.'),
+        'audit_entry_mismatch' => array('Audit log viewer, for administrators', 'Warning above an entry that does not match the record the audit log keeps of it: a sign that it was tampered with.'),
+        'audit_entry_not_indexed' => array('Audit log viewer, for administrators', 'Warning above an entry missing from the record the audit log keeps of its entries.'),
+        'audit_report_checkpoint' => array('Case report, last line', 'Printed at the end of every case report, in small type. The three %s become the entry number, a date and time, and a fingerprint (a code of 20 letters and digits). Anyone can later check the audit log against it.'),
+    );
+    foreach (array_keys($english) as $key) {
+        if (strpos($key, 'audit_') === 0) {
+            [$where, $context] = $audit_context[$key] ?? array('Audit log', '');
+            $audit['strings'][$key] = array($where, trim($context . ' ' . kirjuri_translation_review_placeholders($english[$key])));
+        }
+    }
+    $groups[] = $audit;
+
     $groups[] = array('id' => 'statuses', 'title' => 'Device statuses', 'blurb' => 'Choices in the status menu of every device, used all day. These look wrong in your language; confirm the suggestion in the note or write a better one.', 'strings' => array(
         'device_actions.device_action12' => array('Device status menu', 'For a device that does not work. The current word means "interrupted". Suggested: "defekt", the word the help page already uses.', array('DE')),
         'device_actions.device_action7' => array('Device status menu', 'For a device whose examination is finished, before the report. The current word means "re-analyse". Suggested: "Análisis terminado".', array('ES')),
