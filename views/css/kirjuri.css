@@ -1911,6 +1911,12 @@ img[src^="views/img/svg/"] {
   background-color: var(--k-success-soft);
 }
 
+/* The event table sits below the timeline's buttons. Grid columns (col-md-12) must not be used here: they
+   float, and the table's scroll box then shrinks to nothing beside them, so its links cannot be clicked. */
+.case-log-table {
+  margin-top: 20px;
+}
+
 .table > tbody > tr.timeline-selected > td {
   background: var(--k-warning-soft);
 }

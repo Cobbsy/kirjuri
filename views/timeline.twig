@@ -20,7 +20,7 @@
   </head>
   <body>
 
-  <div class="container container-fluid col-md-12 col-sm-12">
+  <div class="container-fluid">
     <h3 class="page-heading">{{ lang.case_log }} {{ caserow.0.case_id }}/{{ caserow.0.case_added_date|date('Y') }}</h3>
     <div id="visualization" class="bg-surface"></div>
     <h3 class="page-heading text-center">&nbsp;
@@ -31,9 +31,8 @@
       <button  class="btn btn-info" id="moveRight"><i class="fa fa-arrow-right"></i>&nbsp;</button>
       &nbsp;
     </h3>
-    <div class="col-md-12"><br></div>
   {% if caselog %}
-    <div class="table-responsive">
+    <div class="table-responsive case-log-table">
     <table class="table table-condensed bg-surface">
       <thead>
         <th style="width:100px;white-space:nowrap;">{{ lang.timestamp }}</th>

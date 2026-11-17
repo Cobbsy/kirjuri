@@ -24,6 +24,15 @@ test('on a wide screen the sidebar stays in place while the page scrolls', async
   expect((await sidebar.boundingBox()).y).toBe(0);
 });
 
+test('the audit links on the case log can be clicked and open the audit viewer', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Case log audit link test ' + Date.now());
+  await page.goto('timeline.php?case=' + caseId);
+  await expectNoSidewaysScroll(page);
+  // The case log's container used to stretch over the table and swallow the clicks on these links.
+  await Promise.all([page.waitForURL(/auditor\.php\?view=/), page.locator('a[href*="auditor.php?view="]').first().click()]);
+  await expect(page.locator(`.main a[href="timeline.php?case=${caseId}"]`)).toBeVisible();
+});
+
 test('the case tabs switch in the sidebar, and on phones the menu folds away after a choice', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Tabs test ' + Date.now());
   await startCase(page, caseId);

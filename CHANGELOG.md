@@ -175,6 +175,7 @@ Unreleased
 * Spanish device statuses: "DATOS ENTEGADOS" is "DATOS ENTREGADOS", "Vacio" is "Vacío" and "copiado en servidor" starts with a capital like the others. Devices keep the status text they were saved with until their status is changed.
 * Settings page: each setting has a readable name and a line of help under it, in the five languages ("Sign-out after inactivity" instead of "Session idle timeout", "Compact front page table" instead of "Index table condensed"). A setting left from an older release is still named after its key. The unused progress_bar_size setting is gone; a saved value is ignored. The two-factor requirement's label and hint follow the same names (setting_two_factor_required and setting_two_factor_required_help, formerly two_factor_required_setting and two_factor_required_hint), so a custom language file that translated the old ones shows them in English until it is updated.
 * Front page: a confiscation over 4 months old got the yellow 3-month icon, because the 3-month test came first, so the red icon never showed. It shows now.
+* Case log: on screens 992 pixels and wider, the table of events was squeezed to nothing and covered by the page, so administrators could not click its AUDIT links. A grid column used as a spacer floated across the page and the table's scroll box shrank beside it. The spacer is a margin now, and the page no longer uses grid columns for its layout.
 
 2018-03 Version 0.9.2
 
