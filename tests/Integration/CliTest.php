@@ -153,14 +153,91 @@ final class CliTest extends IntegrationTestCase
         $admin = $this->admin();
         $name = $this->uniqueName('Audited ');
         $this->createCase($admin, $name);
-        $files = glob($this->server->dir . '/logs/audit/*/*.log');
-        usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));
 
-        [$status, $out, $err] = $this->server->cli(array('audit:show', basename($files[0])));
+        // The newest entry by its number: the first change writes two entries within a second (the chain's start).
+        [$status, $out, $err] = $this->server->cli(array('audit:show', basename($this->newestEntryFile())));
         $this->assertSame(0, $status, $err);
         $this->assertStringContainsString('"request_contents"', $out);
         $this->assertStringContainsString($name, $out);
         $this->assertSame(1, $this->server->cli(array('audit:show', '../../conf/mysql_credentials.php'))[0]);
+    }
+
+    /** The newest audit log entry's file. */
+    private function newestEntryFile(): string
+    {
+        $file = $this->server->pdo()->query('SELECT file FROM audit_chain ORDER BY entry DESC LIMIT 1')->fetchColumn();
+        $this->assertNotFalse($file, 'The audit log has entries.');
+        return kirjuri_audit_entry_path($file, $this->server->dir . '/logs/audit');
+    }
+
+    public function testAuditVerifyPassesAndPrintsACheckpoint(): void
+    {
+        $admin = $this->admin();
+        $this->createCase($admin, $this->uniqueName('Verified '));
+
+        [$status, $out, $err] = $this->server->cli(array('audit:verify'));
+        $this->assertSame(0, $status, $out . $err);
+        $this->assertStringContainsString('no problems found', $out);
+        $this->assertMatchesRegularExpression('/Checkpoint: entry (\d+), \d\d\.\d\d\.\d{4} \d\d:\d\d:\d\d, (([0-9a-f]{4} ){4}[0-9a-f]{4})/', $out);
+        preg_match('/Checkpoint: (.*)/', $out, $checkpoint);
+        preg_match('/entry (\d+),/', $checkpoint[1], $entry);
+
+        $this->assertSame(0, $this->server->cli(array('audit:verify', '--since', $checkpoint[1]))[0], 'The log still has the checkpoint pasted from its own output.');
+        [$status, $out] = $this->server->cli(array('audit:verify', '--since', $entry[1] . ':0000000000000000'));
+        $this->assertSame(1, $status);
+        $this->assertStringContainsString('Entry ' . $entry[1] . ' no longer has the checkpoint\'s fingerprint', $out);
+        [$status, , $err] = $this->server->cli(array('audit:verify', '--since', 'not a checkpoint'));
+        $this->assertSame(1, $status);
+        $this->assertStringContainsString('Usage', $err);
+    }
+
+    public function testAuditVerifyFindsAChangedEntry(): void
+    {
+        $admin = $this->admin();
+        $this->createCase($admin, $this->uniqueName('Changed entry '));
+        $path = $this->newestEntryFile();
+        $contents = file_get_contents($path);
+        $changed = $contents;
+        $changed[strlen($changed) - 3] = ($changed[strlen($changed) - 3] === 'A') ? 'B' : 'A';
+        try {
+            file_put_contents($path, $changed);
+            [$status, $out] = $this->server->cli(array('audit:verify'));
+            $this->assertSame(1, $status, $out);
+            $this->assertStringContainsString(basename($path), $out);
+            $this->assertStringContainsString('1 problem(s) found', $out);
+        } finally {
+            file_put_contents($path, $contents);
+        }
+        $this->assertSame(0, $this->server->cli(array('audit:verify'))[0]);
+    }
+
+    public function testDoctorChecksTheAuditLog(): void
+    {
+        $this->createCase($this->admin(), $this->uniqueName('Doctor '));
+
+        [$status, $out] = $this->server->cli(array('doctor'));
+        $this->assertSame(0, $status, $out);
+        $this->assertMatchesRegularExpression('/\[ OK \] The newest \d+ audit log entries are sealed and in sequence\./', $out);
+        $this->assertStringContainsString('[ OK ] Audit log key conf/audit_credentials.php', $out);
+        $this->assertStringContainsString('[ OK ] Audit log folder logs/audit/ is writable', $out);
+    }
+
+    public function testAuditShowReadsAnOldEntry(): void
+    {
+        $key = kirjuri_audit_key_string($this->server->dir . '/conf/audit_credentials.php');
+        $this->assertNotNull($key);
+        $file = '1700000000_OLD1.log';
+        $path = $this->server->dir . '/logs/audit/170000/' . $file;
+        @mkdir(dirname($path));
+        try {
+            file_put_contents($path, encrypt(json_encode(array('user' => array('username' => 'old'), 'request_contents' => array('case_name' => 'An old case'))), $key));
+            [$status, $out, $err] = $this->server->cli(array('audit:show', $file));
+            $this->assertSame(0, $status, $err);
+            $this->assertStringContainsString('An old case', $out);
+        } finally {
+            unlink($path);
+            rmdir(dirname($path));
+        }
     }
 
     public function testCacheClearKeepsSessions(): void
