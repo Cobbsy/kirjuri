@@ -153,35 +153,6 @@ function kirjuri_recovery_code_normalise($input) {
 
 
 /**
- * $plaintext encrypted and authenticated with AES-256-GCM under the 32 byte $key. $context is bound to it, so that
- * it only decrypts for the same purpose (the account it belongs to). Returns "v1:" and base64 text.
- */
-function kirjuri_seal($plaintext, $key, $context) {
-    $iv = random_bytes(12);
-    $tag = '';
-    $ciphertext = openssl_encrypt((string) $plaintext, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag, (string) $context, 16);
-    if ($ciphertext === false) {
-        throw new RuntimeException('Could not encrypt: OpenSSL has no AES-256-GCM.');
-    }
-    return 'v1:' . base64_encode($iv . $tag . $ciphertext);
-}
-
-
-/** The plaintext of kirjuri_seal() output, or null when it was changed, or sealed with another key or context. */
-function kirjuri_unseal($sealed, $key, $context) {
-    if (!is_string($sealed) || !is_string($key) || strlen($key) !== 32 || substr($sealed, 0, 3) !== 'v1:') {
-        return null;
-    }
-    $raw = base64_decode(substr($sealed, 3), true);
-    if ($raw === false || strlen($raw) < 28) {
-        return null;
-    }
-    $plaintext = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16), (string) $context);
-    return $plaintext === false ? null : $plaintext;
-}
-
-
-/**
  * The key that encrypts the secrets, from conf/two_factor_key.php, or null when there is none (or it is damaged).
  * With $create, a missing key file is made first. The file is a PHP file, so that it shows nothing if a web
  * server without Kirjuri's access rules serves it; it is read as text, never run.
