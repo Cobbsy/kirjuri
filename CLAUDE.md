@@ -17,7 +17,7 @@ no web fonts, no CDNs.
   variables on `:root`.
 - `conf/lang_*.JSON` are the five languages (EN, DE, ES, FI, PT_BR). `conf/settings.conf` has the
   default settings.
-- `bin/kirjuri` is the command line tool (doctor, migrate, user management, logs, cache).
+- `bin/kirjuri` is the command line tool (doctor, migrate, user management, logs, the audit log, cache).
 - `tests/Unit` and `tests/Integration` hold the PHPUnit tests. `tests/browser` holds the
   Playwright tests.
 
@@ -54,6 +54,10 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
 - `|raw` only on trusted values. User-written HTML goes through `|purify`. Values inside inline
   `<script>` need `|e('js')`.
 - Redirect back to a page with `kirjuri_redirect_back()`.
+- A change to a case, a device, a user or the settings is saved with its audit log entry in one transaction:
+  `kirjuri_audited()` in `lib/logging.php`, which refuses the change when the entry can not be written. For a change
+  outside the database (a file), `kirjuri_audit()` writes the entry first. Entries are written only by `lib/audit.php`;
+  see `docs/audit-log-design.md`.
 - Every `lang.*` key a template or PHP file uses must exist in all five language files, with keys
   kept in sorted order. Each file keeps its own encoding: DE uses CRLF line endings and `\u`
   escapes, ES and FI use `\u` escapes, EN and PT_BR are raw UTF-8. Custom language files get

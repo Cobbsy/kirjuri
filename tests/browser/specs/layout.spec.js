@@ -24,6 +24,21 @@ test('on a wide screen the sidebar stays in place while the page scrolls', async
   expect((await sidebar.boundingBox()).y).toBe(0);
 });
 
+test('the audit viewer, opened from the case log, says the entry is sealed and fits a phone', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Audit viewer test ' + Date.now());
+  await page.goto('timeline.php?case=' + caseId);
+  await Promise.all([page.waitForURL(/auditor\.php\?view=/), page.locator('a[href*="auditor.php?view="]').first().click()]);
+  await expect(page.locator('.alert-success')).toContainText('sealed, in sequence and unchanged');
+  await expectNoSidewaysScroll(page);
+});
+
+test('the case report shows the audit log checkpoint and fits a phone', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Report checkpoint test ' + Date.now());
+  await page.goto('case_report.php?case=' + caseId);
+  await expect(page.locator('.audit-checkpoint')).toContainText('Audit log when this report was made: entry');
+  await expectNoSidewaysScroll(page);
+});
+
 test('the audit links on the case log can be clicked and open the audit viewer', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Case log audit link test ' + Date.now());
   await page.goto('timeline.php?case=' + caseId);

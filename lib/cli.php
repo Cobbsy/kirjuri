@@ -25,6 +25,7 @@ function cli_commands() {
         'errors' => array('cli_errors', 'errors [--id <request id>] [--last <n>]; show logs/error.log'),
         'log' => array('cli_log', 'log [--last <n>] [--case <uid>]; show the event log'),
         'audit:show' => array('cli_audit_show', 'audit:show <audit file name>; decrypt and print an audit log entry'),
+        'audit:verify' => array('cli_audit_verify', 'audit:verify [--since <checkpoint>]; check that no audit log entry was changed, removed or added, and print a checkpoint'),
     );
 }
 
@@ -67,7 +68,7 @@ function cli_positional($args) {
     $positional = array();
     for ($i = 0; $i < count($args); $i++) {
         if (substr($args[$i], 0, 2) === '--') {
-            if (in_array($args[$i], array('--id', '--last', '--case', '--ip'), true)) {
+            if (in_array($args[$i], array('--id', '--last', '--case', '--ip', '--since'), true)) {
                 $i++;
             }
             continue;
@@ -208,7 +209,8 @@ function cli_doctor($args) {
         $mysqldump = isset($prefs['settings']['mysqldump_location']) ? $prefs['settings']['mysqldump_location'] : '';
         $report(is_executable($mysqldump) ? 'ok' : 'warn', 'mysqldump at "' . $mysqldump . '" for database backups from the settings page');
     }
-    $report(file_exists('conf/audit_credentials.php') ? 'ok' : 'warn', 'Audit log key conf/audit_credentials.php (created on the first audited change)');
+    $report(is_dir(KIRJURI_AUDIT_DIR) && is_writable(KIRJURI_AUDIT_DIR) ? 'ok' : 'fail',
+        'Audit log folder ' . KIRJURI_AUDIT_DIR . '/ is writable (a change whose entry can not be written is not saved)');
 
     if (kirjuri_mysql_config() === null) {
         $report('fail', 'conf/mysql_credentials.php is missing. Run install.php.');
@@ -222,6 +224,7 @@ function cli_doctor($args) {
             $admins = (int) $db->query("SELECT COUNT(*) FROM users WHERE access = 0 AND (flags IS NULL OR flags NOT LIKE '%I%')")->fetchColumn();
             $report($admins > 0 ? 'ok' : 'fail', $admins . ' active admin account(s)');
             if (empty($pending)) {
+                cli_doctor_audit_log($db, $report);
                 $two_factor = count(kirjuri_two_factor_status($db));
                 if ($two_factor > 0) {
                     $report(kirjuri_two_factor_key() !== null ? 'ok' : 'fail', 'Two-factor sign-in key ' . TWO_FACTOR_KEY_FILE . ' for the ' . $two_factor
@@ -258,7 +261,22 @@ function cli_migrate($args) {
     $ids = array_keys(kirjuri_migrations());
     @file_put_contents('cache/schema_version', end($ids));
     cli_out(empty($applied) ? 'Nothing to migrate, the database is up to date.' : count($applied) . ' migration(s) applied.');
+    // Start the audit log chain now, so that fingerprinting the old entries is not left to someone's first change.
+    $started = kirjuri_audit_start($db, kirjuri_audit_user());
+    if ($started !== null) {
+        $message = 'Audit log chain started; ' . $started . ' earlier ' . ($started === 1 ? 'entry' : 'entries') . ' fingerprinted.';
+        event_log_write('0', 'Audit', $message);
+        cli_out($message);
+    }
     return 0;
+}
+
+
+/** bin/kirjuri doctor's checks of the audit log (kirjuri_audit_doctor()). */
+function cli_doctor_audit_log(PDO $db, callable $report) {
+    foreach (kirjuri_audit_doctor($db) as [$status, $message]) {
+        $report($status, $message);
+    }
 }
 
 
@@ -371,8 +389,8 @@ function cli_user_unlock($args) {
     $query = $db->prepare('SELECT id, username FROM users WHERE username = :username');
     $query->execute(array(':username' => $username));
     $user = $query->fetch(PDO::FETCH_ASSOC);
-    if ($user !== false && cli_two_factor_ready($db) && kirjuri_two_factor_unlock($db, $user['id'])) {
-        kirjuri_two_factor_log('Wrong two-factor codes cleared from the command line for ' . $user['username'] . '.', 'unlocked', $user['username'], array('by' => 'bin/kirjuri'));
+    if ($user !== false && cli_two_factor_ready($db) && kirjuri_two_factor_audited($db, fn () => kirjuri_two_factor_unlock($db, $user['id']),
+            'Wrong two-factor codes cleared from the command line for ' . $user['username'] . '.', 'unlocked', $user['username'], array('by' => 'bin/kirjuri'))) {
         cli_out('Cleared wrong two-factor codes for "' . $user['username'] . '"; codes from the authenticator app work again.');
     }
     return 0;
@@ -391,12 +409,12 @@ function cli_user_two_factor_reset($args) {
         cli_err('The database has no two-factor sign-in yet. Run "php bin/kirjuri migrate" first.');
         return 1;
     }
-    if (!kirjuri_two_factor_remove($db, $user['id'])) {
+    if (!kirjuri_two_factor_audited($db, fn () => kirjuri_two_factor_remove($db, $user['id']),
+            'Two-factor sign-in reset from the command line for ' . $user['username'] . '. Their sessions ended.', 'reset', $user['username'], array('by' => 'bin/kirjuri'))) {
         cli_out('"' . $user['username'] . '" does not use two-factor sign-in. Nothing to reset.');
         return 0;
     }
     kirjuri_end_user_sessions($user['username']); // As on the web: whoever has the lost phone may have a session.
-    kirjuri_two_factor_log('Two-factor sign-in reset from the command line for ' . $user['username'] . '. Their sessions ended.', 'reset', $user['username'], array('by' => 'bin/kirjuri'));
     cli_out('Two-factor sign-in is off for "' . $user['username'] . '": the password alone signs in, and their sessions have ended.');
     cli_out('If two-factor sign-in is required for them (the two_factor_required setting), they set it up again at their next sign-in.');
     return 0;
@@ -458,6 +476,51 @@ function cli_log($args) {
 }
 
 
+function cli_audit_verify($args) {
+    $since = null;
+    if (in_array('--since', $args, true)) {
+        $since = kirjuri_audit_parse_checkpoint((string) cli_option($args, '--since', ''));
+        if ($since === null) {
+            cli_err('Usage: php bin/kirjuri audit:verify [--since <checkpoint>], for example --since 48213:9f3c1a2b77de0c415e9a');
+            return 1;
+        }
+    }
+    if (count(cli_positional($args)) > 0) {
+        cli_err('Usage: php bin/kirjuri audit:verify [--since <checkpoint>]');
+        return 1;
+    }
+    $db = cli_database();
+    $key_string = kirjuri_audit_key_string();
+    // One snapshot of the index, and changes saved while the files are read are not taken for problems.
+    $result = kirjuri_audit_verify($db, KIRJURI_AUDIT_DIR, $key_string, $since);
+    $head = $result['head'];
+    if ($head === null && $result['entries'] === 0 && empty($result['findings'])) {
+        cli_out('There is no audit log chain yet. It starts with the first change, or with php bin/kirjuri migrate, and then fingerprints the '
+            . $result['waiting'] . ' ' . ($result['waiting'] === 1 ? 'entry' : 'entries') . ' from before it.');
+        return 0;
+    }
+    $problems = count($result['findings']);
+    foreach ($result['findings'] as $finding) {
+        if ($finding['entry'] !== null) {
+            $where = 'Entry ' . $finding['entry'] . ($finding['file'] !== null ? ' (' . $finding['file'] . ')' : '') . ': ';
+        } else {
+            $where = ($finding['file'] !== null) ? $finding['file'] . ': ' : '';
+        }
+        cli_out($where . $finding['text']);
+    }
+    if ($key_string === null && $result['entries'] > 0) {
+        cli_out('The audit log key ' . KIRJURI_AUDIT_KEY_FILE . ' is missing or can not be read, so no seal was opened.');
+        $problems++;
+    }
+    cli_out('Checked ' . $result['entries'] . ' entries and ' . $result['old'] . ' old entries: '
+        . ($problems === 0 ? 'no problems found.' : $problems . ' problem(s) found.'));
+    if ($result['checkpoint'] !== null) {
+        cli_out('Checkpoint: ' . $result['checkpoint']);
+    }
+    return ($problems === 0) ? 0 : 1;
+}
+
+
 function cli_audit_show($args) {
     $positional = cli_positional($args);
     if (count($positional) !== 1 || !preg_match('/^(\d{10})_[A-Za-z0-9]+\.log$/', basename($positional[0]), $match)) {
@@ -469,20 +532,21 @@ function cli_audit_show($args) {
         cli_err('No audit file ' . $file . '.');
         return 1;
     }
-    $data = trim(file_get_contents($file));
-    if (substr($data, 0, 1) !== '{') {
-        if (!file_exists('conf/audit_credentials.php')) {
-            cli_err('The audit file is encrypted and conf/audit_credentials.php is missing.');
-            return 1;
-        }
-        $data = decrypt($data, include 'conf/audit_credentials.php');
+    $contents = (string) file_get_contents($file);
+    $key_string = kirjuri_audit_key_string();
+    $opened = kirjuri_audit_open_entry($contents, basename($positional[0]), $key_string);
+    $db = (kirjuri_mysql_config() !== null) ? cli_database() : null;
+    $status = ($db !== null && kirjuri_table_exists($db, 'audit_head')) ? kirjuri_audit_entry_status($db, basename($positional[0]), KIRJURI_AUDIT_DIR, $key_string) : null;
+    if ($status !== null) {
+        cli_out('Status: ' . kirjuri_audit_status_text($status, (array) json_decode((string) file_get_contents('conf/lang_EN.JSON'), true)));
     }
-    $decoded = json_decode($data, true);
-    if (!is_array($decoded)) {
-        cli_err('Could not decrypt or parse ' . $file . '.');
+    if ($opened['payload'] === null) {
+        cli_err(($opened['format'] !== 'plain' && $key_string === null)
+            ? 'The audit file is encrypted and ' . KIRJURI_AUDIT_KEY_FILE . ' is missing.'
+            : 'Could not decrypt or parse ' . $file . '.');
         return 1;
     }
-    cli_out(json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-    cli_out('sha256: ' . hash('sha256', $data));
+    cli_out(json_encode($opened['payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    cli_out('fingerprint: ' . kirjuri_audit_fingerprint($contents));
     return 0;
 }

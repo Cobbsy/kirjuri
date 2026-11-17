@@ -29,9 +29,9 @@ case 'two_factor_code':
     if ($check['result'] === 'ok') {
         login_throttle_release($attempt['ip']);
         if ($recovery) {
-            kirjuri_two_factor_log('Recovery code used by ' . $user['username'] . ', ' . $check['left'] . ' left.', 'recovery code used', $user['username'], array('recovery_codes_left' => $check['left']));
+            kirjuri_two_factor_log($kirjuri_database, 'Recovery code used by ' . $user['username'] . ', ' . $check['left'] . ' left.', 'recovery code used', $user['username'], array('recovery_codes_left' => $check['left']));
         } else {
-            kirjuri_two_factor_log('Two-factor code accepted for ' . $user['username'] . '.', 'code accepted', $user['username']);
+            kirjuri_two_factor_log($kirjuri_database, 'Two-factor code accepted for ' . $user['username'] . '.', 'code accepted', $user['username']);
         }
         if (!kirjuri_two_factor_finish($user)) {
             header('Location: login.php');
@@ -52,10 +52,10 @@ case 'two_factor_code':
 
     if ($check['result'] === 'wrong') {
         // The attempt stays counted.
-        kirjuri_two_factor_log('Wrong two-factor ' . ($recovery ? 'recovery code' : 'code') . ' for ' . $user['username'] . ', ' . $check['wrong_codes'] . ' in a row.',
+        kirjuri_two_factor_log($kirjuri_database, 'Wrong two-factor ' . ($recovery ? 'recovery code' : 'code') . ' for ' . $user['username'] . ', ' . $check['wrong_codes'] . ' in a row.',
             'wrong code', $user['username'], array('kind' => $recovery ? 'recovery code' : 'code', 'wrong_codes_in_a_row' => $check['wrong_codes']));
         if ($check['wrong_codes'] === TWO_FACTOR_MAX_WRONG) {
-            kirjuri_two_factor_log('Codes from the authenticator app are refused for ' . $user['username'] . ' after ' . TWO_FACTOR_MAX_WRONG
+            kirjuri_two_factor_log($kirjuri_database, 'Codes from the authenticator app are refused for ' . $user['username'] . ' after ' . TWO_FACTOR_MAX_WRONG
                 . ' wrong codes in a row, until an administrator resets two-factor sign-in or runs bin/kirjuri user:unlock. Someone else may know the password.',
                 'blocked', $user['username']);
         }
@@ -99,8 +99,11 @@ case 'two_factor_enrol':
     $user = kirjuri_two_factor_posted_pending($kirjuri_database, 'setup');
     $codes = null;
     if (!kirjuri_two_factor_enabled($kirjuri_database, $user['id'])) {
-        $codes = kirjuri_two_factor_enable($kirjuri_database, $user['id'], kirjuri_two_factor_setup_secret($user['id']),
-            isset($_POST['two_factor_code']) ? (string) $_POST['two_factor_code'] : '', time(), false);
+        kirjuri_two_factor_audited($kirjuri_database, function () use ($kirjuri_database, $user, &$codes) {
+            $codes = kirjuri_two_factor_enable($kirjuri_database, $user['id'], kirjuri_two_factor_setup_secret($user['id']),
+                isset($_POST['two_factor_code']) ? (string) $_POST['two_factor_code'] : '', time(), false);
+            return $codes !== null;
+        }, 'Two-factor sign-in set up by ' . $user['username'] . ' at sign-in, as it is required.', 'set up', $user['username'], array('where' => 'sign-in'));
     }
     if ($codes === null) {
         if (kirjuri_two_factor_enabled($kirjuri_database, $user['id'])) {
@@ -113,7 +116,6 @@ case 'two_factor_enrol':
         header('Location: login.php');
         die;
     }
-    kirjuri_two_factor_log('Two-factor sign-in set up by ' . $user['username'] . ' at sign-in, as it is required.', 'set up', $user['username'], array('where' => 'sign-in'));
     if (!kirjuri_two_factor_finish($user)) {
         header('Location: login.php');
         die;
@@ -134,8 +136,13 @@ case 'two_factor_setup':
         die;
     }
     $again = kirjuri_two_factor_enabled($kirjuri_database, $_SESSION['user']['id']);
-    $codes = kirjuri_two_factor_enable($kirjuri_database, $_SESSION['user']['id'], kirjuri_two_factor_setup_secret($_SESSION['user']['id']),
-        isset($_POST['two_factor_code']) ? (string) $_POST['two_factor_code'] : '', time());
+    $codes = null;
+    kirjuri_two_factor_audited($kirjuri_database, function () use ($kirjuri_database, &$codes) {
+        $codes = kirjuri_two_factor_enable($kirjuri_database, $_SESSION['user']['id'], kirjuri_two_factor_setup_secret($_SESSION['user']['id']),
+            isset($_POST['two_factor_code']) ? (string) $_POST['two_factor_code'] : '', time());
+        return $codes !== null;
+    }, 'Two-factor sign-in ' . ($again ? 'set up again, on a new phone,' : 'set up') . ' by ' . $_SESSION['user']['username'] . '. Other sessions ended.',
+        $again ? 'set up again' : 'set up', $_SESSION['user']['username']);
     if ($codes === null) {
         message('error', $_SESSION['lang']['two_factor_wrong_code']);
         header('Location: two_factor.php?setup=1');
@@ -143,8 +150,6 @@ case 'two_factor_setup':
     }
     unset($_SESSION['two_factor_setup']);
     kirjuri_end_other_sessions();
-    kirjuri_two_factor_log('Two-factor sign-in ' . ($again ? 'set up again, on a new phone,' : 'set up') . ' by ' . $_SESSION['user']['username'] . '. Other sessions ended.',
-        $again ? 'set up again' : 'set up', $_SESSION['user']['username']);
     $_SESSION['two_factor_new_codes'] = $codes;
     message('info', $_SESSION['lang']['two_factor_turned_on']);
     header('Location: two_factor.php');
@@ -163,8 +168,12 @@ case 'two_factor_new_codes':
         header('Location: two_factor.php');
         die;
     }
-    $_SESSION['two_factor_new_codes'] = kirjuri_two_factor_replace_recovery_codes($kirjuri_database, $_SESSION['user']['id']);
-    kirjuri_two_factor_log('New recovery codes made by ' . $_SESSION['user']['username'] . '; the old ones no longer work.', 'new recovery codes', $_SESSION['user']['username']);
+    $codes = array();
+    kirjuri_two_factor_audited($kirjuri_database, function () use ($kirjuri_database, &$codes) {
+        $codes = kirjuri_two_factor_replace_recovery_codes($kirjuri_database, $_SESSION['user']['id']);
+        return true;
+    }, 'New recovery codes made by ' . $_SESSION['user']['username'] . '; the old ones no longer work.', 'new recovery codes', $_SESSION['user']['username']);
+    $_SESSION['two_factor_new_codes'] = $codes;
     header('Location: two_factor.php');
     die;
 
@@ -182,9 +191,12 @@ case 'two_factor_off':
         header('Location: two_factor.php');
         die;
     }
-    if (kirjuri_two_factor_remove($kirjuri_database, $_SESSION['user']['id'])) {
+    $turn_off = function () use ($kirjuri_database) {
+        return kirjuri_two_factor_remove($kirjuri_database, $_SESSION['user']['id']);
+    };
+    if (kirjuri_two_factor_audited($kirjuri_database, $turn_off,
+            'Two-factor sign-in turned off by ' . $_SESSION['user']['username'] . '. Other sessions ended.', 'turned off', $_SESSION['user']['username'])) {
         kirjuri_end_other_sessions();
-        kirjuri_two_factor_log('Two-factor sign-in turned off by ' . $_SESSION['user']['username'] . '. Other sessions ended.', 'turned off', $_SESSION['user']['username']);
         message('info', $_SESSION['lang']['two_factor_turned_off']);
     }
     header('Location: two_factor.php');

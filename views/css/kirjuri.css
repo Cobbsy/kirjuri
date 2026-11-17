@@ -3047,6 +3047,14 @@ fieldset.field > legend {
   font-size: 12px;
 }
 
+/* The audit log checkpoint at the end of the case report: small, but printed with it, and wrapped on a phone. */
+.audit-checkpoint {
+  margin-top: 24px;
+  font-size: 12px;
+  color: var(--k-text-muted);
+  overflow-wrap: anywhere;
+}
+
 /* The case report's heading: the logo beside the title on paper and wide screens, above it on a phone. */
 .report-head-text {
   padding-left: 50px;

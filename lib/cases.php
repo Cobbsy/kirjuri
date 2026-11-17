@@ -44,7 +44,7 @@ function kirjuri_create_case(PDO $db, array $columns) {
         $id = $db->lastInsertId();
         $db->prepare('UPDATE exam_requests SET parent_id = id WHERE id = :id')->execute(array(':id' => $id));
     } finally {
-        $db->query("SELECT RELEASE_LOCK('kirjuri_case_number')");
+        kirjuri_release_lock($db, 'kirjuri_case_number'); // Inside kirjuri_audited(), only after the commit.
     }
     return array('id' => (string) $id, 'case_id' => (string) $case_id);
 }

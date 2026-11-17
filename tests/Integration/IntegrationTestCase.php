@@ -66,6 +66,20 @@ abstract class IntegrationTestCase extends TestCase
         return false;
     }
 
+    /** Run $test while logs/audit is a plain file, so that no audit log entry can be written; then put the folder back. */
+    protected function withoutAuditFolder(callable $test): void
+    {
+        $audit = $this->server->dir . '/logs/audit';
+        rename($audit, $audit . '.moved');
+        file_put_contents($audit, 'not a folder');
+        try {
+            $test();
+        } finally {
+            unlink($audit);
+            rename($audit . '.moved', $audit);
+        }
+    }
+
     protected function client(): HttpClient
     {
         return new HttpClient($this->server->baseUrl);

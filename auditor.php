@@ -13,19 +13,26 @@ if (isset($_GET['view'])) {
         $output_format = $_GET['format'];
     }
     $encrypted = false;
-    $audit_path = 'logs/audit/' . substr($audit_file, 0, 6) . '/' . $audit_file;
-    if (!file_exists($audit_path)) {
+    $audit_path = kirjuri_audit_entry_path($audit_file);
+    if ($audit_path === null || !is_file($audit_path)) {
         message('error', 'Audit file not found: ' . $audit_file);
         header('Location: index.php');
         die;
     }
-    $data = trim(file_get_contents($audit_path));
-    if (substr($data, 0, 1) !== "{") {
-        $encrypted = true;
-        $data = decrypt($data, include 'conf/audit_credentials.php');
-    }
-    $data_array = json_decode($data, true);
-    $data_array['user']['audit_file_sha256'] = hash('sha256', $data);
+    $contents = (string) file_get_contents($audit_path);
+    $key_string = kirjuri_audit_key_string();
+    $opened = kirjuri_audit_open_entry($contents, $audit_file, $key_string);
+    // Whether the entry is sealed, in sequence and unchanged, or what is wrong with it.
+    $status = kirjuri_audit_entry_status($kirjuri_database, $audit_file, KIRJURI_AUDIT_DIR, $key_string);
+    $alerts = array('sealed' => 'success', 'old_unchanged' => 'success', 'old_unrecorded' => 'warning', 'unreadable' => 'warning');
+    $entry_status = ($status === null) ? null : array(
+        'class' => isset($alerts[$status['status']]) ? $alerts[$status['status']] : 'danger',
+        'text' => kirjuri_audit_status_text($status, $_SESSION['lang']),
+    );
+    $encrypted = ($opened['format'] !== 'plain');
+    $data_array = ($opened['payload'] === null) ? array() : $opened['payload'];
+    $data = ($opened['payload'] === null) ? '' : json_encode($opened['payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $data_array['user']['entry_fingerprint'] = kirjuri_audit_fingerprint($contents);
 
     //event_log_write('0', 'Audit', 'Request viewed: ' . $audit_file);
 
@@ -48,7 +55,8 @@ if (isset($_GET['view'])) {
             'returnid' => isset($_GET['returnid']) ? filter_numbers($_GET['returnid']) : '',
             'log_matches' => $matches,
             'output_format' => $output_format,
-            'request_contents' => $data_array['request_contents'],
+            'request_contents' => isset($data_array['request_contents']) ? $data_array['request_contents'] : array(),
+            'entry_status' => $entry_status,
             'filename' => $audit_file,
             'encrypted' => $encrypted,
             'data' => $data,

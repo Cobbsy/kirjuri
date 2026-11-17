@@ -52,8 +52,10 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   page too, in their own group, including the two for `two_factor_required`.
   The fifty-eight strings of two-factor sign-in (the `two_factor_*` strings, `help_two_factor_title` and
   `help_two_factor_text`), also written without a native speaker, are on the page in their own group,
-  each with the page it shows on. In all, 153 strings wait for translators, and the page is not shared
-  with any yet: share it from its Share menu, with Contributor access for each translator.
+  each with the page it shows on. The eight strings of the audit log (`audit_*`: the message when a change
+  is refused, the viewer's six statuses and the case report's checkpoint line, November 2026) are on the
+  page in their own group, each with what it means. In all, 161 strings wait for translators, and the page
+  is not shared with any yet: share it from its Share menu, with Contributor access for each translator.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
@@ -61,7 +63,12 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   at its limit both times. When the limit resets, comment `@codex review` on #21 once, fix real findings with
   tests in a pull request against master, reply on each thread, then close #21 and delete
   `codex-review-base`. #21 covers everything up to #27. Two-factor sign-in came after it, from another
-  branch, so Codex needs to be asked on that pull request separately.
+  branch, so Codex needs to be asked on that pull request separately, and so does the audit log's.
+  On 17 November 2026 Codex was asked on #35 (the audit log) and #36 (the case log's links) and was at its limit
+  both times; both were merged without it, as #28 to #34 were. When the limit resets, open a second review-only
+  pull request like #21, from master into a branch at #27's merge (`188be27`), so Codex sees #28 to #36 (two-factor
+  sign-in and the audit log among them) in one diff, and ask once there. The audit log matters most: a flaw in
+  its sealing or chaining could let a changed entry pass as untouched.
 - **Findings of our own review (November 2026)** of the same diff, with code-review at high effort.
   Done (November 2026): search no longer lists cases, or their devices, that the user may not open,
   and the counts leave them out (a match told an outsider what a case's notes or suspect held, prefix
@@ -111,8 +118,8 @@ username or 50 per IP address within 15 minutes; a new session ID at sign-in, Ht
 session cookies, an idle timeout; CSRF and case tokens in POST bodies; prepared statements for all
 SQL (enforced by a source test); HTMLPurifier on user-written HTML; X-Frame-Options, `frame-ancestors`
 and `nosniff` headers; access levels, per-case access groups and per-user IP allow and block lists;
-an event log and an AES-256 encrypted audit log; two-factor sign-in with an authenticator app (November
-2026, see below); `.htaccess` rules keeping `conf/`, `logs/`, `cache/`
+an event log and a tamper-evident audit log (November 2026, see below); two-factor sign-in with an
+authenticator app (November 2026, see below); `.htaccess` rules keeping `conf/`, `logs/`, `cache/`
 and the code folders off the web; an installer that will not run twice.
 
 Minimum for go-live (deployment, not code):
@@ -132,7 +139,9 @@ Minimum for go-live (deployment, not code):
 - A dedicated database user with rights on Kirjuri's database only; a password on the database's
   root account.
 - Encrypted backups kept off the machine and restored now and then, including `conf/`, which holds
-  the audit log key.
+  the audit log key. After restoring one, run `php bin/kirjuri audit:verify`. Each database backup starts with an
+  audit log checkpoint and each case report ends with one: kept off the machine, they are what shows a log rewritten
+  on the server (`audit:verify --since <checkpoint>`).
 - Operating system updates, antivirus, physical security, and limited administrator rights on the
   machine.
 
@@ -149,9 +158,14 @@ Code improvements, in suggested order:
    not covered. Secrets are encrypted with AES-256-GCM under `conf/two_factor_key.php`; admins reset it on the
    users page or with `bin/kirjuri user:two-factor-reset`. Not done: remembering a browser, passkeys or
    security keys, codes by e-mail or SMS.
-2. A tamper-evident audit log for chain of custody: authenticated encryption (AES-256-GCM) and a
-   hash chain over entries, so an edited or deleted entry shows. The current IV is 16 hex characters
-   (64 bits) rather than 16 random bytes.
+2. Done (November 2026): a tamper-evident audit log for chain of custody, designed in `docs/audit-log-design.md` and
+   built from `docs/audit-log-plan.md`. Entries are sealed with AES-256-GCM (the old encryption used 96 bits of its key
+   and authenticated nothing), chained by the previous entry's SHA-256 and indexed in the database, so an edited,
+   removed, reordered or added entry shows in `bin/kirjuri audit:verify`. A change whose entry can not be written is
+   refused. Case reports and database backups carry checkpoints that the log can be checked against later. Old entries
+   are kept and fingerprinted, not re-encrypted. Still to do, in the next pull request (part 10 of the design): entries
+   for the API, KRF imports, removing an attachment, attaching and detaching devices, and user accounts, which write
+   none today.
 3. A stronger password rule than 8 characters, or a check against known breached passwords.
 4. Settings to redirect HTTP to HTTPS and send `Strict-Transport-Security`.
 5. A full Content-Security-Policy, after moving the inline scripts into files.
@@ -239,7 +253,11 @@ Working on a case:
 - The case log opens in a new tab without Kirjuri's menu; make it a tab of the case. Its zoom and move
   buttons have no names for screen readers (needs new language strings).
 - The audit log viewer (`auditor.php`) is a bare page: give it the layout, a list of the audit files and
-  a labelled field.
+  a labelled field. It says whether each entry is sealed and in sequence, and its table scrolls on a phone (November
+  2026).
+- Done (November 2026, #36): the case log's links to audit entries could not be clicked on wide screens. A grid
+  column used as a spacer floated across the page and the event table's scroll box shrank to nothing beside it.
+  The browser tests now click the first link at desktop and phone width.
 
 Overview and reporting:
 

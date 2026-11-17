@@ -22,6 +22,7 @@ if (!file_exists('conf/mysql_credentials.php')) {
 // Load dependencies
 require __DIR__.'/vendor/autoload.php';
 require_once __DIR__.'/lib/helpers.php';
+require_once __DIR__.'/lib/audit.php';
 require_once __DIR__.'/lib/config.php';
 require_once __DIR__.'/lib/logging.php';
 require_once __DIR__.'/lib/database.php';

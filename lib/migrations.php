@@ -50,6 +50,10 @@ function kirjuri_migrations() {
             'description' => 'Add the tables for two-factor sign-in: encrypted authenticator app secrets and hashed recovery codes',
             'up' => 'kirjuri_migration_009_two_factor',
         ),
+        '010_audit_chain' => array(
+            'description' => 'Add the index of the audit log chain: each entry\'s fingerprint, the newest entry, and the fingerprints of the entries from before the chain',
+            'up' => 'kirjuri_migration_010_audit_chain',
+        ),
     );
 }
 
@@ -314,6 +318,36 @@ function kirjuri_migration_009_two_factor(PDO $db) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 }
 
+
+function kirjuri_migration_010_audit_chain(PDO $db) {
+    // The entries themselves stay files under logs/audit/; these rows are a second record of them, kept apart from the
+    // files. audit_head is a single row, locked while an entry is written, so entries are written one at a time. Its
+    // key_check, derived from the key but not reversible, shows when the key file has been replaced.
+    $db->exec('CREATE TABLE IF NOT EXISTS audit_chain (
+        entry int unsigned NOT NULL PRIMARY KEY,
+        file varchar(64) NOT NULL,
+        fingerprint char(64) NOT NULL,
+        previous char(64) NOT NULL,
+        case_id int(11) NULL,
+        username varchar(256) NOT NULL,
+        created datetime NOT NULL,
+        UNIQUE KEY file (file),
+        KEY case_id (case_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $db->exec('CREATE TABLE IF NOT EXISTS audit_head (
+        id tinyint unsigned NOT NULL PRIMARY KEY,
+        entry int unsigned NOT NULL DEFAULT 0,
+        fingerprint char(64) NULL,
+        key_replaced_at int unsigned NULL,
+        key_check char(64) NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $db->exec('INSERT IGNORE INTO audit_head (id, entry) VALUES (1, 0)');
+    $db->exec('CREATE TABLE IF NOT EXISTS audit_legacy (
+        file varchar(64) NOT NULL PRIMARY KEY,
+        fingerprint char(64) NOT NULL,
+        size int unsigned NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+}
 
 function kirjuri_table_exists(PDO $db, $table) {
     $query = $db->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table');

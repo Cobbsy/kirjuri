@@ -19,6 +19,9 @@
     </head>
     <body>
         <div class="col-sm-12  col-md-12 main">
+            {% if entry_status %}
+                <div class="alert alert-{{ entry_status.class }}" role="status">{{ entry_status.text }}</div>
+            {% endif %}
             {% if data %}
                 {% if session.message.content %}
                     {{ session.message.type }}
@@ -42,7 +45,7 @@
                 {{ file_age }}</span>
         </h3>
         {% if not output_format %}
-            <table class="table">
+            <div class="table-responsive"><table class="table">
                 <thead>
                     <th colspan="999"></thead>
                     {% for a_key, upper_entry in data_array %}
@@ -51,7 +54,7 @@
                                 <b>{{ a_key }}</b>
                             </td>
                             <td></td>
-                            <td></td>
+                            <td>{% if upper_entry is not iterable %}{{ upper_entry }}{% endif %}</td>
                         </tr>
                         {% for b_key, entry in upper_entry %}
                             <tr {% if b_key == "REVERT_FROM_AUDIT" %} class="danger" {% endif %}>
@@ -97,7 +100,7 @@
                         <span class="text-danger">No matching log entries for audit file!</span>
                     {% endif %}
 
-                </table>
+                </table></div>
             {% elseif output_format == "JSON" %}
                 <pre>{{ data }}</pre>
             {% endif %}

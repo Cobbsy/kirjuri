@@ -14,6 +14,7 @@ chdir(dirname(__DIR__));
 require __DIR__ . '/../lib/errors.php';
 kirjuri_register_error_handlers();
 require __DIR__ . '/../lib/helpers.php';
+require __DIR__ . '/../lib/audit.php';
 require __DIR__ . '/../lib/config.php';
 require __DIR__ . '/../lib/logging.php';
 require __DIR__ . '/../lib/database.php';

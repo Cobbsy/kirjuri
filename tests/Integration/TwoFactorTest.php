@@ -214,6 +214,35 @@ final class TwoFactorTest extends IntegrationTestCase
         $this->assertLogged('Two-factor sign-in set up by ' . $username . '. Other sessions ended.');
     }
 
+    public function testSignInStopsWhenItsEntryCanNotBeWritten(): void
+    {
+        $this->expectLoggedError('the audit log could not be written');
+        [$username, $secret] = $this->userWithTwoFactor();
+        $this->forgetUsedCodes($username);
+        $client = $this->signInWithPassword($username);
+        $token = $this->pendingToken($client);
+
+        $this->withoutAuditFolder(function () use ($client, $secret, $token) {
+            $client->post('submit.php?type=two_factor_code', array('token' => $token, 'two_factor_code' => $this->code($secret)));
+            $this->assertSame('login.php', $client->get('index.php')->location(), 'No sign-in without its audit log entry.');
+        });
+    }
+
+    public function testSetUpIsNotSavedWithoutItsEntry(): void
+    {
+        $this->expectLoggedError('the audit log could not be written');
+        $username = $this->uniqueName('setupaudit');
+        $this->createUser($username, self::PASSWORD, 1);
+        $client = $this->login($username, self::PASSWORD);
+        $secret = $this->keyOnPage($client->get('two_factor.php?setup=1')->body, 'two_factor_key');
+        $token = $this->token($client);
+
+        $this->withoutAuditFolder(function () use ($client, $secret, $token, $username) {
+            $client->post('submit.php?type=two_factor_setup', array('token' => $token, 'current_password' => self::PASSWORD, 'two_factor_code' => $this->code($secret)));
+            $this->assertNull($this->twoFactorRow($username), 'Two-factor sign-in is not turned on without its audit log entry.');
+        });
+    }
+
     public function testSettingUpOnANewPhoneReplacesTheSecretAndCodes(): void
     {
         [$username, $secret, $codes, $client] = $this->userWithTwoFactor();
