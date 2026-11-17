@@ -171,6 +171,8 @@ Unreleased
 * TinyMCE stays at 7.9.3. Advisory GHSA-mf2p-h6hf-fcwm (CVE-2026-116675), a stored XSS in TinyMCE's media plugin, does not reach Kirjuri, whose editors load no TinyMCE plugins, and its 7.x fix (7.9.4) is not publicly released. A unit test fails if an editor loads the media plugin. The reasoning, and the licence question for TinyMCE 8, are under Security in docs/ROADMAP.md.
 * A new install starts safe for real data: show_errors ships off, so pages no longer show PHP warnings and notices (which can include file paths) and the error page no longer shows administrators the details, and session_idle_timeout ships at 60 minutes instead of 12 hours, so a login on a shared machine ends after an hour with no Kirjuri page open. An install that has saved its settings keeps its own values; one that never has gets the new defaults.
 * Spanish device statuses: "DATOS ENTEGADOS" is "DATOS ENTREGADOS", "Vacio" is "Vacío" and "copiado en servidor" starts with a capital like the others. Devices keep the status text they were saved with until their status is changed.
+* Settings page: each setting has a readable name and a line of help under it, in the five languages ("Sign-out after inactivity" instead of "Session idle timeout", "Compact front page table" instead of "Index table condensed"). A setting left from an older release is still named after its key. The unused progress_bar_size setting is gone; a saved value is ignored.
+* Front page: a confiscation over 4 months old got the yellow 3-month icon, because the 3-month test came first, so the red icon never showed. It shows now.
 
 2018-03 Version 0.9.2
 

@@ -273,6 +273,28 @@ final class SourceTest extends TestCase
         $this->assertNotEmpty($inits, 'No tinymce.init() call found to check.');
     }
 
+    /**
+     * The settings page names each setting and explains it from the language files (setting_<key> and
+     * setting_<key>_help), so every shipped setting needs both in every language. The template builds the
+     * keys from the setting's name, which the check of lang.* keys in templates cannot see.
+     */
+    public function testEverySettingHasALabelAndHelpInEveryLanguage(): void
+    {
+        $settings = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true)['settings'];
+        $missing = array();
+        foreach (array('EN', 'DE', 'ES', 'FI', 'PT_BR') as $code) {
+            $strings = json_decode(file_get_contents(KIRJURI_ROOT . '/conf/lang_' . $code . '.JSON'), true);
+            foreach (array_keys($settings) as $key) {
+                foreach (array('setting_' . $key, 'setting_' . $key . '_help') as $string) {
+                    if (!isset($strings[$string]) || trim($strings[$string]) === '') {
+                        $missing[] = $code . ': ' . $string;
+                    }
+                }
+            }
+        }
+        $this->assertSame(array(), $missing);
+    }
+
     /** Every stylesheet, script and image a template loads from the application exists. */
     #[DataProvider('templates')]
     public function testTemplateLoadsOnlyFilesThatExist(string $template): void

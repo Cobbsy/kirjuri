@@ -366,6 +366,34 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/<div class="field has-warning">\s*<label for="case_confiscation_date">/', $dialog, 'An old confiscation is marked.');
     }
 
+    public function testFrontPageMarksConfiscationsOverThreeAndFourMonthsOld(): void
+    {
+        // The front page tested "older than 3 months" first, so a confiscation over 4 months old got the yellow
+        // icon too and the red one never showed.
+        $admin = $this->admin();
+        $files = array('red' => '7100/R/' . generate_token(4), 'yellow' => '7200/R/' . generate_token(4), 'none' => '7300/R/' . generate_token(4));
+        $this->createCase($admin, $this->uniqueName('Old confiscation '), array('case_file_number' => $files['red'], 'case_confiscation_date' => date('Y-m-d', strtotime('-5 months'))));
+        $this->createCase($admin, $this->uniqueName('Recent confiscation '), array('case_file_number' => $files['yellow'], 'case_confiscation_date' => date('Y-m-d', strtotime('-100 days'))));
+        $this->createCase($admin, $this->uniqueName('New confiscation '), array('case_file_number' => $files['none'], 'case_confiscation_date' => date('Y-m-d', strtotime('-10 days'))));
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^notify_after_4_months = .*$/m', 'notify_after_4_months = "1"', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $page = $admin->get('index.php')->body;
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+        $cell = function (string $file) use ($page) {
+            $start = strpos($page, '>' . $file . '</a>');
+            $this->assertNotFalse($start, "$file is on the front page.");
+            return substr($page, $start, strpos($page, '</td>', $start) - $start);
+        };
+        $this->assertStringContainsString('fa-calendar-times-o text-danger', $cell($files['red']));
+        $this->assertStringNotContainsString('text-warning', $cell($files['red']));
+        $this->assertStringContainsString('fa-calendar-times-o text-warning', $cell($files['yellow']));
+        $this->assertStringNotContainsString('fa-calendar-times-o', $cell($files['none']));
+    }
+
     public function testDeviceStatusAnswersWithWhatThePageUpdates(): void
     {
         // The status and location menus saved into hidden frames: the device's own bar was the only thing that

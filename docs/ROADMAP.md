@@ -47,6 +47,8 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   (suggested "Exame ao vivo"). Device statuses are stored with their text ("9|Done"), so a corrected
   label shows on a device only once its status is changed; only the number drives progress.
   Finnish numbers its statuses differently from the others, so its list is not compared key by key.
+  The 56 strings of the settings page (a label and a help line per setting, November 2026) are on the
+  page too, in their own group.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),
@@ -233,8 +235,10 @@ Administration and help:
   template loads a library that is not listed. Worth knowing before distributing installers:
   TinyMCE 7 is GPL-2.0-or-later, HTML Purifier LGPL-2.1 and the barcode generator LGPL-3.0, while
   Kirjuri itself is MIT.
-- The settings are labelled by their internal names ("Index table condensed"). Give each a readable
-  label and a line of help, in the language files.
+- Done (November 2026): each setting has a readable label and a line of help in the language files
+  (`setting_<key>`, `setting_<key>_help`); a unit test fails when a shipped setting lacks either. Still
+  open: grouping the settings by topic (case report, requests, sign-in, directory) instead of the order
+  of `settings.conf`.
 - Password rules and two-factor sign-in, from the Security section.
 - E-mail or in-app notice when a request is assigned to someone or a message arrives; today the unread
   counter is the only sign.
