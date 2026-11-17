@@ -248,6 +248,12 @@ final class AuditChainTest extends IntegrationTestCase
         $starts = array_filter($rows, fn ($row) => strpos($this->open($row)['payload']['event']['description'], 'Audit log chain started') === 0);
         $this->assertSame(array(0), array_keys($starts), 'One chain start, entry 1.');
         $this->assertSame(101, kirjuri_audit_head($db)['entry']);
+
+        $check = kirjuri_audit_check(kirjuri_audit_rows($db), kirjuri_audit_head($db), kirjuri_audit_legacy_rows($db), $this->dir, kirjuri_audit_key_string($this->keyFile));
+        $this->assertSame(array(), $check['findings']);
+        $this->assertSame(101, $check['entries']);
+        $newest = iterator_to_array(kirjuri_audit_rows($db, 3), false);
+        $this->assertSame(array('99', '100', '101'), array_column($newest, 'entry'));
     }
 
     public function testChainStartFingerprintsThousandsOfOldFiles(): void
@@ -262,6 +268,9 @@ final class AuditChainTest extends IntegrationTestCase
         $this->assertSame(3000, $result['started']);
         $this->assertSame('3000', $db->query('SELECT COUNT(*) FROM audit_legacy')->fetchColumn());
         $this->assertSame(3000, $this->open($this->rows($db)[0])['payload']['old_entries']['count']);
+        $check = kirjuri_audit_check(kirjuri_audit_rows($db), kirjuri_audit_head($db), kirjuri_audit_legacy_rows($db), $this->dir, kirjuri_audit_key_string($this->keyFile));
+        $this->assertSame(array(), $check['findings']);
+        $this->assertSame(3000, $check['old']);
     }
 
     public function testStartingTheChainHappensOnce(): void

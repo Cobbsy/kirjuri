@@ -399,3 +399,163 @@ function kirjuri_audit_put(PDO $db, int $number, string $previous, ?int $case_id
             ':case_id' => $case_id, ':username' => (string) ($user['username'] ?? '-'), ':created' => date('Y-m-d H:i:s', $time)));
     return array('file' => $file, 'fingerprint' => $fingerprint);
 }
+
+
+/** The audit_chain rows in entry order, or only the newest $newest of them. */
+function kirjuri_audit_rows(PDO $db, ?int $newest = null): iterable {
+    $columns = 'entry, file, fingerprint, previous, case_id, username, created';
+    if ($newest === null) {
+        $query = $db->query('SELECT ' . $columns . ' FROM audit_chain ORDER BY entry');
+    } else {
+        $query = $db->prepare('SELECT * FROM (SELECT ' . $columns . ' FROM audit_chain ORDER BY entry DESC LIMIT :newest) newest ORDER BY entry');
+        $query->bindValue(':newest', $newest, PDO::PARAM_INT);
+        $query->execute();
+    }
+    while (($row = $query->fetch(PDO::FETCH_ASSOC)) !== false) {
+        yield $row;
+    }
+}
+
+
+/** The fingerprints of the entries from before the chain, as file name => fingerprint. */
+function kirjuri_audit_legacy_rows(PDO $db): array {
+    return $db->query('SELECT file, fingerprint FROM audit_legacy ORDER BY file')->fetchAll(PDO::FETCH_KEY_PAIR);
+}
+
+
+/** A checkpoint: "entry 48213, 17.11.2026 10:22:31, 9f3c 1a2b 77de 0c41 5e9a". */
+function kirjuri_audit_checkpoint_text(int $entry, string $created, string $fingerprint): string {
+    $time = DateTime::createFromFormat('Y-m-d H:i:s', $created);
+    return 'entry ' . $entry . ', ' . ($time ? $time->format('d.m.Y H:i:s') : $created) . ', ' . kirjuri_audit_short_fingerprint($fingerprint);
+}
+
+
+/**
+ * Check the chain: every row of the index against its file and the row before it, the files that have no row, the
+ * entries from before the chain, the head, and a checkpoint recorded earlier ($since, from
+ * kirjuri_audit_parse_checkpoint()). Without a key the seals are not opened, but everything else is checked. $partial
+ * checks only the rows given (the newest ones, for bin/kirjuri doctor) and the head.
+ * Returns the findings (kind, entry, file, text), how many entries and old entries were checked, and the checkpoint
+ * of the newest entry.
+ */
+function kirjuri_audit_check(iterable $rows, ?array $head, array $legacy, string $dir, ?string $key_string, ?array $since = null, bool $partial = false): array {
+    $findings = array();
+    $find = function ($kind, $entry, $file, $text) use (&$findings) {
+        $findings[] = array('kind' => $kind, 'entry' => $entry, 'file' => $file, 'text' => $text);
+    };
+    $numbers = array(); // Entry number => file name, of every row.
+    $newest = null;
+    $first_payload = null;
+    $unreadable = array();
+    $since_fingerprint = null;
+    $key_replaced_at = $head['key_replaced_at'] ?? null;
+    $expected = null; // The number and fingerprint the next row has to follow.
+    foreach ($rows as $row) {
+        $number = (int) $row['entry'];
+        $file = (string) $row['file'];
+        $numbers[$number] = $file;
+        if ($since !== null && $number === $since['entry']) {
+            $since_fingerprint = (string) $row['fingerprint'];
+        }
+        if ($expected === null && !$partial) {
+            $expected = array('entry' => 1, 'fingerprint' => null); // Entry 1's link is to the old entries: see old_list.
+        }
+        $path = kirjuri_audit_entry_path($file, $dir);
+        $contents = ($path !== null && is_file($path)) ? @file_get_contents($path) : false;
+        if ($contents === false) {
+            $find('missing', $number, $file, 'The entry file is missing.');
+        } elseif (kirjuri_audit_fingerprint($contents) !== $row['fingerprint']) {
+            $find('changed', $number, $file, 'The file has changed since it was written: its fingerprint does not match the index.');
+        } else {
+            $opened = kirjuri_audit_open_entry($contents, $file, $key_string);
+            if ($opened['format'] !== 'chain' || $opened['number'] !== $number || $opened['previous'] !== $row['previous']) {
+                $find('place', $number, $file, 'The file does not belong in this place of the chain: its number or the fingerprint it follows differs from the index.');
+            } elseif ($expected !== null && $number !== $expected['entry']) {
+                $find('link', $number, $file, ($number > $expected['entry'])
+                    ? (($number - 1 === $expected['entry']) ? 'Entry ' . $expected['entry'] . ' is missing before it.' : 'Entries ' . $expected['entry'] . ' to ' . ($number - 1) . ' are missing before it.')
+                    : 'It is out of order: entry ' . $expected['entry'] . ' was expected here.');
+            } elseif ($expected !== null && $expected['fingerprint'] !== null && $row['previous'] !== $expected['fingerprint']) {
+                $find('link', $number, $file, 'It does not follow the entry before it: an entry before it was removed, inserted or replaced.');
+            } elseif ($key_string !== null && $opened['payload'] === null) {
+                if ($key_replaced_at !== null && $number < $key_replaced_at) {
+                    $unreadable[] = $number;
+                } else {
+                    $find('seal', $number, $file, 'Its seal does not open with the key: the entry was changed, or sealed with another key.');
+                }
+            } elseif ($number === 1) {
+                $first_payload = $opened['payload'];
+            }
+        }
+        $expected = array('entry' => $number + 1, 'fingerprint' => (string) $row['fingerprint']);
+        $newest = $row;
+    }
+    if (!empty($unreadable)) {
+        $find('unreadable_old_key', null, null, 'Entries ' . min($unreadable) . ' to ' . max($unreadable) . ' were sealed before the key was replaced at entry '
+            . $key_replaced_at . ' and can not be read with it.');
+    }
+
+    $newest_number = ($newest === null) ? 0 : (int) $newest['entry'];
+    if (!$partial) {
+        // Entry files without a row.
+        $past_end = array();
+        $indexed = array_flip($numbers);
+        foreach (kirjuri_audit_entry_files($dir) as $file => $path) {
+            if (isset($legacy[$file]) || isset($indexed[$file])) {
+                continue;
+            }
+            $contents = (string) @file_get_contents($path);
+            if (strncmp($contents, KIRJURI_AUDIT_MAGIC . ' ', strlen(KIRJURI_AUDIT_MAGIC) + 1) !== 0) {
+                $find('old_added', null, $file, 'An entry in the old format that was not there when the chain started.');
+                continue;
+            }
+            $number = kirjuri_audit_open_entry($contents, $file, null)['number'];
+            if ($number !== null && isset($numbers[$number])) {
+                $find('never_saved', $number, $file, 'Entry ' . $number . ' was never saved: its change was refused or failed.');
+            } elseif ($number !== null && $number <= $newest_number) {
+                $find('not_indexed', $number, $file, 'Entry ' . $number . ' is not in the index. Its change failed, or it was removed from the index.');
+            } else {
+                $past_end[$file] = $number;
+            }
+        }
+        foreach ($past_end as $file => $number) {
+            if (count($past_end) === 1 && $number === $newest_number + 1) {
+                $find('not_indexed', $number, $file, 'Entry ' . $number . ' is not in the index. Its change failed, or it was removed from the index.');
+            } else {
+                $find('past_end', $number, $file, 'Entries past the end of the index: the index may have been cut.');
+            }
+        }
+
+        // The entries from before the chain.
+        $list = '';
+        foreach ($legacy as $file => $fingerprint) {
+            $list .= $file . ' ' . $fingerprint . "\n";
+            $path = kirjuri_audit_entry_path((string) $file, $dir);
+            $contents = ($path !== null && is_file($path)) ? @file_get_contents($path) : false;
+            if ($contents === false) {
+                $find('old_missing', null, (string) $file, 'An entry from before the chain is missing.');
+            } elseif (kirjuri_audit_fingerprint($contents) !== $fingerprint) {
+                $find('old_changed', null, (string) $file, 'An entry from before the chain has changed since the chain started.');
+            }
+        }
+        if ($first_payload !== null && ($first_payload['old_entries']['list_sha256'] ?? null) !== hash('sha256', $list)) {
+            $find('old_list', null, null, 'The record of the entries from before the chain has changed since the chain started.');
+        }
+    }
+
+    if ($newest_number !== ($head['entry'] ?? 0) || ($newest !== null && $newest['fingerprint'] !== ($head['fingerprint'] ?? null))) {
+        $find('head', null, null, 'The index says the newest entry is ' . ($head['entry'] ?? 0) . ', but the chain ends at entry ' . $newest_number . ': the index has been changed.');
+    }
+    if ($since !== null) {
+        if ($since_fingerprint === null) {
+            $find('since', null, null, 'Entry ' . $since['entry'] . ' of the checkpoint is not in the log any more.');
+        } elseif (strpos($since_fingerprint, $since['prefix']) !== 0) {
+            $find('since', null, null, 'Entry ' . $since['entry'] . ' no longer has the checkpoint\'s fingerprint: the log was changed at or before it.');
+        }
+    }
+    return array(
+        'findings' => $findings,
+        'entries' => count($numbers),
+        'old' => $partial ? 0 : count($legacy),
+        'checkpoint' => ($newest === null) ? null : kirjuri_audit_checkpoint_text((int) $newest['entry'], (string) $newest['created'], (string) $newest['fingerprint']),
+    );
+}
