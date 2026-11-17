@@ -311,7 +311,8 @@ function filter_letters_and_numbers($a) {
 
 
 function encrypt($in, $key) {
-    // Encrypt a string with AES-256-CBC
+    // Encrypt a string with AES-256-CBC: the format of audit log entries from before the chain, which decrypt() reads.
+    // New entries are sealed by kirjuri_audit_seal_entry(); this stays for the tests that write old entries.
     if (!function_exists('openssl_encrypt')) {
         event_log_write('0', 'Error', 'Missing dependency: OpenSSL. Can not encrypt audit log files. Please install OpenSSL.');
         return $in;

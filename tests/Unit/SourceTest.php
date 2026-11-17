@@ -60,6 +60,13 @@ final class SourceTest extends TestCase
         }, ARRAY_FILTER_USE_KEY);
     }
 
+    /** Every audit log entry is sealed and chained (lib/audit.php): nothing writes the old, unchained entries any more. */
+    #[DataProvider('phpFiles')]
+    public function testNothingWritesTheOldAuditLog(string $file): void
+    {
+        $this->assertStringNotContainsString('audit_log_write(', file_get_contents($file), 'Use kirjuri_audited() or kirjuri_audit().');
+    }
+
     /** SQL lives in lib/, so every query can be found, reviewed and tested in one place. */
     #[DataProvider('filesOutsideDataLayer')]
     public function testNoDatabaseAccessOutsideLib(string $file): void

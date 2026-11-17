@@ -253,7 +253,10 @@ function kirjuri_two_factor_enable(PDO $db, $user_id, $secret, $code, $time, $re
         throw new RuntimeException('Can not write ' . TWO_FACTOR_KEY_FILE . '. Is conf/ writable by the web server?');
     }
     $sealed = kirjuri_seal($secret, $key, kirjuri_two_factor_context($user_id));
-    $db->beginTransaction();
+    $own = !$db->inTransaction(); // Inside kirjuri_audited(), the change commits with its audit log entry.
+    if ($own) {
+        $db->beginTransaction();
+    }
     try {
         // The confirming code counts as used, so it can not sign anyone in afterwards.
         if ($replace) {
@@ -266,14 +269,20 @@ function kirjuri_two_factor_enable(PDO $db, $user_id, $secret, $code, $time, $re
             $query = $db->prepare('INSERT IGNORE INTO two_factor (user_id, secret, enabled_at, last_step, wrong_codes) VALUES (:id, :secret, :enabled_at, :step, 0)');
             $query->execute(array(':id' => $user_id, ':secret' => $sealed, ':enabled_at' => (int) $time, ':step' => $step));
             if ($query->rowCount() !== 1) {
-                $db->rollBack();
+                if ($own) {
+                    $db->rollBack();
+                }
                 return null;
             }
         }
         $codes = kirjuri_two_factor_replace_recovery_codes($db, $user_id);
-        $db->commit();
+        if ($own) {
+            $db->commit();
+        }
     } catch (Throwable $e) {
-        $db->rollBack();
+        if ($own) {
+            $db->rollBack();
+        }
         throw $e;
     }
     return $codes;
@@ -398,10 +407,29 @@ function kirjuri_two_factor_remove(PDO $db, $user_id) {
 
 
 /**
- * Record a change to or a use of two-factor sign-in in the audit log and the event log. $event names it for the
- * audit log; $details must never hold a code, a recovery code, a secret or a password.
+ * What an audit log entry about two-factor sign-in records as its request: what happened, to which account, and
+ * $details, which must never hold a code, a recovery code, a secret or a password.
  */
-function kirjuri_two_factor_log($description, $event, $username, array $details = array(), $level = 'Auth') {
-    $stamp = audit_log_write(array('two_factor' => $event, 'account' => $username) + $details);
-    event_log_write('0', $level, $description, $stamp);
+function kirjuri_two_factor_audit_request($event, $username, array $details = array()) {
+    return array('two_factor' => $event, 'account' => $username) + $details;
+}
+
+
+/**
+ * Record a use of two-factor sign-in that has already happened (a code accepted or refused) in the audit log and the
+ * event log. Throws KirjuriAuditException when the entry can not be written, before the sign-in goes on.
+ */
+function kirjuri_two_factor_log(PDO $db, $description, $event, $username, array $details = array(), $level = 'Auth') {
+    kirjuri_audit($db, null, $level, $description, kirjuri_two_factor_audit_request($event, $username, $details));
+}
+
+
+/**
+ * Make a change to two-factor sign-in together with its audit log entry, or not at all. $change makes it and returns
+ * whether it changed anything. Returns the same.
+ */
+function kirjuri_two_factor_audited(PDO $db, callable $change, $description, $event, $username, array $details = array()) {
+    return kirjuri_audited($db, function () use ($change, $description) {
+        return $change() ? array(null, 'Auth', $description) : null;
+    }, kirjuri_two_factor_audit_request($event, $username, $details)) !== null;
 }

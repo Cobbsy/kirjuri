@@ -371,8 +371,8 @@ function cli_user_unlock($args) {
     $query = $db->prepare('SELECT id, username FROM users WHERE username = :username');
     $query->execute(array(':username' => $username));
     $user = $query->fetch(PDO::FETCH_ASSOC);
-    if ($user !== false && cli_two_factor_ready($db) && kirjuri_two_factor_unlock($db, $user['id'])) {
-        kirjuri_two_factor_log('Wrong two-factor codes cleared from the command line for ' . $user['username'] . '.', 'unlocked', $user['username'], array('by' => 'bin/kirjuri'));
+    if ($user !== false && cli_two_factor_ready($db) && kirjuri_two_factor_audited($db, fn () => kirjuri_two_factor_unlock($db, $user['id']),
+            'Wrong two-factor codes cleared from the command line for ' . $user['username'] . '.', 'unlocked', $user['username'], array('by' => 'bin/kirjuri'))) {
         cli_out('Cleared wrong two-factor codes for "' . $user['username'] . '"; codes from the authenticator app work again.');
     }
     return 0;
@@ -391,12 +391,12 @@ function cli_user_two_factor_reset($args) {
         cli_err('The database has no two-factor sign-in yet. Run "php bin/kirjuri migrate" first.');
         return 1;
     }
-    if (!kirjuri_two_factor_remove($db, $user['id'])) {
+    if (!kirjuri_two_factor_audited($db, fn () => kirjuri_two_factor_remove($db, $user['id']),
+            'Two-factor sign-in reset from the command line for ' . $user['username'] . '. Their sessions ended.', 'reset', $user['username'], array('by' => 'bin/kirjuri'))) {
         cli_out('"' . $user['username'] . '" does not use two-factor sign-in. Nothing to reset.');
         return 0;
     }
     kirjuri_end_user_sessions($user['username']); // As on the web: whoever has the lost phone may have a session.
-    kirjuri_two_factor_log('Two-factor sign-in reset from the command line for ' . $user['username'] . '. Their sessions ended.', 'reset', $user['username'], array('by' => 'bin/kirjuri'));
     cli_out('Two-factor sign-in is off for "' . $user['username'] . '": the password alone signs in, and their sessions have ended.');
     cli_out('If two-factor sign-in is required for them (the two_factor_required setting), they set it up again at their next sign-in.');
     return 0;
