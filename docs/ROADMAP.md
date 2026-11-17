@@ -37,7 +37,8 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   text of each language file as of November 2026. Translators need Contributor access to save. Their
   answers are in the page's `reviews` collection, one document per `key~LANG`, read with the
   `ArtifactData` tool. Apply the agreed wording to `conf/lang_*.JSON`, keeping each file's encoding
-  (see CLAUDE.md), and add new strings to the page's `GROUPS` list as they are written.
+  (see CLAUDE.md). `tests/tools/translation_review.php` builds the page from the language files; add
+  new strings to its groups as they are written and publish the page again to the same URL.
   Status (14 November 2026): German is confirmed for the eleven redesign strings (all "reads right",
   16 October), so the files need no change yet. Nothing else has an answer. The help texts quote
   button and tab names, and each quoted name was checked against the same language file and matches.
@@ -49,8 +50,10 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   Finnish numbers its statuses differently from the others, so its list is not compared key by key.
   The 58 strings of the settings page (a label and a help line per setting, November 2026) are on the
   page too, in their own group, including the two for `two_factor_required`.
-  Fifty-eight more came with two-factor sign-in (the `two_factor_*` strings, `help_two_factor_title` and
-  `help_two_factor_text`), also written without a native speaker. They are not on the review page yet.
+  The fifty-eight strings of two-factor sign-in (the `two_factor_*` strings, `help_two_factor_title` and
+  `help_two_factor_text`), also written without a native speaker, are on the page in their own group,
+  each with the page it shows on. In all, 153 strings wait for translators, and the page is not shared
+  with any yet: share it from its Share menu, with Contributor access for each translator.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
   to be merged) from the working branch into `codex-review-base`, a branch at #5's merge (`d467c3e`),

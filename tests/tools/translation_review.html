@@ -1,0 +1,410 @@
+<title>Kirjuri Translation Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one narrow column of string cards in groups under a sticky language bar, Kirjuri's own palette. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --border: #dde3ea;
+  --border-strong: #c5ced9;
+  --text: #1e293b;
+  --muted: #5b6778;
+  --heading: #0f172a;
+  --primary: #1d5fd1;
+  --primary-hover: #174ea9;
+  --primary-soft: #e8f0fd;
+  --primary-text: #1d5fd1;
+  --ok: #15803d;
+  --ok-soft: #e7f6ec;
+  --ok-line: #b7e2c4;
+  --change: #b45309;
+  --change-soft: #fdf3e2;
+  --change-line: #f1d6a8;
+  --code: #9f1239;
+  --code-bg: #fff1f3;
+  --focus: rgba(29, 95, 209, 0.35);
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d131c; --surface: #151d29; --surface-muted: #1a2330; --border: #283343; --border-strong: #394659;
+    --text: #dde4ee; --muted: #9ba7b9; --heading: #f1f5f9;
+    --primary: #2563eb; --primary-hover: #1d4fd8; --primary-soft: #16284a; --primary-text: #7eaaf8;
+    --ok: #5bc987; --ok-soft: #122c1d; --ok-line: #24533a;
+    --change: #f0a94a; --change-soft: #32240f; --change-line: #5c4219;
+    --code: #fda4af; --code-bg: #3a1822; --focus: rgba(96, 150, 245, 0.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d131c; --surface: #151d29; --surface-muted: #1a2330; --border: #283343; --border-strong: #394659;
+  --text: #dde4ee; --muted: #9ba7b9; --heading: #f1f5f9;
+  --primary: #2563eb; --primary-hover: #1d4fd8; --primary-soft: #16284a; --primary-text: #7eaaf8;
+  --ok: #5bc987; --ok-soft: #122c1d; --ok-line: #24533a;
+  --change: #f0a94a; --change-soft: #32240f; --change-line: #5c4219;
+  --code: #fda4af; --code-bg: #3a1822; --focus: rgba(96, 150, 245, 0.45);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--font); }
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { padding-block: 32px 20px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+h1 { font-size: 28px; line-height: 1.2; color: var(--heading); margin: 0 0 10px; text-wrap: balance; }
+.intro { margin: 0; max-width: 62ch; color: var(--text); }
+.intro + .intro { margin-top: 8px; color: var(--muted); }
+
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--border); }
+.bar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; }
+.langs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; border: 0; }
+.langs legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.langs label { cursor: pointer; }
+.langs input { position: absolute; opacity: 0; pointer-events: none; }
+.langs span { display: inline-block; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-size: 14px; }
+.langs input:checked + span { background: var(--primary); border-color: var(--primary); color: #fff; }
+.langs input:focus-visible + span { box-shadow: 0 0 0 3px var(--focus); }
+.progress { display: flex; align-items: center; gap: 10px; margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter { width: 120px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--ok); transition: width 0.2s; }
+
+.notice { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--change-line); background: var(--change-soft); border-radius: var(--radius); font-size: 14px; }
+main { padding-block: 16px 48px; }
+.groups { display: grid; gap: 32px; }
+.group { display: grid; gap: 12px; }
+.group-head { display: grid; gap: 4px; }
+.group-head h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 19px; line-height: 1.3; color: var(--heading); margin: 0; text-wrap: balance; }
+.group-count { font-size: 13px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.group-head p { margin: 0; font-size: 14px; color: var(--muted); max-width: 65ch; }
+ol.strings { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.card.is-ok { border-color: var(--ok-line); }
+.card.is-change { border-color: var(--change-line); }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.key { font: 13px var(--mono); color: var(--code); background: var(--code-bg); padding: 1px 6px; border-radius: 4px; }
+.where { font-size: 13px; color: var(--muted); }
+.context { margin: 0; font-size: 14px; color: var(--muted); max-width: 65ch; }
+.pair { display: grid; grid-template-columns: 7.5em 1fr; gap: 4px 12px; margin: 0; }
+.pair dt { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.pair dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.pair dd.current { font-size: 18px; font-weight: 600; color: var(--heading); }
+.pair dd.suggested { font-size: 16px; color: var(--change); font-weight: 600; }
+.card.is-long .pair dd.current { font-size: 16px; font-weight: 400; line-height: 1.6; max-width: 65ch; }
+.card.is-long .pair dd.suggested { font-weight: 400; line-height: 1.6; max-width: 65ch; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-muted); color: var(--muted); }
+.chip.ok { background: var(--ok-soft); border-color: var(--ok-line); color: var(--ok); }
+.chip.change { background: var(--change-soft); border-color: var(--change-line); color: var(--change); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-text); }
+button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+button.primary:hover:not(:disabled) { background: var(--primary-hover); color: #fff; }
+button.link { border: 0; background: none; padding: 6px 4px; color: var(--primary-text); }
+button:disabled { opacity: 0.55; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus); }
+.editor { display: grid; gap: 10px; padding: 12px; border-radius: 6px; background: var(--surface-muted); border: 1px solid var(--border); }
+.editor label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.editor input, .editor textarea, .summary textarea { font: inherit; font-size: 15px; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 10px; width: 100%; }
+.editor textarea { min-height: 60px; resize: vertical; }
+.editor textarea.long { min-height: 150px; line-height: 1.55; }
+
+.summary { margin-top: 28px; display: grid; gap: 10px; }
+.summary h2 { font-size: 17px; color: var(--heading); margin: 0; }
+.summary p { margin: 0; font-size: 14px; color: var(--muted); max-width: 65ch; }
+.summary textarea { font: 13px/1.5 var(--mono); min-height: 160px; resize: vertical; }
+.summary .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.copied { font-size: 13px; color: var(--ok); }
+@media (max-width: 480px) {
+  h1 { font-size: 24px; }
+  .pair { grid-template-columns: 1fr; }
+  .pair dt { padding-top: 0; }
+  .progress { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Kirjuri · language files</p>
+    <h1>Translation review</h1>
+    <p class="intro">These texts were added to Kirjuri during the redesign and since: short labels, hints and messages, the user guide on the help page, the settings page, two-factor sign-in, and a few device statuses that look wrong. The English is final. The German, Spanish, Finnish and Brazilian Portuguese versions were written without a native speaker. Pick your language, then for each text either confirm it reads right or suggest better wording.</p>
+    <p class="intro">Each card says where the text appears, so you can judge length and tone. Buttons and filters should stay short.</p>
+  </div>
+</header>
+
+<div class="bar">
+  <div class="wrap">
+    <fieldset class="langs" id="langs">
+      <legend>Language to review</legend>
+    </fieldset>
+    <div class="progress" aria-live="polite"><span class="meter" aria-hidden="true"><i id="meter"></i></span><span id="progress-text">0 reviewed</span></div>
+  </div>
+</div>
+
+<main class="wrap">
+  <p class="notice" id="notice" hidden></p>
+  <div class="groups" id="groups"></div>
+
+  <section class="summary" aria-labelledby="summary-title">
+    <h2 id="summary-title">Review as text</h2>
+    <p>Everything reviewed for the selected language, ready to paste into an email if you would rather send it that way.</p>
+    <textarea id="summary" readonly aria-label="Review as text"></textarea>
+    <div class="row"><button type="button" id="copy">Copy text</button><span class="copied" id="copied" hidden>Copied</span></div>
+  </section>
+</main>
+
+<script>
+const LANGS = [
+  { code: "DE", name: "Deutsch" },
+  { code: "ES", name: "Español" },
+  { code: "FI", name: "Suomi" },
+  { code: "PT_BR", name: "Português (Brasil)" },
+];
+
+// The texts to review, in groups, with where each one shows in Kirjuri. tests/tools/translation_review.php puts them
+// here from Kirjuri's language files; edit that file, not this list.
+const GROUPS = /*GROUPS*/;
+function forLang(strings) { return strings.filter((s) => !s.only || s.only.includes(state.lang)); }
+function allStrings() { return forLang(GROUPS.flatMap((g) => g.strings)); }
+const LONG = 90; // texts longer than this get a multi-line box for suggestions
+
+const state = {
+  lang: "DE",
+  reviews: {},        // "key~LANG" -> review body
+  editing: null,      // key whose editor is open
+  draft: null,        // {suggestion, note, fresh} typed into the open editor, kept across redraws
+  db: null,
+  userApi: null,
+  me: null,
+  canSave: false,
+  local: false,       // saving to this browser only
+};
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs || {})) {
+    if (value === null || value === undefined || value === false) continue;
+    if (name === "class") node.className = value;
+    else if (name.startsWith("on")) node.addEventListener(name.slice(2), value);
+    else node.setAttribute(name, value === true ? "" : value);
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+function langName(code) { return LANGS.find((l) => l.code === code).name; }
+function reviewId(key, lang) { return key + "~" + lang; }
+function formatDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
+function showNotice(text) {
+  const n = document.getElementById("notice");
+  n.textContent = text;
+  n.hidden = !text;
+}
+
+function loadLocal() {
+  try { state.reviews = JSON.parse(store.get("kirjuri-review-local") || "{}") || {}; } catch (e) { state.reviews = {}; }
+}
+
+async function saveReview(key, body) {
+  const id = reviewId(key, state.lang);
+  const full = body ? Object.assign({ key, lang: state.lang, by: state.me, at: new Date().toISOString() }, body) : null;
+  if (!state.local && state.db) {
+    try {
+      if (full) await state.db.doc("reviews/" + id).set(full);
+      else await state.db.doc("reviews/" + id).delete();
+      return true;
+    } catch (e) {
+      if (e && (e.code === "invalid_argument" || e.code === "revoked" || e.code === "not_granted")) {
+        switchToLocal("This page is open for reading only, so your answers stay in this browser. Use Copy text at the bottom to send them.");
+      } else {
+        showNotice("That answer did not save. Check your connection and try again.");
+        return false;
+      }
+    }
+  }
+  if (full) state.reviews[id] = full; else delete state.reviews[id];
+  store.set("kirjuri-review-local", JSON.stringify(state.reviews));
+  render();
+  return true;
+}
+
+function switchToLocal(message) {
+  if (!state.local) {
+    state.local = true;
+    loadLocal();
+  }
+  showNotice(message);
+  render();
+}
+
+function renderLangs() {
+  const box = document.getElementById("langs");
+  box.querySelectorAll("label").forEach((n) => n.remove());
+  for (const l of LANGS) {
+    box.append(el("label", {},
+      el("input", { type: "radio", name: "lang", id: "lang-" + l.code, value: l.code, checked: l.code === state.lang,
+        onchange: () => { state.lang = l.code; state.editing = null; state.draft = null; store.set("kirjuri-review-lang", l.code); render(); } }),
+      el("span", {}, l.name)));
+  }
+}
+
+function reviewOf(s) { return state.reviews[reviewId(s.key, state.lang)] || null; }
+
+let renderToken = 0;
+async function render() {
+  const token = ++renderToken;
+  const strings = allStrings();
+  const ids = [...new Set(strings.map(reviewOf).filter(Boolean).map((r) => r.by).filter(Boolean))];
+  const people = ids.length && state.userApi ? await state.userApi.profiles(ids) : {};
+  if (token !== renderToken) return;
+
+  document.getElementById("groups").replaceChildren(...GROUPS.filter((g) => forLang(g.strings).length).map((g) => {
+    const visible = forLang(g.strings);
+    const done = visible.filter(reviewOf).length;
+    const titleId = "group-" + g.id;
+    return el("section", { class: "group", "aria-labelledby": titleId },
+      el("div", { class: "group-head" },
+        el("h2", { id: titleId }, g.title, el("span", { class: "group-count" }, done + " of " + visible.length + " reviewed")),
+        el("p", {}, g.blurb)),
+      el("ol", { class: "strings" }, visible.map((s) => card(s, reviewOf(s), people))));
+  }));
+
+  const done = strings.filter(reviewOf).length;
+  document.getElementById("meter").style.width = (done / strings.length * 100) + "%";
+  document.getElementById("progress-text").textContent = done + " of " + strings.length + " reviewed";
+  document.getElementById("summary").value = summary();
+}
+
+function card(s, review, people) {
+  const current = s[state.lang];
+  const long = s.EN.length > LONG;
+  const verdict = review ? review.verdict : null;
+  const who = review && review.by && people[review.by] ? (people[review.by].name || "Someone") : (review ? (state.local ? "You, in this browser" : "Someone") : "");
+  const when = review ? formatDate(review.at) : "";
+
+  const status = el("div", { class: "status" },
+    verdict === "ok" ? el("span", { class: "chip ok" }, "Reads right") :
+    verdict === "change" ? el("span", { class: "chip change" }, "Change suggested") :
+    el("span", { class: "chip" }, "Not reviewed"),
+    review ? el("span", {}, [who, when].filter(Boolean).join(" · ")) : null);
+
+  const pair = el("dl", { class: "pair" },
+    el("dt", {}, "English"), el("dd", {}, s.EN),
+    el("dt", {}, langName(state.lang)), el("dd", { class: "current" }, current),
+    verdict === "change" ? [el("dt", {}, "Suggested"), el("dd", { class: "suggested" }, review.suggestion)] : null,
+    review && review.note ? [el("dt", {}, "Note"), el("dd", {}, review.note)] : null);
+
+  const disabled = !state.canSave && !state.local;
+  const actions = el("div", { class: "actions" },
+    el("button", { type: "button", class: verdict === "ok" ? "primary" : null, disabled,
+      onclick: () => { state.editing = null; saveReview(s.key, { verdict: "ok", suggestion: "", note: "" }); } }, "Reads right"),
+    el("button", { type: "button", disabled, onclick: () => {
+      state.editing = s.key;
+      state.draft = { suggestion: verdict === "change" ? review.suggestion : current, note: review && review.note ? review.note : "", fresh: true };
+      render();
+    } }, verdict === "change" ? "Edit suggestion" : "Suggest a change"),
+    review ? el("button", { type: "button", class: "link", disabled, onclick: () => saveReview(s.key, null) }, "Clear") : null);
+
+  let editor = null;
+  if (state.editing === s.key) {
+    const suggestionId = "suggestion-" + s.key, noteId = "note-" + s.key;
+    const draft = state.draft || { suggestion: current, note: "" };
+    const input = long
+      ? el("textarea", { id: suggestionId, class: "long", oninput: (e) => { draft.suggestion = e.target.value; } }, draft.suggestion)
+      : el("input", { type: "text", id: suggestionId, value: draft.suggestion, autocomplete: "off", oninput: (e) => { draft.suggestion = e.target.value; } });
+    const note = el("textarea", { id: noteId, oninput: (e) => { draft.note = e.target.value; } }, draft.note);
+    const save = async () => {
+      const text = input.value.trim();
+      if (!text) { input.focus(); return; }
+      if (await saveReview(s.key, { verdict: text === current ? "ok" : "change", suggestion: text === current ? "" : text, note: note.value.trim() })) {
+        state.editing = null; state.draft = null; render();
+      }
+    };
+    editor = el("form", { class: "editor", onsubmit: (e) => { e.preventDefault(); save(); } },
+      el("label", { for: suggestionId }, "Better wording in " + langName(state.lang), input),
+      el("label", { for: noteId }, "Note (optional): why, or other places this word is used", note),
+      el("div", { class: "actions" },
+        el("button", { type: "submit", class: "primary" }, "Save suggestion"),
+        el("button", { type: "button", onclick: () => { state.editing = null; state.draft = null; render(); } }, "Cancel")));
+    if (draft.fresh) {
+      draft.fresh = false;
+      setTimeout(() => { input.focus(); if (!long) input.select(); }, 0);
+    }
+  }
+
+  return el("li", { class: "card" + (long ? " is-long" : "") + (verdict === "ok" ? " is-ok" : verdict === "change" ? " is-change" : "") },
+    el("div", { class: "card-head" }, el("code", { class: "key" }, s.key), el("span", { class: "where" }, s.where)),
+    el("p", { class: "context" }, s.context),
+    pair, status, editor || actions);
+}
+
+function summary() {
+  const lines = ["Kirjuri translation review: " + langName(state.lang) + " (" + state.lang + ")", ""];
+  const open = [];
+  allStrings().forEach((s) => {
+    const r = reviewOf(s);
+    if (!r) { open.push(s.key); return; }
+    if (r.verdict === "ok") lines.push(s.key + ": \"" + s[state.lang] + "\" reads right");
+    else lines.push(s.key + ": \"" + s[state.lang] + "\" -> \"" + r.suggestion + "\"" + (r.note ? " (" + r.note + ")" : ""));
+  });
+  if (open.length) lines.push("", "Not reviewed yet: " + open.join(", "));
+  return lines.join("\n");
+}
+
+document.getElementById("copy").addEventListener("click", () => {
+  const area = document.getElementById("summary");
+  const done = () => { const c = document.getElementById("copied"); c.hidden = false; setTimeout(() => { c.hidden = true; }, 2000); };
+  const fallback = () => { area.focus(); area.select(); };
+  try {
+    navigator.clipboard.writeText(area.value).then(done, fallback);
+  } catch (e) { fallback(); }
+});
+
+// Start: the language from the link (#fi) or the last visit, then the shared reviews if this view can reach them.
+const fromHash = (location.hash || "").slice(1).toUpperCase().replace("-", "_");
+const remembered = store.get("kirjuri-review-lang");
+state.lang = LANGS.some((l) => l.code === fromHash) ? fromHash : (LANGS.some((l) => l.code === remembered) ? remembered : "DE");
+renderLangs();
+render();
+
+(async () => {
+  const [db, user] = await Promise.all([window.claude?.use?.("db") ?? null, window.claude?.use?.("user") ?? null]);
+  state.userApi = user;
+  if (!db) {
+    switchToLocal("Shared reviews are not available in this view, so your answers stay in this browser. Use Copy text at the bottom to send them.");
+    return;
+  }
+  state.db = db;
+  state.me = user ? await user.id() : null;
+  const may = user ? await user.can("data.write") : null;
+  state.canSave = may !== false;
+  if (may === false) {
+    switchToLocal("You can't add to the shared reviews with your access, so your answers stay in this browser. Use Copy text at the bottom to send them, or ask for Contributor access.");
+    return;
+  }
+  db.collection("reviews").onSnapshot((snap) => {
+    if (state.local) return;
+    const next = {};
+    for (const doc of snap.docs) next[doc.id] = doc.data();
+    state.reviews = next;
+    render();
+  }, () => switchToLocal("Shared reviews stopped loading, so your answers now stay in this browser. Use Copy text at the bottom to send them."));
+})();
+</script>
