@@ -205,6 +205,51 @@ final class AuditTest extends IntegrationTestCase
         }
     }
 
+    private function head(): array
+    {
+        return $this->server->pdo()->query('SELECT entry, fingerprint FROM audit_head WHERE id = 1')->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function testCaseReportCarriesTheCheckpoint(): void
+    {
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Reported '));
+        $head = $this->head();
+        $before = $this->chainLength();
+
+        $report = $admin->get('case_report.php?case=' . $caseId);
+
+        $this->assertSame(200, $report->status);
+        $this->assertStringContainsString('Audit log when this report was made: entry ' . $head['entry'] . ', ', $report->body);
+        $this->assertStringContainsString('fingerprint ' . kirjuri_audit_short_fingerprint($head['fingerprint']), $report->body);
+        $this->assertSame($before, $this->chainLength(), 'Opening a report writes no entry.');
+    }
+
+    public function testBackupStartsWithTheCheckpoint(): void
+    {
+        $admin = $this->admin();
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $working = $this->server->dir . '/cache/checkpoint-mysqldump';
+        file_put_contents($working, "#!/bin/sh\necho '-- dump of' \"\$5\"\n");
+        chmod($working, 0755);
+        try {
+            $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
+                'settings' => array('mysqldump_location' => $working) + $defaults['settings'],
+                'inv_units' => implode(', ', $defaults['inv_units'])));
+            $head = $this->head();
+
+            $response = $admin->get('backup.php');
+
+            $lines = explode("\n", $response->body);
+            $this->assertStringStartsWith('-- Kirjuri audit log checkpoint: entry ' . $head['entry'] . ', ', $lines[0]);
+            $this->assertStringEndsWith(kirjuri_audit_short_fingerprint($head['fingerprint']), $lines[0]);
+            $this->assertStringStartsWith('-- dump of', $lines[1]);
+            $this->assertSame((string) strlen($response->body), $response->header('Content-Length'));
+        } finally {
+            $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
+        }
+    }
+
     public function testRefusedMemoWritesNoEntry(): void
     {
         $this->expectLoggedError('which is not in this case');

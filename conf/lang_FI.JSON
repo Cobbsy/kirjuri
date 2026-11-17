@@ -36,6 +36,7 @@
     "audit_entry_sealed": "Auditointilokin merkint\u00e4 %s: sinet\u00f6ity, oikeassa j\u00e4rjestyksess\u00e4 ja muuttumaton.",
     "audit_entry_unreadable": "Auditointilokin merkint\u00e4 %s on oikeassa j\u00e4rjestyksess\u00e4 ja muuttumaton, mutta sen sinetti\u00e4 ei voi avata nykyisell\u00e4 avaimella.",
     "audit_failed": "Ei tallennettu: muutosta ei voitu kirjata auditointilokiin. Ota yhteytt\u00e4 j\u00e4rjestelm\u00e4nvalvojaan.",
+    "audit_report_checkpoint": "Auditointiloki t\u00e4m\u00e4n raportin laatimishetkell\u00e4: merkint\u00e4 %s, %s, sormenj\u00e4lki %s.",
     "back": "Takaisin",
     "back_up_database": "Varmuuskopioi tietokanta...",
     "bad_password": "Virhe vaihdettaessa salasanaa.",

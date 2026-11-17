@@ -33,6 +33,13 @@ test('the audit viewer, opened from the case log, says the entry is sealed and f
   await expectNoSidewaysScroll(page);
 });
 
+test('the case report shows the audit log checkpoint and fits a phone', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Report checkpoint test ' + Date.now());
+  await page.goto('case_report.php?case=' + caseId);
+  await expect(page.locator('.audit-checkpoint')).toContainText('Audit log when this report was made: entry');
+  await expectNoSidewaysScroll(page);
+});
+
 test('the case tabs switch in the sidebar, and on phones the menu folds away after a choice', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Tabs test ' + Date.now());
   await startCase(page, caseId);

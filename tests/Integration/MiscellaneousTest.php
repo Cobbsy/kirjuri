@@ -534,7 +534,7 @@ final class MiscellaneousTest extends IntegrationTestCase
             $save($working);
             $response = $admin->get('backup.php');
             $this->assertStringContainsString('attachment;', (string) $response->header('Content-Disposition'));
-            $this->assertStringStartsWith('-- dump of', $response->body);
+            $this->assertMatchesRegularExpression('/^(-- Kirjuri audit log checkpoint: [^\n]*\n)?-- dump of/', $response->body);
         } finally {
             $admin->post('submit.php?type=reset_default_settings', array('token' => $this->token($admin)));
         }

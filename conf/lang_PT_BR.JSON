@@ -36,6 +36,7 @@
     "audit_entry_sealed": "Entrada %s do log de auditoria: selada, na sequência e inalterada.",
     "audit_entry_unreadable": "A entrada %s do log de auditoria está na sequência e inalterada, mas o seu selo não pode ser aberto com a chave atual.",
     "audit_failed": "Não salvo: a alteração não pôde ser registrada no log de auditoria. Avise o administrador.",
+    "audit_report_checkpoint": "Log de auditoria quando este relatório foi gerado: entrada %s, %s, impressão digital %s.",
     "back": "Voltar",
     "back_up_database": "Fazer backup do banco de dados...",
     "bad_password": "Password ruim ou campo vazio.",

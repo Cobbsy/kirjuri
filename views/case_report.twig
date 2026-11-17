@@ -96,6 +96,9 @@
   {{ entry.report_notes|purify }}
   {% endif %}
   {% endfor %}
+  {% if audit_head %}
+  <p class="audit-checkpoint">{{ lang.audit_report_checkpoint|format(audit_head.entry, audit_head.created|date("d.m.Y H:i"), audit_head.short) }}</p>
+  {% endif %}
   </div>
   </ul>
   {% endfor %}

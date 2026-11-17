@@ -14,6 +14,9 @@ $mysqldump_command = escapeshellarg($prefs['settings']['mysqldump_location'])
     . ' -h ' . escapeshellarg(empty($mysql_config['mysql_server']) ? 'localhost' : $mysql_config['mysql_server'])
     . ' -u ' . escapeshellarg($mysql_config['mysql_username'])
     . ' ' . escapeshellarg($mysql_config['mysql_database']);
+// The audit log's newest entry before the dump, so the dump holds it: a checkpoint for whoever keeps the backup.
+$head = kirjuri_audit_head($kirjuri_database);
+$checkpoint = ($head === null) ? '' : kirjuri_audit_checkpoint_text($head['entry'], $head['created'], $head['fingerprint']);
 // The dump goes to a temporary file first: only a dump that completed is sent. Writing both outputs
 // to files also means mysqldump can not block on a full pipe.
 $dump_file = tempnam(sys_get_temp_dir(), 'kirjuri_backup');
@@ -33,7 +36,9 @@ if ($status !== 0) {
 header('Content-Description: File Transfer');
 header('Content-Type: application/sql; charset=utf-8');
 header('Content-Disposition: attachment; filename="kirjuri database backup '.date("j-m-y").'.sql"');
-header('Content-Length: ' . filesize($dump_file));
-event_log_write('0', 'Admin', 'Backed up database.');
+$first_line = ($checkpoint === '') ? '' : '-- Kirjuri audit log checkpoint: ' . $checkpoint . "\n";
+header('Content-Length: ' . (filesize($dump_file) + strlen($first_line)));
+event_log_write('0', 'Admin', 'Backed up database.' . ($checkpoint === '' ? '' : ' Audit log checkpoint: ' . $checkpoint . '.'));
+echo $first_line;
 readfile($dump_file);
 unlink($dump_file);

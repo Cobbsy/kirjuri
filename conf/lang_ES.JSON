@@ -36,6 +36,7 @@
     "audit_entry_sealed": "Entrada %s del registro de auditor\u00eda: sellada, en su orden y sin cambios.",
     "audit_entry_unreadable": "La entrada %s del registro de auditor\u00eda est\u00e1 en su orden y sin cambios, pero su sello no se puede abrir con la clave actual.",
     "audit_failed": "No guardado: el cambio no se pudo anotar en el registro de auditor\u00eda. Avise al administrador.",
+    "audit_report_checkpoint": "Registro de auditor\u00eda al hacer este informe: entrada %s, %s, huella %s.",
     "back": "Atr\u00e1s",
     "back_up_database": "Copia de seguridad de la base de datos...",
     "bad_password": "Clave erronea o campos vacios.",

@@ -36,6 +36,7 @@
     "audit_entry_sealed": "Pr\u00fcfprotokolleintrag %s: versiegelt, in der richtigen Reihenfolge und unver\u00e4ndert.",
     "audit_entry_unreadable": "Pr\u00fcfprotokolleintrag %s ist in der richtigen Reihenfolge und unver\u00e4ndert, aber sein Siegel l\u00e4sst sich mit dem aktuellen Schl\u00fcssel nicht \u00f6ffnen.",
     "audit_failed": "Nicht gespeichert: Die \u00c4nderung konnte nicht im Pr\u00fcfprotokoll erfasst werden. Bitte den Administrator informieren.",
+    "audit_report_checkpoint": "Pr\u00fcfprotokoll bei Erstellung dieses Berichts: Eintrag %s, %s, Fingerabdruck %s.",
     "back": "Zur\u00fcck",
     "back_up_database": "Datenbank sichern...",
     "bad_password": "falsches Passwort oder leeres Eingabefeld.",

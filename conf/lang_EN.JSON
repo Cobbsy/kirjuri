@@ -36,6 +36,7 @@
     "audit_entry_sealed": "Audit log entry %s: sealed, in sequence and unchanged.",
     "audit_entry_unreadable": "Audit log entry %s is in sequence and unchanged, but its seal can not be opened with the current key.",
     "audit_failed": "Not saved: the change could not be recorded in the audit log. Tell an administrator.",
+    "audit_report_checkpoint": "Audit log when this report was made: entry %s, %s, fingerprint %s.",
     "back": "Back",
     "back_up_database": "Back up database...",
     "bad_password": "Bad password or fields empty.",
