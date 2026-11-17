@@ -181,6 +181,7 @@ Unreleased
 * A missing or replaced audit log key is recorded in the log, and `doctor` reports it, instead of a new key being made without a word.
 * Removing a case or a device recorded only the action's name in the audit log, not its form. A device memo for a device of another case wrote an audit entry before it was refused.
 * The audit viewer scrolled the whole page sideways on a phone; its table now scrolls in its own box.
+* Case log: on screens 992 pixels and wider, the table of events was squeezed to nothing and covered by the page, so administrators could not click its AUDIT links. A grid column used as a spacer floated across the page and the table's scroll box shrank beside it. The spacer is a margin now, and the page no longer uses grid columns for its layout.
 
 2018-03 Version 0.9.2
 

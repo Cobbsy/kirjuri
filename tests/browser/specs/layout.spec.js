@@ -27,8 +27,7 @@ test('on a wide screen the sidebar stays in place while the page scrolls', async
 test('the audit viewer, opened from the case log, says the entry is sealed and fits a phone', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Audit viewer test ' + Date.now());
   await page.goto('timeline.php?case=' + caseId);
-  // The case log's own layout covers its links (a separate problem), so the link's address is opened directly.
-  await page.goto(await page.locator('a[href*="auditor.php?view="]').first().getAttribute('href'));
+  await Promise.all([page.waitForURL(/auditor\.php\?view=/), page.locator('a[href*="auditor.php?view="]').first().click()]);
   await expect(page.locator('.alert-success')).toContainText('sealed, in sequence and unchanged');
   await expectNoSidewaysScroll(page);
 });
@@ -38,6 +37,15 @@ test('the case report shows the audit log checkpoint and fits a phone', async ({
   await page.goto('case_report.php?case=' + caseId);
   await expect(page.locator('.audit-checkpoint')).toContainText('Audit log when this report was made: entry');
   await expectNoSidewaysScroll(page);
+});
+
+test('the audit links on the case log can be clicked and open the audit viewer', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Case log audit link test ' + Date.now());
+  await page.goto('timeline.php?case=' + caseId);
+  await expectNoSidewaysScroll(page);
+  // The case log's container used to stretch over the table and swallow the clicks on these links.
+  await Promise.all([page.waitForURL(/auditor\.php\?view=/), page.locator('a[href*="auditor.php?view="]').first().click()]);
+  await expect(page.locator(`.main a[href="timeline.php?case=${caseId}"]`)).toBeVisible();
 });
 
 test('the case tabs switch in the sidebar, and on phones the menu folds away after a choice', async ({ admin: page }) => {
