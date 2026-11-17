@@ -321,7 +321,8 @@ function kirjuri_migration_009_two_factor(PDO $db) {
 
 function kirjuri_migration_010_audit_chain(PDO $db) {
     // The entries themselves stay files under logs/audit/; these rows are a second record of them, kept apart from the
-    // files. audit_head is a single row, locked while an entry is written, so entries are written one at a time.
+    // files. audit_head is a single row, locked while an entry is written, so entries are written one at a time. Its
+    // key_check, derived from the key but not reversible, shows when the key file has been replaced.
     $db->exec('CREATE TABLE IF NOT EXISTS audit_chain (
         entry int unsigned NOT NULL PRIMARY KEY,
         file varchar(64) NOT NULL,
@@ -337,7 +338,8 @@ function kirjuri_migration_010_audit_chain(PDO $db) {
         id tinyint unsigned NOT NULL PRIMARY KEY,
         entry int unsigned NOT NULL DEFAULT 0,
         fingerprint char(64) NULL,
-        key_replaced_at int unsigned NULL
+        key_replaced_at int unsigned NULL,
+        key_check char(64) NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     $db->exec('INSERT IGNORE INTO audit_head (id, entry) VALUES (1, 0)');
     $db->exec('CREATE TABLE IF NOT EXISTS audit_legacy (
