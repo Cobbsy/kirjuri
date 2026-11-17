@@ -260,6 +260,9 @@ Code health:
 - Done (November 2026): `case_update` checks the case token like the other case actions, and device rows
   follow their case's status on every save, when added and when moved (`kirjuri_sync_device_status`).
   Migration 007 brought existing device rows in step.
+- The browser tests run on `ubuntu-24.04` in CI because Playwright 1.56.1, pinned in
+  `tests/browser/package.json`, cannot install Chromium on Ubuntu 26.04, which `ubuntu-latest` became in
+  November 2026. Upgrade Playwright, check the tests still pass, and set the job back to `ubuntu-latest`.
 - Chart.js 1 and vis 4.18 are old and unmaintained; Bootstrap 3 and Font Awesome 4 likewise. Plan an
   upgrade path rather than a rewrite.
 
