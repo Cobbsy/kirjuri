@@ -60,6 +60,10 @@ The tests in `tests/Unit/SourceTest.php` enforce most of these.
   missing strings from English at load time; the language editor sees the raw file.
   `php tests/tools/add_lang_strings.php strings.json` adds new strings to all five files that way,
   from a JSON object of language code to `{key: text}`.
+- Strings written without a native speaker go to translators on the review page in `docs/ROADMAP.md`
+  (Translations). `php tests/tools/translation_review.php page.html` builds it from the language files;
+  add a new string to a group in that file (settings and `two_factor_*` strings are collected by
+  name), then publish the page to the same artifact URL, which keeps the answers already given.
 - Every `<label for>` points at an `id` in the same template. When a partial is included more than
   once, prefix its ids so they stay unique.
 - Passwords need at least 8 characters.
