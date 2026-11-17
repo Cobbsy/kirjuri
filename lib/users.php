@@ -47,6 +47,15 @@ function kirjuri_create_user(PDO $db, array $account) {
 }
 
 
+/** The account with ID $user_id, including its password hash, or null. */
+function kirjuri_user_by_id(PDO $db, $user_id) {
+    $query = $db->prepare('SELECT * FROM users WHERE id = :id');
+    $query->execute(array(':id' => $user_id));
+    $user = $query->fetch(PDO::FETCH_ASSOC);
+    return $user === false ? null : $user;
+}
+
+
 /** All accounts without their password hashes, for the session and templates. */
 function kirjuri_list_users(PDO $db) {
     $query = $db->prepare('SELECT id, username, name, access, flags, attr_1, attr_2, attr_3, attr_4, attr_5, attr_6, attr_7, attr_8 FROM users ORDER BY access, username');
@@ -63,11 +72,15 @@ function kirjuri_list_users_with_credentials(PDO $db) {
 }
 
 
-/** Delete an account; the built-in anonymous (1) and admin (2) accounts are never deleted. Returns whether one was. */
+/** Delete an account and its two-factor sign-in; the built-in anonymous (1) and admin (2) accounts are never deleted. Returns whether one was. */
 function kirjuri_delete_user(PDO $db, $user_id, $username) {
     $query = $db->prepare('DELETE FROM users WHERE username = :username AND id = :id AND id != 2 AND id != 1');
     $query->execute(array(':username' => $username, ':id' => $user_id));
-    return $query->rowCount() > 0;
+    if ($query->rowCount() === 0) {
+        return false;
+    }
+    kirjuri_two_factor_remove($db, $user_id);
+    return true;
 }
 
 

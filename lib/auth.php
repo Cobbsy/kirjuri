@@ -216,3 +216,197 @@ function upgrade_insecure_password($username, $password) {
         ));
     return $query->rowCount();
 }
+
+
+/** Failed sign-ins allowed from one address: the login_max_failures_per_ip setting, or the default when it is not a number. */
+function kirjuri_login_ip_limit(array $prefs) {
+    // Only a number counts: a blank or mistyped setting keeps the default rather than reading as 0 (off).
+    $setting = trim((string) (isset($prefs['settings']['login_max_failures_per_ip']) ? $prefs['settings']['login_max_failures_per_ip'] : ''));
+    return ctype_digit($setting) ? (int) $setting : LOGIN_MAX_FAILURES_PER_IP;
+}
+
+
+/**
+ * Take a sign-in attempt, a password or a two-factor code, for the account $username and the address the
+ * request comes from. Failures count against both, so that trying a few passwords on each of many accounts
+ * is limited too. The attempt is counted before it is checked, and given back with login_throttle_release()
+ * unless it fails. Returns array('allowed' => bool, 'refused_by' => 'account', 'address' or null, 'name' and
+ * 'ip', the throttle keys; 'ip' is null when the address limit is off).
+ */
+function kirjuri_login_take_attempt($username, array $prefs) {
+    $ip_limit = kirjuri_login_ip_limit($prefs);
+    $attempt = array(
+        'allowed' => false,
+        'refused_by' => null,
+        'name' => $username,
+        'ip' => ($ip_limit > 0) ? login_throttle_ip_key($_SERVER['REMOTE_ADDR']) : null, // 0 turns the address limit off.
+    );
+    if (!login_throttle_attempt($attempt['name'], LOGIN_MAX_FAILURES)) {
+        $attempt['refused_by'] = 'account';
+    } elseif ($attempt['ip'] !== null && !login_throttle_attempt($attempt['ip'], $ip_limit)) {
+        login_throttle_release($attempt['name']);
+        $attempt['refused_by'] = 'address';
+    } else {
+        $attempt['allowed'] = true;
+    }
+    return $attempt;
+}
+
+
+/** Start the Kirjuri session of a user whose sign-in is complete. */
+function kirjuri_start_session(array $user_record) {
+    kirjuri_set_session_user($user_record);
+    ksess_init();
+    $_SESSION['signed_in_at'] = time(); // For changes that need a recent sign-in, see kirjuri_two_factor_confirmed().
+}
+
+
+/**
+ * Hold a sign-in whose password was right until its second step is done: the code from the app ($mode "code"),
+ * or setting two-factor sign-in up when it is required ("setup"). Only this marker is kept, never the password,
+ * and no Kirjuri session exists yet, so every page and action treats the browser as signed out.
+ */
+function kirjuri_two_factor_hold(array $user_record, $mode) {
+    $_SESSION['user'] = array();
+    unset($_SESSION['two_factor_setup']);
+    session_regenerate_id(true); // A session ID fixed before the password does not carry over.
+    $_SESSION['two_factor_pending'] = array(
+        'user_id' => (string) $user_record['id'],
+        'username' => (string) $user_record['username'],
+        'mode' => $mode,
+        'since' => time(),
+        'token' => generate_token(32),
+    );
+}
+
+
+/**
+ * The sign-in held by kirjuri_two_factor_hold(), or null. One that waited too long is dropped, with a message:
+ * TWO_FACTOR_PENDING_SECONDS for a code, TWO_FACTOR_SETUP_SECONDS for setting up.
+ */
+function kirjuri_two_factor_pending() {
+    $pending = isset($_SESSION['two_factor_pending']) ? $_SESSION['two_factor_pending'] : null;
+    if (!is_array($pending) || !isset($pending['user_id'], $pending['username'], $pending['mode'], $pending['since'], $pending['token'])) {
+        return null;
+    }
+    $limit = ($pending['mode'] === 'setup') ? TWO_FACTOR_SETUP_SECONDS : TWO_FACTOR_PENDING_SECONDS;
+    if ((time() - (int) $pending['since']) > $limit) {
+        kirjuri_two_factor_drop();
+        message('error', $_SESSION['lang']['two_factor_expired']);
+        return null;
+    }
+    return $pending;
+}
+
+
+function kirjuri_two_factor_drop() {
+    unset($_SESSION['two_factor_pending'], $_SESSION['two_factor_setup']);
+}
+
+
+/**
+ * The secret $user_id is setting up, kept in this session (never in the database) until a code from the app
+ * confirms it. Reloading the page shows the same one; after TWO_FACTOR_SETUP_SECONDS there is a new one.
+ */
+function kirjuri_two_factor_setup_secret($user_id) {
+    $setup = isset($_SESSION['two_factor_setup']) ? $_SESSION['two_factor_setup'] : null;
+    if (!is_array($setup) || !isset($setup['user_id'], $setup['secret'], $setup['since']) || $setup['user_id'] !== (string) $user_id
+        || (time() - (int) $setup['since']) > TWO_FACTOR_SETUP_SECONDS) {
+        $setup = array('user_id' => (string) $user_id, 'secret' => kirjuri_base32_encode(kirjuri_two_factor_new_secret()), 'since' => time());
+        $_SESSION['two_factor_setup'] = $setup;
+    }
+    return (string) kirjuri_base32_decode($setup['secret']);
+}
+
+
+/** What the setup form shows for $secret: the QR code for the app and the key to type in instead. */
+function kirjuri_two_factor_setup_view($secret, $username) {
+    global $prefs;
+    $issuer = isset($prefs['settings']['title_text']) ? $prefs['settings']['title_text'] : 'Kirjuri';
+    return array(
+        'qr' => kirjuri_two_factor_qr_svg(kirjuri_two_factor_uri($secret, $username, $issuer)),
+        'key' => kirjuri_two_factor_readable_key($secret),
+    );
+}
+
+
+/**
+ * Whether the signed-in user confirmed a change to their two-factor sign-in: with their password, or, for LDAP
+ * accounts, which have no password here, by having signed in within TWO_FACTOR_RECENT_SIGN_IN seconds. A wrong
+ * password counts as a failed sign-in, so this form can not be used to guess it.
+ */
+function kirjuri_two_factor_confirmed($password) {
+    global $prefs;
+    if ((string) $_SESSION['user']['attr_3'] === 'LDAP_AUTH_ONLY') {
+        return isset($_SESSION['signed_in_at']) && (time() - (int) $_SESSION['signed_in_at']) <= TWO_FACTOR_RECENT_SIGN_IN;
+    }
+    $attempt = kirjuri_login_take_attempt($_SESSION['user']['username'], $prefs);
+    if (!$attempt['allowed']) {
+        return false;
+    }
+    $credentials = kirjuri_session_user_credentials();
+    if (is_array($credentials) && is_string($password) && $password !== '' && password_verify($password, $credentials['password'])) {
+        login_throttle_release($attempt['name']);
+        login_throttle_release($attempt['ip']);
+        return true;
+    }
+    return false;
+}
+
+
+/** The held sign-in in $mode whose token the form posted, and its account; otherwise back to the sign-in page. */
+function kirjuri_two_factor_posted_pending(PDO $db, $mode) {
+    $pending = kirjuri_two_factor_pending();
+    if ($pending === null || $pending['mode'] !== $mode || !hash_equals($pending['token'], posted_token())) {
+        header('Location: login.php');
+        die;
+    }
+    $user = kirjuri_user_by_id($db, $pending['user_id']);
+    if ($user === null || $user['username'] !== $pending['username']) { // Removed in the meantime.
+        kirjuri_two_factor_drop();
+        header('Location: login.php');
+        die;
+    }
+    return $user;
+}
+
+
+/**
+ * Start the session of a sign-in held for its second step, now done. The account is read again, as it may have
+ * been made inactive or limited to other addresses since the password. Returns whether the session started.
+ */
+function kirjuri_two_factor_finish(array $user_record) {
+    kirjuri_two_factor_drop();
+    login_throttle_clear($user_record['username']);
+    kirjuri_set_session_user($user_record);
+    if (strpos((string) $user_record['flags'], 'I') !== false) {
+        $_SESSION['user'] = array();
+        message('error', $_SESSION['lang']['account_inactive']);
+        event_log_write('0', 'Auth', 'Login attempt with inactivated account: ' . $user_record['username']);
+        return false;
+    }
+    if (!ip_allowed()) {
+        $_SESSION['user'] = array();
+        message('error', $_SERVER['REMOTE_ADDR'] . ": " . $_SESSION['lang']['ip_address_restricted']);
+        event_log_write('0', 'Auth', 'Login attempt from restricted IP address ' . $_SERVER['REMOTE_ADDR'] . ': ' . $user_record['username']);
+        return false;
+    }
+    kirjuri_start_session($user_record);
+    event_log_write('0', 'Auth', 'Login, created session ' . $_SESSION['user']['token']);
+    return true;
+}
+
+
+/** Stop the request unless the signed-in account may use two_factor.php: not the anonymous one, which has no password to protect. */
+function kirjuri_two_factor_page_access() {
+    if ((string) $_SESSION['user']['id'] === '1') {
+        header('Location: index.php');
+        die;
+    }
+}
+
+
+/** Why kirjuri_two_factor_confirmed() said no, for the user. */
+function kirjuri_two_factor_confirm_error() {
+    return ((string) $_SESSION['user']['attr_3'] === 'LDAP_AUTH_ONLY') ? $_SESSION['lang']['two_factor_sign_in_again'] : $_SESSION['lang']['bad_password'];
+}

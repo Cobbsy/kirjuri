@@ -150,7 +150,7 @@ final class KirjuriServer
         mkdir($this->dir . '/logs');
         mkdir($this->dir . '/logs/audit');
         // Never reuse credentials or settings from a developer's own installation.
-        foreach (array('mysql_credentials.php', 'audit_credentials.php', 'settings.local', 'index_columns.local', 'report_notes.local') as $file) {
+        foreach (array('mysql_credentials.php', 'audit_credentials.php', 'two_factor_key.php', 'settings.local', 'index_columns.local', 'report_notes.local') as $file) {
             if (file_exists($this->dir . '/conf/' . $file)) {
                 unlink($this->dir . '/conf/' . $file);
             }

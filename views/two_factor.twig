@@ -1,0 +1,108 @@
+{% extends 'base.twig' %}
+{% block title %}
+<title>{{ lang.two_factor }} - {{ settings.title_text }}</title>
+{% endblock title %}
+{% block content %}
+{% import _self as fields %}
+<div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+<div class="page-title-row">
+  <h1 class="h3">{{ lang.two_factor }}</h1>
+</div>
+
+<div class="form-sections">
+{% if new_codes %}
+<section class="card form-section recovery-codes-card">
+  <div class="card-header"><i class="fa fa-life-ring" aria-hidden="true"></i> {{ lang.two_factor_recovery_codes }}</div>
+  <div class="card-body">
+    <p>{{ lang.two_factor_recovery_codes_intro }}</p>
+    <ol class="recovery-codes" id="recovery_codes">
+      {% for code in new_codes %}
+      <li><code>{{ code }}</code></li>
+      {% endfor %}
+    </ol>
+  </div>
+  <div class="card-footer">
+    <button type="button" class="btn btn-default" onclick="window.print()"><i class="fa fa-print" aria-hidden="true"></i> {{ lang.two_factor_print }}</button>
+    <a class="btn btn-primary" href="two_factor.php">{{ lang.two_factor_saved_codes }}</a>
+  </div>
+</section>
+
+{% elseif setup %}
+<form class="card form-section" role="form" method="post" action="submit.php?type=two_factor_setup" data-validate novalidate>
+  <input type="hidden" name="token" value="{{ session.user.token }}">
+  <div class="card-header"><i class="fa fa-mobile" aria-hidden="true"></i> {% if two_factor %}{{ lang.two_factor_set_up_again }}{% else %}{{ lang.two_factor_set_up }}{% endif %}</div>
+  <div class="card-body">
+    {% if two_factor %}<p>{{ lang.two_factor_set_up_again_hint }}</p>{% endif %}
+    {% include 'two_factor_setup.twig' with {setup: setup, prefix: ''} %}
+    {{ fields.confirm_field('', ldap_account, lang) }}
+  </div>
+  <div class="card-footer">
+    <button type="submit" class="btn btn-primary"><i class="fa fa-check" aria-hidden="true"></i> {{ lang.two_factor_turn_on }}</button>
+    <a class="btn btn-default" href="two_factor.php">{{ lang.two_factor_cancel }}</a>
+  </div>
+</form>
+
+{% else %}
+<section class="card form-section">
+  <div class="card-header"><i class="fa fa-mobile" aria-hidden="true"></i> {{ lang.two_factor }}</div>
+  <div class="card-body">
+    {% if two_factor %}
+    <p class="two-factor-status"><span class="chip chip-ready"><i class="fa fa-check" aria-hidden="true"></i> {{ lang.two_factor_on }}</span> {{ lang.two_factor_on_since|format(two_factor.enabled_at|date('Y-m-d')) }}</p>
+    <p>{{ lang.two_factor_status_on }}</p>
+    {% else %}
+    <p class="two-factor-status"><span class="chip"><i class="fa fa-times" aria-hidden="true"></i> {{ lang.two_factor_off }}</span></p>
+    <p>{{ lang.two_factor_status_off }}</p>
+    {% endif %}
+    {% if required %}<p class="field-hint">{{ lang.two_factor_required_for_you }}</p>{% endif %}
+  </div>
+  <div class="card-footer">
+    <a class="btn btn-primary" href="two_factor.php?setup=1"><i class="fa fa-mobile" aria-hidden="true"></i> {% if two_factor %}{{ lang.two_factor_set_up_again }}{% else %}{{ lang.two_factor_set_up }}{% endif %}</a>
+  </div>
+</section>
+
+{% if two_factor %}
+<form class="card form-section" role="form" method="post" action="submit.php?type=two_factor_new_codes" data-validate novalidate>
+  <input type="hidden" name="token" value="{{ session.user.token }}">
+  <div class="card-header"><i class="fa fa-life-ring" aria-hidden="true"></i> {{ lang.two_factor_recovery_codes }}</div>
+  <div class="card-body">
+    <p>{{ lang.two_factor_codes_left|format(two_factor.recovery_codes) }} {{ lang.two_factor_new_codes_hint }}</p>
+    {{ fields.confirm_field('codes_', ldap_account, lang) }}
+  </div>
+  <div class="card-footer">
+    <button type="submit" class="btn btn-default" onclick="return confirm('{{ lang.two_factor_new_codes_confirm|e('js') }}')"><i class="fa fa-refresh" aria-hidden="true"></i> {{ lang.two_factor_new_codes }}</button>
+  </div>
+</form>
+
+{% if not required %}
+<form class="card form-section" role="form" method="post" action="submit.php?type=two_factor_off" data-validate novalidate>
+  <input type="hidden" name="token" value="{{ session.user.token }}">
+  <div class="card-header"><i class="fa fa-power-off" aria-hidden="true"></i> {{ lang.two_factor_turn_off }}</div>
+  <div class="card-body">
+    <p>{{ lang.two_factor_turn_off_hint }}</p>
+    {{ fields.confirm_field('off_', ldap_account, lang) }}
+  </div>
+  <div class="card-footer">
+    <button type="submit" class="btn btn-danger" onclick="return confirm('{{ lang.two_factor_turn_off_confirm|e('js') }}')"><i class="fa fa-power-off" aria-hidden="true"></i> {{ lang.two_factor_turn_off }}</button>
+  </div>
+</form>
+{% endif %}
+{% endif %}
+{% endif %}
+</div>
+
+</div>
+{% endblock %}
+
+{# Changes need the account's password, or for a domain (LDAP) account, which has none here, a recent sign-in. #}
+{% macro confirm_field(prefix, ldap_account, lang) %}
+  {% if ldap_account %}
+  <p class="field-hint">{{ lang.two_factor_ldap_confirm }}</p>
+  {% else %}
+  <div class="field-grid">
+    <div class="field">
+      <label for="{{ prefix }}current_password">{{ lang.current_password }} <span class="req">*</span></label>
+      <input type="password" class="form-control" id="{{ prefix }}current_password" name="current_password" autocomplete="current-password" required>
+    </div>
+  </div>
+  {% endif %}
+{% endmacro %}

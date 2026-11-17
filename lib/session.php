@@ -185,6 +185,10 @@ function csrf_case_validate($token, $case_id) {
 function ksess_verify($required_access_level) {
     // Check user access level before rendering page. User details are stored in a session variable.
     if (!isset($_SESSION['user']['username'], $_SESSION['user']['token'])) {
+        if (isset($_SESSION['two_factor_pending'])) {
+            header('Location: login.php'); // Back to the code step, which a new session would lose.
+            die;
+        }
         ksess_destroy();
     }
     if (!file_exists('cache/user_' . $_SESSION['user']['username'] . "/session_" . $_SESSION['user']['token'] . ".txt" )) {
@@ -221,5 +225,16 @@ function verify_case_ownership($id) {
         message('error', $_SESSION['lang']['not_in_access_group']);
         header('Location: index.php');
         die;
+    }
+}
+
+
+/** End every session of the signed-in user but this one. */
+function kirjuri_end_other_sessions() {
+    $current = kirjuri_session_file();
+    foreach (glob('cache/user_' . $_SESSION['user']['username'] . '/session_*.txt') ?: array() as $file) {
+        if ($file !== $current) {
+            unlink($file);
+        }
     }
 }
