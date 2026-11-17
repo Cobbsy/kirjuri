@@ -54,7 +54,8 @@ case 'save_langfile':
 case 'save_settings':
     ksess_verify(0);
     ksess_validate($_POST['token']);
-    $audit_stamp = audit_log_write($_POST);
+    // The settings are a file, not a database row: the entry is written first, so they are never changed without one.
+    kirjuri_audit($kirjuri_database, null, 'Admin', 'Settings saved.', $_POST);
     $settings_output = "; Saved settings\r\n\r\n[settings]\r\n";
     foreach ($_POST['settings'] as $key => $value) {
         $settings_output = $settings_output . filter_letters_and_numbers($key) . " = \"" . ini_value($value) . "\";\r\n";
@@ -66,8 +67,9 @@ case 'save_settings':
         $unit_key++;
         $settings_output = $settings_output . $unit_key . " = \"" . ini_value(trim($value)) . "\";\r\n";
     }
-    file_put_contents('conf/settings.local', $settings_output);
-    event_log_write('0', 'Admin', 'Settings saved.', $audit_stamp);
+    if (file_put_contents('conf/settings.local', $settings_output) === false) {
+        event_log_write('0', 'Error', 'Settings could not be written to conf/settings.local.');
+    }
     show_saved_succesfully();
     $_SESSION['post_cache'] = '';
     header('Location: settings.php');

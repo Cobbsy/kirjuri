@@ -15,7 +15,6 @@ case 'case_access':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
-    $audit_stamp = audit_log_write($_POST);
     if ( (isset($_POST['access']['all_users'])) || (!isset($_POST['access']))) {
         $accessgroup = "";
     }
@@ -25,8 +24,10 @@ case 'case_access':
     else {
         $accessgroup = implode(";", $_POST['access']);
     }
-    kirjuri_set_case_access_group($kirjuri_database, $id, $accessgroup);
-    event_log_write($id, 'Access', 'Access group updated: ' . str_replace(";", ", ", $accessgroup) . ". " , $audit_stamp);
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $id, $accessgroup) {
+        kirjuri_set_case_access_group($kirjuri_database, $id, $accessgroup);
+        return array($id, 'Access', 'Access group updated: ' . str_replace(";", ", ", $accessgroup) . ". ");
+    }, $_POST);
     header('Location: edit_request.php?case=' . $id . '&tab=access');
     die;
 
@@ -39,26 +40,29 @@ case 'examination_request':
         header('Location: add_case.php');
         die;
     }
-    $new_case = kirjuri_create_case($kirjuri_database, array(
-            'case_name' => $_POST['case_name'],
-            'case_file_number' => $_POST['case_file_number'],
-            'case_investigator' => $_POST['case_investigator'],
-            'case_investigator_unit' => $_POST['case_investigator_unit'],
-            'case_investigator_tel' => $_POST['case_investigator_tel'],
-            'case_investigation_lead' => $_POST['case_investigation_lead'],
-            'case_confiscation_date' => $_POST['case_confiscation_date'],
-            'case_crime' => $_POST['case_crime'],
-            'classification' => $_POST['classification'],
-            'case_suspect' => $_POST['case_suspect'],
-            'case_request_description' => $_POST['case_request_description'],
-            'case_urgency' => $_POST['case_urgency'],
-            'case_urg_justification' => $_POST['case_urg_justification'],
-            'case_requested_action' => $_POST['case_requested_action'],
-            'case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
-            'examiners_notes' => "<b>" . $_SESSION['lang']['passwords'] . "</b>: " . $_POST['examiners_notes'],
-        ));
+    $new_case = null;
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, &$new_case) {
+        $new_case = kirjuri_create_case($kirjuri_database, array(
+                'case_name' => $_POST['case_name'],
+                'case_file_number' => $_POST['case_file_number'],
+                'case_investigator' => $_POST['case_investigator'],
+                'case_investigator_unit' => $_POST['case_investigator_unit'],
+                'case_investigator_tel' => $_POST['case_investigator_tel'],
+                'case_investigation_lead' => $_POST['case_investigation_lead'],
+                'case_confiscation_date' => $_POST['case_confiscation_date'],
+                'case_crime' => $_POST['case_crime'],
+                'classification' => $_POST['classification'],
+                'case_suspect' => $_POST['case_suspect'],
+                'case_request_description' => $_POST['case_request_description'],
+                'case_urgency' => $_POST['case_urgency'],
+                'case_urg_justification' => $_POST['case_urg_justification'],
+                'case_requested_action' => $_POST['case_requested_action'],
+                'case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
+                'examiners_notes' => "<b>" . $_SESSION['lang']['passwords'] . "</b>: " . $_POST['examiners_notes'],
+            ));
+        return array($new_case['id'], 'Add', 'Added examination request ' . $new_case['case_id'] . ' / ' . $_POST['case_name'] . ".");
+    }, $_POST);
     $case_id = $new_case['case_id'];
-    $audit_stamp = audit_log_write($_POST);
     $new_uid = array('id' => $new_case['id']);
     if (!file_exists('logs/cases/')) {
         mkdir('logs/cases');
@@ -67,7 +71,6 @@ case 'examination_request':
         mkdir('logs/cases/uid'. $new_uid['id']);
     }
     $_SESSION['post_cache'] = '';
-    event_log_write($new_uid['id'], 'Add', 'Added examination request ' . $case_id . ' / ' . $_POST['case_name'] . ".", $audit_stamp);
     echo kirjuri_render('thankyou.twig', array(
             'case_id' => $case_id,
             'id' => $new_uid['id']
@@ -84,29 +87,30 @@ case 'case_update':
     if (!isset($_POST['phone_investigator'])) {
         $_POST['phone_investigator'] = "-";
     }
-    $audit_stamp = audit_log_write($_POST);
-    $current_case = kirjuri_find_case($kirjuri_database, $_GET['uid']);
-    // Assigning a forensic examiner starts the case; a finished case stays finished.
-    $case_status = kirjuri_status_for_examiners($current_case === null ? '1' : $current_case['case_status'], $_POST['forensic_investigator']);
-    kirjuri_update_case($kirjuri_database, $_GET['uid'], array(
-            'case_name' => $_POST['case_name'],
-            'case_file_number' => $_POST['case_file_number'],
-            'case_crime' => $_POST['case_crime'],
-            'classification' => $_POST['classification'],
-            'case_suspect' => $_POST['case_suspect'],
-            'case_investigation_lead' => $_POST['case_investigation_lead'],
-            'case_investigator' => $_POST['case_investigator'],
-            'forensic_investigator' => $_POST['forensic_investigator'],
-            'phone_investigator' => $_POST['phone_investigator'],
-            'case_investigator_tel' => $_POST['case_investigator_tel'],
-            'case_investigator_unit' => $_POST['case_investigator_unit'],
-            'case_request_description' => $_POST['case_request_description'],
-            'case_confiscation_date' => $_POST['case_confiscation_date'],
-            'case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
-            'case_status' => $case_status,
-            'case_urgency' => $_POST['case_urgency'],
-        ));
-    event_log_write($_GET['uid'], 'Update', 'Updated request ' . $_POST['case_name'] . ". ", $audit_stamp);
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database) {
+        $current_case = kirjuri_find_case($kirjuri_database, $_GET['uid']);
+        // Assigning a forensic examiner starts the case; a finished case stays finished.
+        $case_status = kirjuri_status_for_examiners($current_case === null ? '1' : $current_case['case_status'], $_POST['forensic_investigator']);
+        kirjuri_update_case($kirjuri_database, $_GET['uid'], array(
+                'case_name' => $_POST['case_name'],
+                'case_file_number' => $_POST['case_file_number'],
+                'case_crime' => $_POST['case_crime'],
+                'classification' => $_POST['classification'],
+                'case_suspect' => $_POST['case_suspect'],
+                'case_investigation_lead' => $_POST['case_investigation_lead'],
+                'case_investigator' => $_POST['case_investigator'],
+                'forensic_investigator' => $_POST['forensic_investigator'],
+                'phone_investigator' => $_POST['phone_investigator'],
+                'case_investigator_tel' => $_POST['case_investigator_tel'],
+                'case_investigator_unit' => $_POST['case_investigator_unit'],
+                'case_request_description' => $_POST['case_request_description'],
+                'case_confiscation_date' => $_POST['case_confiscation_date'],
+                'case_contains_mob_dev' => $_POST['case_contains_mob_dev'],
+                'case_status' => $case_status,
+                'case_urgency' => $_POST['case_urgency'],
+            ));
+        return array($_GET['uid'], 'Update', 'Updated request ' . $_POST['case_name'] . ". ");
+    }, $_POST);
     $_POST['returnid'] = $_GET['uid'];
     $_SESSION['post_cache'] = '';
     show_saved_succesfully();
@@ -121,11 +125,15 @@ case 'assign_examiners':
     ksess_validate(posted_token());
     csrf_case_validate(posted_case_token(), $id);
     verify_case_ownership($id);
-    $audit_stamp = audit_log_write($_POST);
     $forensic = isset($_POST['forensic_investigator']) ? (string) $_POST['forensic_investigator'] : '';
     $phone = isset($_POST['phone_investigator']) ? (string) $_POST['phone_investigator'] : '-'; // submit.php turns an empty one into "-".
-    if (kirjuri_assign_examiners($kirjuri_database, $id, $forensic, $phone)) {
-        event_log_write($id, 'Update', 'Assigned examiners: ' . $forensic . ', ' . $phone . '. ', $audit_stamp);
+    $assigned = kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $id, $forensic, $phone) {
+        if (!kirjuri_assign_examiners($kirjuri_database, $id, $forensic, $phone)) {
+            return null;
+        }
+        return array($id, 'Update', 'Assigned examiners: ' . $forensic . ', ' . $phone . '. ');
+    }, $_POST);
+    if ($assigned !== null) {
         show_saved_succesfully();
     }
     $_SESSION['post_cache'] = '';
@@ -138,12 +146,13 @@ case 'report_notes':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $_POST['returnid']);
     verify_case_ownership($_POST['returnid']);
-    $audit_stamp = audit_log_write($_POST);
-    kirjuri_update_case_notes($kirjuri_database, $_POST['returnid'], 'report_notes', filter_html($_POST['report_notes']));
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database) {
+        kirjuri_update_case_notes($kirjuri_database, $_POST['returnid'], 'report_notes', filter_html($_POST['report_notes']));
+        return array($_POST['returnid'], 'Update', 'Updated report notes. ');
+    }, $_POST);
     $_SESSION['post_cache'] = '';
     message('info', $_SESSION['lang']['report_notes_saved']);
     $_SESSION['message_set'] = true;
-    event_log_write($_POST['returnid'], 'Update', 'Updated report notes. ', $audit_stamp);
     header('Location: edit_request.php?case=' . $_POST['returnid'] . '&tab=report_notes');
     die;
 
@@ -153,11 +162,12 @@ case 'examiners_notes':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $_POST['returnid']);
     verify_case_ownership($_POST['returnid']);
-    $audit_stamp = audit_log_write($_POST);
-    kirjuri_update_case_notes($kirjuri_database, $_POST['returnid'], 'examiners_notes', $_POST['examiners_notes']); // Sanitised by submit.php.
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database) {
+        kirjuri_update_case_notes($kirjuri_database, $_POST['returnid'], 'examiners_notes', $_POST['examiners_notes']); // Sanitised by submit.php.
+        return array($_POST['returnid'], 'Update', 'Updated examiners notes. ');
+    }, $_POST);
     $_SESSION['post_cache'] = '';
     message('info', $_SESSION['lang']['exam_notes_saved']);
-    event_log_write($_POST['returnid'], 'Update', 'Updated examiners notes. ' , $audit_stamp);
     header('Location: edit_request.php?case=' . $_POST['returnid'] . '&tab=examiners_notes');
     die;
 
@@ -168,9 +178,10 @@ case 'set_removed_case':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
-    $audit_stamp = audit_log_write($_GET);
-    kirjuri_remove_case($kirjuri_database, $id);
-    event_log_write($id, 'Remove', 'Removed case UID' . $id . ". " , $audit_stamp);
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $id) {
+        kirjuri_remove_case($kirjuri_database, $id);
+        return array($id, 'Remove', 'Removed case UID' . $id . ". ");
+    }, $_POST);
     $_SESSION['post_cache'] = '';
     message('info', $_SESSION['lang']['case_removed']);
     header('Location: index.php');
@@ -183,9 +194,10 @@ case 'update_request_status':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
-    $audit_stamp = audit_log_write($_POST);
-    kirjuri_set_case_status($kirjuri_database, $id, $_POST['case_status']);
-    event_log_write($id, 'Update', 'Changed request ' . $id . ' status: ' . $_POST['case_status'] . '. ' , $audit_stamp);
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $id) {
+        kirjuri_set_case_status($kirjuri_database, $id, $_POST['case_status']);
+        return array($id, 'Update', 'Changed request ' . $id . ' status: ' . $_POST['case_status'] . '. ');
+    }, $_POST);
     $_SESSION['post_cache'] = '';
     show_saved_succesfully();
     header('Location: edit_request.php?case=' . $id);

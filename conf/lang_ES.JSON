@@ -29,6 +29,7 @@
     "associated_devices": "Dispositivos relacionados",
     "associated_with_device": "Relacionado con dispositivo",
     "attachments": "Adjuntos",
+    "audit_failed": "No guardado: el cambio no se pudo anotar en el registro de auditor\u00eda. Avise al administrador.",
     "back": "Atr\u00e1s",
     "back_up_database": "Copia de seguridad de la base de datos...",
     "bad_password": "Clave erronea o campos vacios.",

@@ -29,6 +29,7 @@
     "associated_devices": "dazugeh\u00f6rige Ger\u00e4te",
     "associated_with_device": "Verkn\u00fcpft mit Ger\u00e4t",
     "attachments": "Anh\u00e4nge",
+    "audit_failed": "Nicht gespeichert: Die \u00c4nderung konnte nicht im Pr\u00fcfprotokoll erfasst werden. Bitte den Administrator informieren.",
     "back": "Zur\u00fcck",
     "back_up_database": "Datenbank sichern...",
     "bad_password": "falsches Passwort oder leeres Eingabefeld.",

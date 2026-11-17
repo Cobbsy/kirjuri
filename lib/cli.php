@@ -469,20 +469,16 @@ function cli_audit_show($args) {
         cli_err('No audit file ' . $file . '.');
         return 1;
     }
-    $data = trim(file_get_contents($file));
-    if (substr($data, 0, 1) !== '{') {
-        if (!file_exists('conf/audit_credentials.php')) {
-            cli_err('The audit file is encrypted and conf/audit_credentials.php is missing.');
-            return 1;
-        }
-        $data = decrypt($data, include 'conf/audit_credentials.php');
-    }
-    $decoded = json_decode($data, true);
-    if (!is_array($decoded)) {
-        cli_err('Could not decrypt or parse ' . $file . '.');
+    $contents = (string) file_get_contents($file);
+    $key_string = kirjuri_audit_key_string();
+    $opened = kirjuri_audit_open_entry($contents, basename($positional[0]), $key_string);
+    if ($opened['payload'] === null) {
+        cli_err(($opened['format'] !== 'plain' && $key_string === null)
+            ? 'The audit file is encrypted and ' . KIRJURI_AUDIT_KEY_FILE . ' is missing.'
+            : 'Could not decrypt or parse ' . $file . '.');
         return 1;
     }
-    cli_out(json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-    cli_out('sha256: ' . hash('sha256', $data));
+    cli_out(json_encode($opened['payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    cli_out('fingerprint: ' . kirjuri_audit_fingerprint($contents));
     return 0;
 }

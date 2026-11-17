@@ -29,6 +29,7 @@
     "associated_devices": "Associated devices",
     "associated_with_device": "Associated with device",
     "attachments": "Attachments",
+    "audit_failed": "Not saved: the change could not be recorded in the audit log. Tell an administrator.",
     "back": "Back",
     "back_up_database": "Back up database...",
     "bad_password": "Bad password or fields empty.",

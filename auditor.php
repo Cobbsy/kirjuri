@@ -19,13 +19,12 @@ if (isset($_GET['view'])) {
         header('Location: index.php');
         die;
     }
-    $data = trim(file_get_contents($audit_path));
-    if (substr($data, 0, 1) !== "{") {
-        $encrypted = true;
-        $data = decrypt($data, include 'conf/audit_credentials.php');
-    }
-    $data_array = json_decode($data, true);
-    $data_array['user']['audit_file_sha256'] = hash('sha256', $data);
+    $contents = (string) file_get_contents($audit_path);
+    $opened = kirjuri_audit_open_entry($contents, $audit_file, kirjuri_audit_key_string());
+    $encrypted = ($opened['format'] !== 'plain');
+    $data_array = ($opened['payload'] === null) ? array() : $opened['payload'];
+    $data = ($opened['payload'] === null) ? '' : json_encode($opened['payload'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $data_array['user']['entry_fingerprint'] = kirjuri_audit_fingerprint($contents);
 
     //event_log_write('0', 'Audit', 'Request viewed: ' . $audit_file);
 
@@ -48,7 +47,7 @@ if (isset($_GET['view'])) {
             'returnid' => isset($_GET['returnid']) ? filter_numbers($_GET['returnid']) : '',
             'log_matches' => $matches,
             'output_format' => $output_format,
-            'request_contents' => $data_array['request_contents'],
+            'request_contents' => isset($data_array['request_contents']) ? $data_array['request_contents'] : array(),
             'filename' => $audit_file,
             'encrypted' => $encrypted,
             'data' => $data,

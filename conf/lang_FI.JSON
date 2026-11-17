@@ -29,6 +29,7 @@
     "associated_devices": "Liitetyt laitteet",
     "associated_with_device": "Liitetty laitteeseen",
     "attachments": "Liitteet",
+    "audit_failed": "Ei tallennettu: muutosta ei voitu kirjata auditointilokiin. Ota yhteytt\u00e4 j\u00e4rjestelm\u00e4nvalvojaan.",
     "back": "Takaisin",
     "back_up_database": "Varmuuskopioi tietokanta...",
     "bad_password": "Virhe vaihdettaessa salasanaa.",

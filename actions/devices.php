@@ -15,11 +15,12 @@ case 'set_removed':
     ksess_validate(posted_token());
     csrf_case_validate(posted_case_token(), $_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
-    $audit_stamp = audit_log_write($_GET);
-    kirjuri_remove_device($kirjuri_database, $_GET['returnid'], $_GET['uid']); // Attached media go with it.
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database) {
+        kirjuri_remove_device($kirjuri_database, $_GET['returnid'], $_GET['uid']); // Attached media go with it.
+        return array($_GET['returnid'], 'Remove', 'Removed device UID' . $_GET['uid'] . ". ");
+    }, $_POST);
     $_POST['returnid'] = $_GET['returnid'];
     $_SESSION['post_cache'] = '';
-    event_log_write($_GET['returnid'], 'Remove', 'Removed device UID' . $_GET['uid'] . ". " , $audit_stamp);
     message('info', $_SESSION['lang']['device_removed']);
     header('Location: edit_request.php?case=' . $_POST['returnid'] . '&tab=devices');
     die;
@@ -63,13 +64,14 @@ case 'move_all':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $_GET['returnid']);
     verify_case_ownership($_GET['returnid']);
-    $audit_stamp = audit_log_write($_POST);
-    kirjuri_update_all_devices($kirjuri_database, $_GET['returnid'],
-        ($_POST['device_action'] != 'NO_CHANGE') ? $_POST['device_action'] : null,
-        ($_POST['device_location'] != 'NO_CHANGE') ? $_POST['device_location'] : null);
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database) {
+        kirjuri_update_all_devices($kirjuri_database, $_GET['returnid'],
+            ($_POST['device_action'] != 'NO_CHANGE') ? $_POST['device_action'] : null,
+            ($_POST['device_location'] != 'NO_CHANGE') ? $_POST['device_location'] : null);
+        return array($_GET['returnid'], 'Update', 'Set all devices in case UID' . $_GET['returnid'] . ". ");
+    }, $_POST);
     $_POST['returnid'] = $_GET['returnid'];
     $_SESSION['post_cache'] = '';
-    event_log_write($_GET['returnid'], 'Update', 'Set all devices in case UID' . $_GET['returnid'] . ". " , $audit_stamp);
     header('Location: edit_request.php?case=' . $_POST['returnid'] . '&tab=devices');
     die;
 
@@ -80,10 +82,11 @@ case 'change_device_status':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $case_id['parent_id']);
     verify_case_ownership($case_id['parent_id']);
-    $audit_stamp = audit_log_write($_POST);
-    kirjuri_update_device_field($kirjuri_database, $case_id['parent_id'], $_GET['uid'], 'device_action', $_POST['device_action']);
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $case_id) {
+        kirjuri_update_device_field($kirjuri_database, $case_id['parent_id'], $_GET['uid'], 'device_action', $_POST['device_action']);
+        return array($case_id['parent_id'], "Update", "Changed device UID".$_GET['uid']." status to " .$_POST['device_action']. ". ");
+    }, $_POST);
     $_SESSION['post_cache'] = '';
-    event_log_write($case_id['parent_id'], "Update", "Changed device UID".$_GET['uid']." status to " .$_POST['device_action']. ". " , $audit_stamp);
     // The page's script updates the device's bar, the case's progress and its close button from this.
     $steps = $prefs['settings']['device_action_count'] ?? 9;
     kirjuri_send_json(array(
@@ -99,10 +102,11 @@ case 'change_device_location':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $case_id['parent_id']);
     verify_case_ownership($case_id['parent_id']);
-    $audit_stamp = audit_log_write($_POST);
-    kirjuri_update_device_field($kirjuri_database, $case_id['parent_id'], $_GET['uid'], 'device_location', $_POST['device_location']);
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $case_id) {
+        kirjuri_update_device_field($kirjuri_database, $case_id['parent_id'], $_GET['uid'], 'device_location', $_POST['device_location']);
+        return array($case_id['parent_id'], "Update", "Changed device UID".$_GET['uid']." location to " .$_POST['device_location']. ". ");
+    }, $_POST);
     $_SESSION['post_cache'] = '';
-    event_log_write($case_id['parent_id'], "Update", "Changed device UID".$_GET['uid']." location to " .$_POST['device_location']. ". " , $audit_stamp);
     kirjuri_send_json(array('saved' => true));
 
 case 'devicememo':
@@ -112,7 +116,7 @@ case 'devicememo':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
-    $audit_stamp = audit_log_write($_POST);
+    $request = $_POST; // As sent: the notes below are adjusted before they are saved.
     if (trim(strtolower(strip_tags($_POST['report_notes']))) === trim(strtolower(strip_tags($_POST['template_report_notes'])))) {
         $_POST['report_notes'] = "";
     }
@@ -138,28 +142,30 @@ case 'devicememo':
     if (!empty($_POST['used_tool'])) {
         $_POST['examiners_notes'] = filter_html($_POST['examiners_notes']) . '<p>' . $_POST['used_tool'] . '</p>';
     }
-    kirjuri_update_device_memo($kirjuri_database, $original_case, $_POST['id'], array(
-            'report_notes' => filter_html($_POST['report_notes']),
-            'examiners_notes' => filter_html($_POST['examiners_notes']),
-            'device_type' => $_POST['device_type'],
-            'device_manuf' => $_POST['device_manuf'],
-            'device_model' => $_POST['device_model'],
-            'device_size_in_gb' => $_POST['device_size_in_gb'],
-            'device_owner' => $_POST['device_owner'],
-            'device_os' => $_POST['device_os'],
-            'device_time_deviation' => $_POST['device_time_deviation'],
-            'case_request_description' => $_POST['case_request_description'],
-            'device_item_number' => $_POST['device_item_number'],
-            'device_document' => $_POST['device_document'],
-            'device_identifier' => $_POST['device_identifier'],
-            'device_include_in_report' => $_POST['device_include_in_report'],
-            'device_contains_evidence' => $_POST['device_contains_evidence'],
-        ));
-    if ($original_case !== $id) {
-        kirjuri_move_device($kirjuri_database, $original_case, $_POST['id'], $id); // With its attached media.
-    }
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $original_case, $id) {
+        kirjuri_update_device_memo($kirjuri_database, $original_case, $_POST['id'], array(
+                'report_notes' => filter_html($_POST['report_notes']),
+                'examiners_notes' => filter_html($_POST['examiners_notes']),
+                'device_type' => $_POST['device_type'],
+                'device_manuf' => $_POST['device_manuf'],
+                'device_model' => $_POST['device_model'],
+                'device_size_in_gb' => $_POST['device_size_in_gb'],
+                'device_owner' => $_POST['device_owner'],
+                'device_os' => $_POST['device_os'],
+                'device_time_deviation' => $_POST['device_time_deviation'],
+                'case_request_description' => $_POST['case_request_description'],
+                'device_item_number' => $_POST['device_item_number'],
+                'device_document' => $_POST['device_document'],
+                'device_identifier' => $_POST['device_identifier'],
+                'device_include_in_report' => $_POST['device_include_in_report'],
+                'device_contains_evidence' => $_POST['device_contains_evidence'],
+            ));
+        if ($original_case !== $id) {
+            kirjuri_move_device($kirjuri_database, $original_case, $_POST['id'], $id); // With its attached media.
+        }
+        return array($id, 'Update', 'Updated device memo UID' . $_POST['id'] . '. ');
+    }, $request);
     $_POST['returnid'] = $_GET['returnid'];
-    event_log_write($id, 'Update', 'Updated device memo UID' . $_POST['id'] . '. ' , $audit_stamp);
     $_SESSION['post_cache'] = '';
     show_saved_succesfully();
     header('Location: device_memo.php?uid=' . $_POST['returnid']);
@@ -228,27 +234,29 @@ case 'device':
         }
     }
 
-    $new_uid = array('id' => kirjuri_add_device($kirjuri_database, $id, array(
-            'device_host_id' => $_POST['device_host_id'],
-            'device_type' => $_POST['device_type'],
-            'device_manuf' => $_POST['device_manuf'],
-            'device_model' => $_POST['device_model'],
-            'device_identifier' => $_POST['device_identifier'],
-            'device_location' => $_POST['device_location'],
-            'device_item_number' => $_POST['device_item_number'],
-            'device_document' => $_POST['device_document'],
-            'device_time_deviation' => $_POST['device_time_deviation'],
-            'device_os' => $_POST['device_os'],
-            'device_size_in_gb' => $_POST['device_size_in_gb'],
-            'device_is_host' => $device_is_host,
-            'device_owner' => $_POST['device_owner'],
-            'case_request_description' => $_POST['case_request_description'],
-            'device_action' => $_POST['device_action'],
-            'is_removed' => $_POST['is_removed'],
-            'examiners_notes' => filter_html($_POST['examiners_notes']),
-        )));
-    $audit_stamp = audit_log_write($_POST);
-    event_log_write($id, 'Add', 'Added device UID' . $new_uid['id'] . ": ". $_POST['device_type'] . ' ' . $_POST['device_manuf'] . ' ' . $_POST['device_model'] . ' ' . $_POST['device_identifier'] . ' to case ' . $id . '. ' , $audit_stamp);
+    $new_uid = array();
+    kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $id, $device_is_host, &$new_uid) {
+        $new_uid = array('id' => kirjuri_add_device($kirjuri_database, $id, array(
+                'device_host_id' => $_POST['device_host_id'],
+                'device_type' => $_POST['device_type'],
+                'device_manuf' => $_POST['device_manuf'],
+                'device_model' => $_POST['device_model'],
+                'device_identifier' => $_POST['device_identifier'],
+                'device_location' => $_POST['device_location'],
+                'device_item_number' => $_POST['device_item_number'],
+                'device_document' => $_POST['device_document'],
+                'device_time_deviation' => $_POST['device_time_deviation'],
+                'device_os' => $_POST['device_os'],
+                'device_size_in_gb' => $_POST['device_size_in_gb'],
+                'device_is_host' => $device_is_host,
+                'device_owner' => $_POST['device_owner'],
+                'case_request_description' => $_POST['case_request_description'],
+                'device_action' => $_POST['device_action'],
+                'is_removed' => $_POST['is_removed'],
+                'examiners_notes' => filter_html($_POST['examiners_notes']),
+            )));
+        return array($id, 'Add', 'Added device UID' . $new_uid['id'] . ": ". $_POST['device_type'] . ' ' . $_POST['device_manuf'] . ' ' . $_POST['device_model'] . ' ' . $_POST['device_identifier'] . ' to case ' . $id . '. ');
+    }, $_POST);
     $_SESSION['post_cache'] = '';
     show_saved_succesfully();
     header('Location: edit_request.php?case=' . $_POST['parent_id'] . '&tab=devices');

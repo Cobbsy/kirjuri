@@ -29,6 +29,7 @@
     "associated_devices": "Dispositivos associados",
     "associated_with_device": "Associado com o dispositivo",
     "attachments": "Anexos",
+    "audit_failed": "Não salvo: a alteração não pôde ser registrada no log de auditoria. Avise o administrador.",
     "back": "Voltar",
     "back_up_database": "Fazer backup do banco de dados...",
     "bad_password": "Password ruim ou campo vazio.",

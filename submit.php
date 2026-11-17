@@ -108,5 +108,11 @@ if (!isset($actions[$action])) {
 }
 
 define('KIRJURI_ACTION', true);
-require __DIR__ . '/actions/' . $actions[$action] . '.php';
+try {
+    require __DIR__ . '/actions/' . $actions[$action] . '.php';
+} catch (KirjuriAuditException $e) {
+    // The change was not saved, as its audit log entry could not be written. The status and location menus save in the
+    // background and show "Not saved" themselves.
+    kirjuri_audit_refused($e, in_array($action, array('change_device_status', 'change_device_location'), true));
+}
 die;
