@@ -78,6 +78,25 @@ final class MigrationsTest extends IntegrationTestCase
         $this->assertFalse(kirjuri_index_exists($db, 'exam_requests', 'tapaus'));
     }
 
+    public function testAuditTablesStartEmpty(): void
+    {
+        $db = $this->scratchDatabase();
+        kirjuri_migrate($db);
+
+        foreach (array('audit_chain', 'audit_head', 'audit_legacy') as $table) {
+            $this->assertTrue(kirjuri_table_exists($db, $table), $table);
+            $this->assertSame('InnoDB', kirjuri_table_engine($db, $table), $table);
+            $this->assertSame('utf8mb4_unicode_ci', kirjuri_table_collation($db, $table), $table);
+        }
+        $this->assertSame('0', $db->query('SELECT COUNT(*) FROM audit_chain')->fetchColumn());
+        $this->assertSame('0', $db->query('SELECT COUNT(*) FROM audit_legacy')->fetchColumn());
+        $this->assertSame(array(array('id' => '1', 'entry' => '0', 'fingerprint' => null, 'key_replaced_at' => null)),
+            $db->query('SELECT id, entry, fingerprint, key_replaced_at FROM audit_head')->fetchAll(PDO::FETCH_ASSOC));
+
+        kirjuri_migration_010_audit_chain($db); // Running it again changes nothing.
+        $this->assertSame('1', $db->query('SELECT COUNT(*) FROM audit_head')->fetchColumn());
+    }
+
     public function testLegacyDatabaseIsUpgradedWithoutLosingData(): void
     {
         $db = $this->scratchDatabase();
