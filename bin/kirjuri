@@ -22,6 +22,7 @@ require __DIR__ . '/../lib/migrations.php';
 require __DIR__ . '/../lib/install.php';
 require __DIR__ . '/../lib/users.php';
 require __DIR__ . '/../lib/two_factor.php';
+require __DIR__ . '/../lib/https.php';
 require __DIR__ . '/../lib/cli.php';
 
 $settings_file = kirjuri_settings_file();

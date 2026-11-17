@@ -183,6 +183,8 @@ Unreleased
 * The audit viewer scrolled the whole page sideways on a phone; its table now scrolls in its own box.
 * Case log: on screens 992 pixels and wider, the table of events was squeezed to nothing and covered by the page, so administrators could not click its AUDIT links. A grid column used as a spacer floated across the page and the table's scroll box shrank beside it. The spacer is a margin now, and the page no longer uses grid columns for its layout.
 * An open request showed its "Close ready request" button while its devices were still being examined, and closing it worked: the button was hidden with the hidden attribute, which the button's own style overrode, and the server closed a request whenever asked. Hidden elements now stay hidden, and the server refuses to close a request until every device is done ("Not closed: some of the request's devices are not done yet.").
+* HTTPS settings. "HTTPS address" moves pages opened over plain HTTP to Kirjuri's HTTPS address, before any session cookie is sent, and "Remember HTTPS (HSTS)" tells browsers to keep to HTTPS for 5 minutes or a year. Both are off by default and can only be turned on from the settings page opened over HTTPS, the address only when it is the one the page is open at, so a typo or a missing certificate can not lock everyone out; `bin/kirjuri doctor` reports both. API clients that use plain HTTP must move to the HTTPS address once it is set.
+* Behind a proxy that ends HTTPS in front of Kirjuri and sends `X-Forwarded-Proto: https`, the session cookie is now marked Secure; it was only when PHP itself saw HTTPS, so the cookie could be sent back over plain HTTP.
 
 2018-03 Version 0.9.2
 

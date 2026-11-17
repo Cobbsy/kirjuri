@@ -56,7 +56,8 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   is refused, the viewer's six statuses and the case report's checkpoint line, November 2026) are on the
   page in their own group, each with what it means. `close_request_devices_not_done`, the message when a
   request is closed before its devices are done (November 2026), is in the "Search, requests and tools"
-  group. In all, 162 strings wait for translators, and the page
+  group. The two HTTPS settings (November 2026) have their names and help lines in the settings group, and their
+  choices and messages (`https_*`) in an "HTTPS" group. In all, 172 strings wait for translators, and the page
   is not shared with any yet: share it from its Share menu, with Contributor access for each translator.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
@@ -125,7 +126,10 @@ and the code folders off the web; an installer that will not run twice.
 
 Minimum for go-live (deployment, not code):
 
-- HTTPS. Kirjuri does not force it, and the session cookie is only marked secure over HTTPS.
+- HTTPS, with a certificate. Then set the HTTPS address on the settings page, opened at that address over
+  HTTPS, so pages opened over plain HTTP move there, and turn on "Remember HTTPS (HSTS)": 5 minutes first, then
+  a year once that has worked. Behind a proxy that ends HTTPS in front of Kirjuri, the proxy must send
+  `X-Forwarded-Proto: https`. `bin/kirjuri doctor` says whether both are on.
 - Not reachable from the internet: lab network or the machine only, behind a firewall, with the
   database listening on 127.0.0.1.
 - Full-disk encryption (BitLocker, FileVault). The database, attachments included, is not encrypted
@@ -168,7 +172,13 @@ Code improvements, in suggested order:
    for the API, KRF imports, removing an attachment, attaching and detaching devices, and user accounts, which write
    none today.
 3. A stronger password rule than 8 characters, or a check against known breached passwords.
-4. Settings to redirect HTTP to HTTPS and send `Strict-Transport-Security`.
+4. Done (November 2026): HTTPS settings (`lib/https.php`). `https_address` moves pages opened over plain HTTP to
+   Kirjuri's HTTPS address before a session cookie is sent (302, or 307 for a form), and `hsts_max_age` sends
+   `Strict-Transport-Security` over HTTPS (off, 5 minutes or a year). Both are off by default, and the settings
+   page takes them only when it is itself opened over HTTPS, the address only when it is the one the page is open
+   at, so a typo or a missing certificate can not send everyone somewhere that does not work; turning them off
+   works from anywhere. A request counts as HTTPS when PHP says so or `X-Forwarded-Proto` does, and the session
+   cookie is marked Secure on the same rule (it missed that behind a proxy that ends HTTPS). `doctor` reports both.
 5. A full Content-Security-Policy, after moving the inline scripts into files.
 6. Done (November 2026): `conf/settings.conf` ships with `show_errors` off and a 60-minute
    `session_idle_timeout`, so a new install starts safe.

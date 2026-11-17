@@ -19,10 +19,24 @@ final class HttpClient
             ));
     }
 
+    /** @var array<string, string> */
+    private array $headers = array();
+
     /** Send this Referer header with the following requests. */
     public function setReferer(string $url): void
     {
         curl_setopt($this->curl, CURLOPT_REFERER, $url);
+    }
+
+    /** Send this header with the following requests, such as the X-Forwarded-Proto of a proxy; null stops it. */
+    public function setHeader(string $name, ?string $value): void
+    {
+        if ($value === null) {
+            unset($this->headers[$name]);
+        } else {
+            $this->headers[$name] = $value;
+        }
+        curl_setopt($this->curl, CURLOPT_HTTPHEADER, array_map(fn ($n) => $n . ': ' . $this->headers[$n], array_keys($this->headers)));
     }
 
     public function get(string $path): Response

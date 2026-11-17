@@ -54,6 +54,9 @@ case 'save_langfile':
 case 'save_settings':
     ksess_verify(0);
     ksess_validate($_POST['token']);
+    // HTTPS is turned on only from this page opened over HTTPS at that address (lib/https.php); a refused value keeps
+    // its current one, and the other settings are saved.
+    [$_POST['settings'], $https_problem] = kirjuri_check_https_settings((array) $_POST['settings'], $prefs['settings'], $_SERVER);
     // The settings are a file, not a database row: the entry is written first, so they are never changed without one.
     kirjuri_audit($kirjuri_database, null, 'Admin', 'Settings saved.', $_POST);
     $settings_output = "; Saved settings\r\n\r\n[settings]\r\n";
@@ -70,7 +73,11 @@ case 'save_settings':
     if (file_put_contents('conf/settings.local', $settings_output) === false) {
         event_log_write('0', 'Error', 'Settings could not be written to conf/settings.local.');
     }
-    show_saved_succesfully();
+    if ($https_problem !== null) {
+        message('error', $_SESSION['lang'][$https_problem]);
+    } else {
+        show_saved_succesfully();
+    }
     $_SESSION['post_cache'] = '';
     header('Location: settings.php');
     die;

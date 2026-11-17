@@ -150,7 +150,19 @@
   {% set id = 'setting_' ~ key %}
   {% set label = lang['setting_' ~ key] ?? key|replace({"_": " "})|capitalize %}
   {% set help = lang['setting_' ~ key ~ '_help'] ?? '' %}
-  {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. Anything but 1 is off, as Kirjuri reads it. #}
+  {% if key == "hsts_max_age" %}{# A duration, not Yes/No: the choices lib/https.php takes, and a value set by hand kept. #}
+  {% set choices = {"0": lang.https_hsts_off, "300": lang.https_hsts_5_minutes, "31536000": lang.https_hsts_1_year} %}
+  <div class="field">
+    <label for="{{ id }}"{% if unknown %} class="text-danger"{% endif %}>{{ label }}</label>
+    <select class="form-control" id="{{ id }}" name="settings[{{ key }}]" aria-describedby="{{ id }}_help">
+      {% for seconds, name in choices %}
+      <option value="{{ seconds }}"{% if value|trim == seconds %} selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+      {% if value|trim not in choices|keys %}<option value="{{ value }}" selected>{{ value }}</option>{% endif %}
+    </select>
+    <p class="field-hint" id="{{ id }}_help">{{ help }}</p>
+  </div>
+  {% elseif (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. Anything but 1 is off, as Kirjuri reads it. #}
   <fieldset class="field">
     <legend{% if unknown %} class="text-danger"{% endif %}>{{ label }}</legend>
     <div class="choice-group">
