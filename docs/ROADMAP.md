@@ -47,7 +47,9 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   (suggested "Exame ao vivo"). Device statuses are stored with their text ("9|Done"), so a corrected
   label shows on a device only once its status is changed; only the number drives progress.
   Finnish numbers its statuses differently from the others, so its list is not compared key by key.
-  Sixty more came with two-factor sign-in (the `two_factor_*` strings, `help_two_factor_title` and
+  The 58 strings of the settings page (a label and a help line per setting, November 2026) are on the
+  page too, in their own group, including the two for `two_factor_required`.
+  Fifty-eight more came with two-factor sign-in (the `two_factor_*` strings, `help_two_factor_title` and
   `help_two_factor_text`), also written without a native speaker. They are not on the review page yet.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
@@ -249,8 +251,10 @@ Administration and help:
   template loads a library that is not listed. Worth knowing before distributing installers:
   TinyMCE 7 is GPL-2.0-or-later, HTML Purifier LGPL-2.1 and the barcode generator LGPL-3.0, while
   Kirjuri itself is MIT.
-- The settings are labelled by their internal names ("Index table condensed"). Give each a readable
-  label and a line of help, in the language files.
+- Done (November 2026): each setting has a readable label and a line of help in the language files
+  (`setting_<key>`, `setting_<key>_help`); a unit test fails when a shipped setting lacks either. Still
+  open: grouping the settings by topic (case report, requests, sign-in, directory) instead of the order
+  of `settings.conf`.
 - Password rules, from the Security section. Two-factor sign-in is done (November 2026).
 - E-mail or in-app notice when a request is assigned to someone or a message arrives; today the unread
   counter is the only sign.
@@ -272,6 +276,9 @@ Code health:
 - Done (November 2026): `case_update` checks the case token like the other case actions, and device rows
   follow their case's status on every save, when added and when moved (`kirjuri_sync_device_status`).
   Migration 007 brought existing device rows in step.
+- The browser tests run on `ubuntu-24.04` in CI because Playwright 1.56.1, pinned in
+  `tests/browser/package.json`, cannot install Chromium on Ubuntu 26.04, which `ubuntu-latest` became in
+  November 2026. Upgrade Playwright, check the tests still pass, and set the job back to `ubuntu-latest`.
 - Chart.js 1 and vis 4.18 are old and unmaintained; Bootstrap 3 and Font Awesome 4 likewise. Plan an
   upgrade path rather than a rewrite.
 

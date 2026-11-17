@@ -428,6 +428,49 @@ final class MiscellaneousTest extends IntegrationTestCase
         }
     }
 
+    public function testSettingsHaveReadableLabelsAndHelp(): void
+    {
+        // Settings were labelled with their internal names ("Index table condensed") and had no explanation.
+        $admin = $this->admin();
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            // An install from an older release keeps settings that are no longer shipped; they are named after their key.
+            file_put_contents($settings, str_replace("[inv_units]", "progress_bar_size = \"75%\"\n\n[inv_units]", file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $page = $admin->get('settings.php')->body;
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+        $this->assertStringContainsString('<label for="setting_session_idle_timeout">Sign-out after inactivity</label>', $page);
+        $this->assertMatchesRegularExpression('/id="setting_session_idle_timeout" aria-describedby="setting_session_idle_timeout_help">\s*<p class="field-hint" id="setting_session_idle_timeout_help">Minutes a sign-in lasts/', $page);
+        $this->assertMatchesRegularExpression('/<legend>Case log<\/legend>.*?<p class="field-hint" id="setting_show_log_help">Show the case log/s', $page, 'Yes/No settings get their help too.');
+        $this->assertMatchesRegularExpression('/name="settings\[show_log\]" value="1"[^>]*aria-describedby="setting_show_log_help"/', $page);
+        $this->assertStringContainsString('<label for="setting_lang">Language', $page);
+        $this->assertStringContainsString('<label for="setting_progress_bar_size">Progress bar size</label>', $page);
+        $this->assertStringNotContainsString('Index table condensed', $page);
+    }
+
+    public function testTwoFactorRequirementIsAChoiceWithItsHelpAlsoBeforeItIsSaved(): void
+    {
+        // An install that saved its settings before two-factor sign-in has no two_factor_required. Its default fills
+        // the gap, and the page offers the three choices with the label and help line of the other settings, not
+        // the Yes/No buttons that its default of "0" would otherwise get.
+        $admin = $this->admin();
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^two_factor_required = .*\R/m', '', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $page = $admin->get('settings.php')->body;
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+        $this->assertStringNotContainsString('name="settings[two_factor_required]" value="1"', $page);
+        $this->assertMatchesRegularExpression('/<label for="setting_two_factor_required">Require two-factor sign-in<\/label>\s*<select class="form-control" id="setting_two_factor_required" name="settings\[two_factor_required\]" aria-describedby="setting_two_factor_required_help">/', $page);
+        $this->assertStringContainsString('<option value="everyone">For everyone</option>', $page);
+        $this->assertStringContainsString('<p class="field-hint" id="setting_two_factor_required_help">Users it applies to set it up at their next sign-in.', $page);
+        $this->assertSame(1, substr_count($page, 'id="setting_two_factor_required"'), 'Drawn once.');
+    }
+
     public function testCopyToNewKeepsTheRecipient(): void
     {
         // The compose form looked for the recipient in a URL parameter that nothing sets, and compared it with

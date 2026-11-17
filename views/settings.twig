@@ -78,23 +78,24 @@
       {% if (key != "self") and (key != "release") and (key != "report_notes_footer") %}
       {% if key == "lang" %}
       <div class="field">
-        <label for="setting_lang">{{ key|capitalize }} <a href="lang_editor.php" class="field-link"><i class="fa fa-edit" aria-hidden="true"></i> {{ lang.edit_language_file }}</a></label>
-        <select class="form-control" id="setting_lang" name="settings[lang]">
+        <label for="setting_lang">{{ lang.setting_lang }} <a href="lang_editor.php" class="field-link"><i class="fa fa-edit" aria-hidden="true"></i> {{ lang.edit_language_file }}</a></label>
+        <select class="form-control" id="setting_lang" name="settings[lang]" aria-describedby="setting_lang_help">
           {% for ccode in langfiles %}
           <option value="lang_{{ ccode }}" {% if 'lang_' ~ ccode == settings_contents.settings.lang|replace({'.conf': '', '.JSON': ''}) %}selected{% endif %}>{{ ccode }}</option>
           {% endfor %}
         </select>
+        <p class="field-hint" id="setting_lang_help">{{ lang.setting_lang_help }}</p>
       </div>
       {% elseif key == "two_factor_required" %}
       {% set required = value|trim|lower %}
       <div class="field">
-        <label for="setting_two_factor_required">{{ lang.two_factor_required_setting }}</label>
-        <select class="form-control" id="setting_two_factor_required" name="settings[two_factor_required]" aria-describedby="setting_two_factor_required_hint">
+        <label for="setting_two_factor_required">{{ lang.setting_two_factor_required }}</label>
+        <select class="form-control" id="setting_two_factor_required" name="settings[two_factor_required]" aria-describedby="setting_two_factor_required_help">
           <option value="0"{% if required not in ["admins", "everyone"] %} selected{% endif %}>{{ lang.two_factor_required_no }}</option>
           <option value="admins"{% if required == "admins" %} selected{% endif %}>{{ lang.two_factor_required_admins }}</option>
           <option value="everyone"{% if required == "everyone" %} selected{% endif %}>{{ lang.two_factor_required_everyone }}</option>
         </select>
-        <span class="field-hint" id="setting_two_factor_required_hint">{{ lang.two_factor_required_hint }}</span>
+        <p class="field-hint" id="setting_two_factor_required_help">{{ lang.setting_two_factor_required_help }}</p>
       </div>
       {% else %}
       {{ fields.setting_field(key, value, default_settings, false, lang) }}
@@ -142,22 +143,27 @@
 </div>
 {% endblock %}
 
-{# One global setting: Yes/No buttons, or a text field. Unknown settings (not in the shipped defaults) are marked. #}
+{# One global setting: Yes/No buttons, or a text field, with its label and a line of help from the language file.
+   A setting the language files do not know (one left from an older release) is named after its key. Settings new
+   in this release and not saved yet are marked. #}
 {% macro setting_field(key, value, default_settings, unknown, lang) %}
   {% set id = 'setting_' ~ key %}
-  {% set label = key|replace({"_": " "})|capitalize %}
+  {% set label = lang['setting_' ~ key] ?? key|replace({"_": " "})|capitalize %}
+  {% set help = lang['setting_' ~ key ~ '_help'] ?? '' %}
   {% if (key in default_settings|keys) ? (default_settings[key] == "0" or default_settings[key] == "1") : (value == "0" or value == "1") %}{# Yes/No by the shipped default: a number set to 0 or 1 stays a number. Anything but 1 is off, as Kirjuri reads it. #}
   <fieldset class="field">
     <legend{% if unknown %} class="text-danger"{% endif %}>{{ label }}</legend>
     <div class="choice-group">
-      <label><input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}> {{ lang.yes }}</label>
-      <label><input type="radio" name="settings[{{key}}]" value="0" {% if value != "1" %}checked{% endif %}> {{ lang.no }}</label>
+      <label><input type="radio" name="settings[{{key}}]" value="1" {% if value == "1" %}checked{% endif %}{% if help %} aria-describedby="{{ id }}_help"{% endif %}> {{ lang.yes }}</label>
+      <label><input type="radio" name="settings[{{key}}]" value="0" {% if value != "1" %}checked{% endif %}{% if help %} aria-describedby="{{ id }}_help"{% endif %}> {{ lang.no }}</label>
     </div>
+    {% if help %}<p class="field-hint" id="{{ id }}_help">{{ help }}</p>{% endif %}
   </fieldset>
   {% else %}
   <div class="field">
     <label for="{{ id }}"{% if unknown %} class="text-danger"{% endif %}>{{ label }}</label>
-    <input type="text" class="form-control" name="settings[{{ key }}]" value="{{ value }}" id="{{ id }}">
+    <input type="text" class="form-control" name="settings[{{ key }}]" value="{{ value }}" id="{{ id }}"{% if help %} aria-describedby="{{ id }}_help"{% endif %}>
+    {% if help %}<p class="field-hint" id="{{ id }}_help">{{ help }}</p>{% endif %}
   </div>
   {% endif %}
 {% endmacro %}

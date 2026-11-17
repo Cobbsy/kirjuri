@@ -220,10 +220,10 @@
       {% if show_columns.report_no != "hide" %}
       <td style="width:1%;white-space:nowrap;">{% if entry.can_access %}<a style="font-weight:bold;" href="edit_request.php?case={{ entry.id }}">{{ entry.case_file_number }}</a>{% else %}<span class="text-faint">-</span>{% endif %}
         {% if (settings.notify_after_4_months == "1") and (entry.case_confiscation_date != "0000-00-00") %}
-          {% if (entry.case_confiscation_date|date("U") < ("-3 months"|date("U"))) %}
-        &nbsp;<i class="fa fa-calendar-times-o text-warning"></i>
-        {% elseif (entry.case_confiscation_date|date("U") < ("-4 months"|date("U"))) %}
+          {% if (entry.case_confiscation_date|date("U") < ("-4 months"|date("U"))) %}
       &nbsp;<i class="fa fa-calendar-times-o text-danger"></i><i class="fa fa-exclamation text-danger"></i>
+          {% elseif (entry.case_confiscation_date|date("U") < ("-3 months"|date("U"))) %}
+        &nbsp;<i class="fa fa-calendar-times-o text-warning"></i>
           {% endif %}
         {% endif %}
       </td>
