@@ -62,6 +62,7 @@
     "clear_restrictions": "Poista rajoitukset",
     "close": "Sulje",
     "close_ready_request": "Sulje valmis pyynt\u00f6",
+    "close_request_devices_not_done": "Ei suljettu: kaikki pyynn\u00f6n laitteet eiv\u00e4t ole viel\u00e4 valmiita.",
     "comment": "kommentti",
     "confiscation_date": "Takavarikkop\u00e4iv\u00e4m\u00e4\u00e4r\u00e4",
     "confiscation_date_abbrev": "Takavarikkopvm",

@@ -194,6 +194,13 @@ case 'update_request_status':
     ksess_validate($_POST['token']);
     csrf_case_validate($_POST['ct'], $id);
     verify_case_ownership($id);
+    // The page shows the close button only once every device is done; the server holds to that too.
+    $steps = $prefs['settings']['device_action_count'] ?? 9;
+    if ((string) $_POST['case_status'] === '3' && !kirjuri_case_progress($kirjuri_database, $id, $steps)['all_done']) {
+        message('error', $_SESSION['lang']['close_request_devices_not_done']);
+        header('Location: edit_request.php?case=' . $id);
+        die;
+    }
     kirjuri_audited($kirjuri_database, function () use ($kirjuri_database, $id) {
         kirjuri_set_case_status($kirjuri_database, $id, $_POST['case_status']);
         return array($id, 'Update', 'Changed request ' . $id . ' status: ' . $_POST['case_status'] . '. ');

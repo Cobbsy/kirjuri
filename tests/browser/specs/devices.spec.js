@@ -61,6 +61,34 @@ test('devices can be added, have their status changed and be edited', async ({ a
   await expectNoSidewaysScroll(page);
 });
 
+test('the close button stays out of sight until every device is done', async ({ admin: page }) => {
+  // It was hidden with the hidden attribute alone, which the button's own CSS overrode, so it showed on every
+  // open request. The checks above read the attribute; this one looks at the page.
+  const caseId = await createCase(page, 'Close button test ' + Date.now());
+  await startCase(page, caseId);
+  await page.goto(`edit_request.php?case=${caseId}&tab=devices`);
+  await page.click('button[data-target="#add_device_media_modal"]');
+  const dialog = page.locator('#add_device_media_modal');
+  await dialog.locator('#device_type').selectOption({ index: 1 });
+  await dialog.locator('#device_action').selectOption({ index: 1 });
+  await dialog.locator('#device_location').selectOption({ index: 1 });
+  await dialog.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/tab=devices/);
+
+  await page.goto(`edit_request.php?case=${caseId}`);
+  await expect(page.locator('.case-header')).toBeVisible();
+  await expect(page.locator('[data-close-request]')).toBeHidden();
+
+  await page.goto(`edit_request.php?case=${caseId}&tab=devices`);
+  const status = page.locator('table.device-card select[name="device_action"]');
+  const last = await status.locator('option:not([disabled])').evaluateAll((all) => all[all.length - 1].value);
+  const saved = page.waitForResponse((r) => r.url().includes('type=change_device_status') && r.request().method() === 'POST');
+  await status.selectOption(last);
+  await saved;
+  await page.goto(`edit_request.php?case=${caseId}`);
+  await expect(page.locator('[data-close-request]')).toBeVisible();
+});
+
 test('the request details dialog checks its required fields before saving', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Details test ' + Date.now());
   await startCase(page, caseId);
