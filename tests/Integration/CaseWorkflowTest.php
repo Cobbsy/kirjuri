@@ -429,6 +429,32 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('Lab', $this->row($second)['device_location']);
     }
 
+    public function testARequestIsNotClosedBeforeItsDevicesAreDone(): void
+    {
+        // The close button was hidden with the hidden attribute alone, which the button's own CSS overrode, and the
+        // server closed a request whenever it was asked: a request could be marked ready with its devices unfinished.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Early close '));
+        $setStatus = function (string $status) use ($admin, $caseId) {
+            return $admin->post('submit.php?type=update_request_status', array('token' => $this->token($admin),
+                'ct' => $this->caseToken($admin, $caseId), 'returnid' => (string) $caseId, 'case_status' => $status));
+        };
+        $setStatus('2');
+        $device = $this->addDevice($admin, $caseId, $this->uniqueName('Unfinished '));
+
+        $this->assertSame('edit_request.php?case=' . $caseId, $setStatus('3')->location());
+        $this->assertSame('2', $this->row($caseId)['case_status'], 'The request stays open.');
+        $this->assertSame('2', $this->row($device)['case_status'], 'Its device stays open with it.');
+        $this->assertStringContainsString('Not closed: some of the request&#039;s devices are not done yet.',
+            $admin->get('edit_request.php?case=' . $caseId)->body);
+
+        // Once its device is done, the same request closes.
+        $admin->post('submit.php?type=change_device_status&uid=' . $device,
+            array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'device_action' => '9|Done'));
+        $setStatus('3');
+        $this->assertSame('3', $this->row($caseId)['case_status']);
+    }
+
     public function testWorkOnDevicesKeepsTheCaseFromStalling(): void
     {
         // The stalled mark reads the case's last update, which changing a device's status or location, attaching

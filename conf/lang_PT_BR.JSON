@@ -62,6 +62,7 @@
     "clear_restrictions": "Limpar Restrições",
     "close": "Fechar",
     "close_ready_request": "Fechar requisições prontas",
+    "close_request_devices_not_done": "Não fechada: alguns dispositivos da requisição ainda não estão prontos.",
     "comment": "Comentar",
     "confiscation_date": "Data da apreensão",
     "confiscation_date_abbrev": "Data de apre.",

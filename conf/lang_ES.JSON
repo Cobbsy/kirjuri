@@ -62,6 +62,7 @@
     "clear_restrictions": "Borrar restricciones",
     "close": "Cerrar",
     "close_ready_request": "Cerrar solicirud lista",
+    "close_request_devices_not_done": "No cerrada: algunos dispositivos de la solicitud a\u00fan no est\u00e1n terminados.",
     "comment": "Comentario",
     "confiscation_date": "Fecha de intervenci\u00f3n",
     "confiscation_date_abbrev": "Fecha Inter.",

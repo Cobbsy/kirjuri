@@ -182,6 +182,7 @@ Unreleased
 * Removing a case or a device recorded only the action's name in the audit log, not its form. A device memo for a device of another case wrote an audit entry before it was refused.
 * The audit viewer scrolled the whole page sideways on a phone; its table now scrolls in its own box.
 * Case log: on screens 992 pixels and wider, the table of events was squeezed to nothing and covered by the page, so administrators could not click its AUDIT links. A grid column used as a spacer floated across the page and the table's scroll box shrank beside it. The spacer is a margin now, and the page no longer uses grid columns for its layout.
+* An open request showed its "Close ready request" button while its devices were still being examined, and closing it worked: the button was hidden with the hidden attribute, which the button's own style overrode, and the server closed a request whenever asked. Hidden elements now stay hidden, and the server refuses to close a request until every device is done ("Not closed: some of the request's devices are not done yet.").
 
 2018-03 Version 0.9.2
 

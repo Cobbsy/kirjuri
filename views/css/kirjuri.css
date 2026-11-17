@@ -234,6 +234,12 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* The browser hides [hidden] with a style any class that sets display overrides, as .btn does: the close button of
+   an open request showed while its devices were still being examined. Hidden stays hidden. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   font-family: var(--k-font);
   font-size: 15px;

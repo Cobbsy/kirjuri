@@ -54,7 +54,9 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   `help_two_factor_text`), also written without a native speaker, are on the page in their own group,
   each with the page it shows on. The eight strings of the audit log (`audit_*`: the message when a change
   is refused, the viewer's six statuses and the case report's checkpoint line, November 2026) are on the
-  page in their own group, each with what it means. In all, 161 strings wait for translators, and the page
+  page in their own group, each with what it means. `close_request_devices_not_done`, the message when a
+  request is closed before its devices are done (November 2026), is in the "Search, requests and tools"
+  group. In all, 162 strings wait for translators, and the page
   is not shared with any yet: share it from its Share menu, with Contributor access for each translator.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
@@ -81,11 +83,10 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   loads the status of usernames with dots. One finding was wrong: "assigned to me" does follow a rename,
   as renaming a user renames them in the cases (`kirjuri_rename_examiner`); a test now covers it.
 
-- **Bug: a case can be closed before its devices are done.** Found in the UI review of 17 November 2026
-  (first item there). Fix it next, before the rest of that review: it lets a case be closed early, it is not
-  polish. The second pass of that review found two more that are best fixed with it, in the same pull request:
-  dialogs that do not work from the keyboard (item 11) and a new request's devices tab that points to a button
-  it does not have (item 12).
+- **The UI review of 17 November 2026** (its own section below) waits for the finalizing stage, where a
+  second review is compared with it. Its first item, a request that could be closed before its devices were
+  done, was a bug and is fixed (November 2026). Items 11 and 12 (dialogs that do not work from the keyboard,
+  and a new request's devices tab pointing to a button it does not have) are the next most serious.
 
 - **TinyMCE's licence.** TinyMCE 7 no longer gets public security fixes, and TinyMCE 8 adds Tiny's
   own terms beside the GPL. Decide before go-live whether to move to 8 or to another editor; see
@@ -316,19 +317,18 @@ A review of the rendered pages on a throwaway installation with three cases and 
 390, 768 and 1440 pixels in light mode, the main ones in dark mode too, with a script measuring sideways
 scroll, touch target sizes and controls without a name. A second pass the same day (items 11 to 17, below)
 covered keyboard use, the empty and error states and the pages the first left out; loading states and the
-largest text sizes have not been checked. Nothing was changed; these wait for the finalizing stage, except
-items 1, 11 and 12, which are bugs to fix next (see Open items). Mark each done here when it is merged. Most
-of them need a browser test.
+largest text sizes have not been checked. The owner decided (17 November 2026) that these wait for the
+finalizing stage, after a second review there to compare against, except item 1, a bug, which is done. Mark
+each done here when it is merged. Most of them need a browser test.
 
 Must fix:
 
-1. **"Close ready request" shows while devices are still being examined.** `views/edit_request.twig`
-   hides the button with the `hidden` attribute until every device is done, but `.btn` in the flex row
-   `.case-actions-primary` overrides the browser's own `[hidden] { display: none }`, so it shows at 12%
-   progress. `update_request_status` in `actions/cases.php` sets whatever status it is sent, so nothing
-   stops it. The browser test in `devices.spec.js` checks the `hidden` property, not visibility. Fix:
-   `[hidden] { display: none !important; }` in `kirjuri.css`, the server refuses to close a case whose
-   devices are not done (`kirjuri_case_progress`), and the test uses `toBeHidden()`.
+1. Done (November 2026): **"Close ready request" showed while devices were still being examined.**
+   `views/edit_request.twig` hid the button with the `hidden` attribute until every device was done, but
+   `.btn` overrode the browser's own `[hidden] { display: none }`, and `update_request_status` closed a
+   request whenever it was asked. `kirjuri.css` now keeps `[hidden]` hidden, the server refuses to close a
+   request whose devices are not done (`kirjuri_case_progress`), and a browser test looks at the button on
+   the request tab instead of reading its attribute.
 2. **Statistics and the devices tab break at 768 pixels.** On statistics the fixed sidebar covers the
    left of the page and its heading, and the monthly tables make the page 1,234 pixels wide. On the
    devices tab the device cards are 88 pixels too wide, cutting off the status menus. Fix: the phone

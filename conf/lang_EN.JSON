@@ -62,6 +62,7 @@
     "clear_restrictions": "Clear restrictions",
     "close": "Close",
     "close_ready_request": "Close ready request",
+    "close_request_devices_not_done": "Not closed: some of the request's devices are not done yet.",
     "comment": "comment",
     "confiscation_date": "Confiscation date",
     "confiscation_date_abbrev": "Confs. date",

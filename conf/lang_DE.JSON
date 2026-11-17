@@ -62,6 +62,7 @@
     "clear_restrictions": "L\u00f6sche Berechtigungen",
     "close": "Schlie\u00dfen",
     "close_ready_request": "abgeschlossenen Auftrag schlie\u00dfen",
+    "close_request_devices_not_done": "Nicht geschlossen: Einige Ger\u00e4te des Auftrags sind noch nicht fertig.",
     "comment": "Kommentar",
     "confiscation_date": "Datum der Sicherstellung",
     "confiscation_date_abbrev": "Sicherst. Datum",
