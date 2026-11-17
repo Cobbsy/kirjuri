@@ -65,6 +65,30 @@ final class HttpsTest extends IntegrationTestCase
         $this->assertStringContainsStringIgnoringCase('; secure', (string) $client->get('login.php')->header('Set-Cookie'));
     }
 
+    public function testASessionCookieFromPlainHttpIsReplacedOverHttps(): void
+    {
+        // A cookie set over plain HTTP, before HTTPS was set up, has no Secure flag: the browser kept sending it, and
+        // its session ID, with every plain http:// link it followed, before Kirjuri could move the request.
+        $admin = $this->admin();
+        $old = $this->sessionId($admin->get('index.php'), $admin);
+        $admin->setHeader('X-Forwarded-Proto', 'https');
+        $first = $admin->get('index.php');
+        $this->assertSame(200, $first->status, 'Still signed in.');
+        $this->assertStringContainsStringIgnoringCase('; secure', (string) $first->header('Set-Cookie'), 'Replaced by a Secure cookie.');
+        $this->assertNotSame($old, $this->sessionId($first, $admin), 'With a new ID: the old one may have travelled in the clear.');
+        $this->assertNull($admin->get('index.php')->header('Set-Cookie'), 'Once.');
+        $this->assertStringContainsString('<title>', $admin->get('settings.php')->body);
+    }
+
+    /** The session ID a response set, or the one the client is still sending. */
+    private function sessionId(Response $response, HttpClient $client): string
+    {
+        if (preg_match('/KirjuriSessionID=([^;]+)/', (string) $response->header('Set-Cookie'), $match)) {
+            return $match[1];
+        }
+        return $client->cookie('KirjuriSessionID');
+    }
+
     public function testHttpsIsTurnedOnOnlyFromTheSettingsPageOpenedOverHttpsAtThatAddress(): void
     {
         $file = $this->server->dir . '/conf/settings.local';
@@ -118,6 +142,12 @@ final class HttpsTest extends IntegrationTestCase
             [$status, $out] = $this->server->cli(array('doctor'));
             $this->assertStringContainsString('[ OK ] Pages opened over plain HTTP move to https://kirjuri.example.org', $out);
             $this->assertStringContainsString('[ OK ] Browsers are told to use only HTTPS for Kirjuri for 300 seconds (HSTS)', $out);
+            $this->assertStringNotContainsString('first request', $out);
+        });
+        // Moving plain HTTP protects nothing that was already sent with it: only HSTS keeps browsers off plain HTTP.
+        $this->withSettings(array('https_address' => 'https://kirjuri.example.org'), function () {
+            [, $out] = $this->server->cli(array('doctor'));
+            $this->assertStringContainsString('[WARN] Browsers still send the first request of a visit over plain HTTP', $out);
         });
         $this->withSettings(array('https_address' => 'kirjuri.example.org', 'hsts_max_age' => 'a year'), function () {
             [, $out] = $this->server->cli(array('doctor'));

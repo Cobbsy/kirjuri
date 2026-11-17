@@ -219,6 +219,8 @@ function cli_doctor($args) {
             $report('warn', 'hsts_max_age "' . $hsts . '" is not a number of seconds, so browsers are not told to keep to HTTPS.');
         } elseif ((int) $hsts > 0) {
             $report('ok', 'Browsers are told to use only HTTPS for Kirjuri for ' . (int) $hsts . ' seconds (HSTS). They will not open it while HTTPS is broken.');
+        } elseif (kirjuri_valid_https_address($address) !== null) {
+            $report('warn', 'Browsers still send the first request of a visit over plain HTTP, with what it carries, before Kirjuri moves it to HTTPS. Turn on "Remember HTTPS (HSTS)" (hsts_max_age) once HTTPS works: then they do not.');
         }
         $mysqldump = isset($prefs['settings']['mysqldump_location']) ? $prefs['settings']['mysqldump_location'] : '';
         $report(is_executable($mysqldump) ? 'ok' : 'warn', 'mysqldump at "' . $mysqldump . '" for database backups from the settings page');

@@ -39,6 +39,18 @@ final class HttpClient
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, array_map(fn ($n) => $n . ': ' . $this->headers[$n], array_keys($this->headers)));
     }
 
+    /** The value of a cookie this client holds, or '' when it has none. */
+    public function cookie(string $name): string
+    {
+        foreach ((array) curl_getinfo($this->curl, CURLINFO_COOKIELIST) as $line) {
+            $fields = explode("\t", $line); // Netscape format: domain, subdomains, path, secure, expiry, name, value.
+            if (count($fields) >= 7 && $fields[5] === $name) {
+                return $fields[6];
+            }
+        }
+        return '';
+    }
+
     public function get(string $path): Response
     {
         return $this->request('GET', $path);

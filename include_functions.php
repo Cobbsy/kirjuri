@@ -80,6 +80,7 @@ session_set_cookie_params(array(
         'secure' => kirjuri_request_is_https($_SERVER),
     ));
 session_start(); // Start a PHP session
+kirjuri_secure_session_cookie($_SERVER, $_COOKIE);
 kirjuri_keep_request_data_out_of_session();
 
 foreach ($_GET as $key => $value) { // Lightly sanitize GET variables

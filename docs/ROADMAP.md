@@ -178,7 +178,10 @@ Code improvements, in suggested order:
    page takes them only when it is itself opened over HTTPS, the address only when it is the one the page is open
    at, so a typo or a missing certificate can not send everyone somewhere that does not work; turning them off
    works from anywhere. A request counts as HTTPS when PHP says so or `X-Forwarded-Proto` does, and the session
-   cookie is marked Secure on the same rule (it missed that behind a proxy that ends HTTPS). `doctor` reports both.
+   cookie is marked Secure on the same rule (it missed that behind a proxy that ends HTTPS). A session that arrives
+   over HTTPS with an older cookie gets a new ID in a Secure cookie, once. The move can not protect what a browser
+   already sent over plain HTTP (Codex's review of #38): only HSTS stops that, so `doctor` warns while the address
+   is set and HSTS is off.
 5. A full Content-Security-Policy, after moving the inline scripts into files.
 6. Done (November 2026): `conf/settings.conf` ships with `show_errors` off and a 60-minute
    `session_idle_timeout`, so a new install starts safe.

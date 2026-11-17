@@ -83,6 +83,24 @@ function kirjuri_https_address_is_current($address, array $server) {
 
 
 /**
+ * Give a session that came with an older cookie a new ID in a Secure cookie, on its first request over HTTPS. A cookie
+ * set over plain HTTP, before HTTPS was set up (or behind a proxy, by a Kirjuri that did not mark it Secure there),
+ * has no Secure flag: the browser sends it with every plain http:// request it makes, before Kirjuri can move the
+ * request, and its ID may already have travelled in the clear. A new session needs nothing: its cookie is Secure.
+ * Call it right after session_start(), with the cookie parameters already set to Secure for this request.
+ */
+function kirjuri_secure_session_cookie(array $server, array $cookies) {
+    if (!kirjuri_request_is_https($server) || !empty($_SESSION['secure_cookie'])) {
+        return;
+    }
+    if (isset($cookies[session_name()])) {
+        session_regenerate_id(true);
+    }
+    $_SESSION['secure_cookie'] = true;
+}
+
+
+/**
  * Check the HTTPS settings an administrator is saving, before they are written. A change that turns either on, or
  * changes the address, is taken only from the settings page opened over HTTPS, and the address only when it is the
  * one the page is open at: then HTTPS is known to work there. Turning them off is taken from anywhere.
