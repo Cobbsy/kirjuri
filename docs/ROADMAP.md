@@ -74,6 +74,10 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   loads the status of usernames with dots. One finding was wrong: "assigned to me" does follow a rename,
   as renaming a user renames them in the cases (`kirjuri_rename_examiner`); a test now covers it.
 
+- **Bug: a case can be closed before its devices are done.** Found in the UI review of 17 November 2026
+  (first item there). Fix it next, before the rest of that review: it lets a case be closed early, it is not
+  polish.
+
 - **TinyMCE's licence.** TinyMCE 7 no longer gets public security fixes, and TinyMCE 8 adds Tiny's
   own terms beside the GPL. Decide before go-live whether to move to 8 or to another editor; see
   the TinyMCE advisory under Security.
@@ -284,6 +288,72 @@ Code health:
   November 2026. Upgrade Playwright, check the tests still pass, and set the job back to `ubuntu-latest`.
 - Chart.js 1 and vis 4.18 are old and unmaintained; Bootstrap 3 and Font Awesome 4 likewise. Plan an
   upgrade path rather than a rewrite.
+
+## UI review of 17 November 2026: to do when finalizing
+
+A review of the rendered pages on a throwaway installation with three cases and three devices: 13 pages at
+390, 768 and 1440 pixels in light mode, the main ones in dark mode too, with a script measuring sideways
+scroll, touch target sizes and controls without a name. Keyboard use and the loading and error states were
+not checked. Nothing was changed; these wait for the finalizing stage, except the first, which is a bug
+(see Open items). Mark each done here when it is merged. Most of them need a browser test.
+
+Must fix:
+
+1. **"Close ready request" shows while devices are still being examined.** `views/edit_request.twig`
+   hides the button with the `hidden` attribute until every device is done, but `.btn` in the flex row
+   `.case-actions-primary` overrides the browser's own `[hidden] { display: none }`, so it shows at 12%
+   progress. `update_request_status` in `actions/cases.php` sets whatever status it is sent, so nothing
+   stops it. The browser test in `devices.spec.js` checks the `hidden` property, not visibility. Fix:
+   `[hidden] { display: none !important; }` in `kirjuri.css`, the server refuses to close a case whose
+   devices are not done (`kirjuri_case_progress`), and the test uses `toBeHidden()`.
+2. **Statistics and the devices tab break at 768 pixels.** On statistics the fixed sidebar covers the
+   left of the page and its heading, and the monthly tables make the page 1,234 pixels wide. On the
+   devices tab the device cards are 88 pixels too wide, cutting off the status menus. Fix: the phone
+   layout (folded menu) below about 992 pixels instead of the fixed sidebar, `.table-responsive` around
+   the statistics tables, the device card's right column below its text at medium widths, and a 768-pixel
+   project in `tests/browser/playwright.config.js` so the sideways-scroll checks cover tablets.
+3. **Controls without a name for screen readers.** The case log's move and zoom buttons are icons only;
+   the front page's paperclip, phone, notes and lock icons in each row have no text or title and mean
+   something only by colour; the case page's attachment input (`#fileToUpload`) has no label. Fix:
+   `aria-label` on the buttons and `sr-only` text on the icons (as `index.twig` already does for one
+   lock), a `<label for>` on the input, with the strings in all five language files and on the
+   translation review page.
+
+Should fix:
+
+4. **The front page table on a phone** shows only No. and Case, cuts the case name mid-word and gives no
+   sign that it scrolls; the summary line is clipped and the year arrows break over two lines. Fix: below
+   768 pixels, each case as a stacked card (number, name, status stripe, investigator, date) in the
+   device card's style, and the year arrows on the title's line.
+5. **The radar chart of examined devices by type** has about 40 categories in labels of roughly 6
+   pixels, and counts per category are meant to be labelled bars (CLAUDE.md). Fix: the labelled bar list
+   used for classifications, with only the types that have a count.
+6. **Empty statistics charts.** With no data the page draws four large empty charts. Fix: one line
+   saying nothing was recorded this year. The data row's total also says "0 TB" in a row of gigabytes:
+   give the total in the row's own unit.
+7. **Small touch targets on phones:** status filters 30 pixels high, sort pills and the brand link 28,
+   the Inbox, Outbox and Archived links 16 to 20. Fix: at least 44 pixels high under
+   `@media (pointer: coarse)`.
+8. **Red progress bars for cases that have just started.** `kirjuri_case_progress` makes the bar
+   `danger` up to 20%, so every new case looks like an error. Fix: `--k-primary` while work is under way,
+   `--k-success` when done, red only for real problems.
+9. **The case log and the audit viewer have no menu**, so on a phone the browser's back button is the
+   only way out. Making the case log a tab of the case (see Working on a case) fixes the first; until
+   then both could extend `base.twig`.
+10. **The browser's own "Choose files" control** sits beside styled buttons on the case and add request
+    pages, and the devices tab's "Status", "Location" and "Update all" row has no label and does not say it
+    changes every device. Fix: a `.btn`-styled file input with its own label, and a label such as "Change
+    all devices" above the row, in the `.field` layout.
+
+Nice to have:
+
+- The case log's fit button, drawn as `›...‹`, as a labelled "Show all" button; and a minimum zoom of one
+  day, as a case with one event zooms to milliseconds and shows axis labels like "995".
+- The front page's red count beside a case name and the grey device count at the end of the row look
+  alike: a tooltip or a different shape tells them apart.
+
+Already good: dark mode on every page checked, the case page's facts and the add request form at both
+widths, and the case log since #36.
 
 ## Installing without Docker
 
