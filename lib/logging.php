@@ -9,10 +9,12 @@ function event_log_write($case_id, $event_level, $description, $audit_log_file =
         $sessiontoken = $_SESSION['user']['token'];
     }
 
-    if (!isset($_SESSION['user']['username'])) {
-        $session_username = (PHP_SAPI === 'cli') ? 'cli' : "-";
-    } else {
+    if (isset($_SESSION['user']['username'])) {
         $session_username = $_SESSION['user']['username'];
+    } elseif (isset($_SESSION['two_factor_pending']['username'])) {
+        $session_username = $_SESSION['two_factor_pending']['username']; // Password right, two-factor step not done yet.
+    } else {
+        $session_username = (PHP_SAPI === 'cli') ? 'cli' : "-";
     }
 
     $case_id = filter_numbers($case_id);
@@ -91,12 +93,19 @@ function audit_log_write($post_data) {
     if (isset($post_data['REVERT_FROM_AUDIT'])) {
         event_log_write('0', 'Update', "Pushed audit log entry back to database: " . $post_data['REVERT_FROM_AUDIT']);
     }
-    $data['user']['username'] = $_SESSION['user']['username'];
-    $data['user']['ip_address'] = $_SERVER['REMOTE_ADDR'];
+    // Two-factor sign-in writes entries before the session exists, and bin/kirjuri without a web request at all.
+    if (isset($_SESSION['user']['username'])) {
+        $data['user']['username'] = $_SESSION['user']['username'];
+    } elseif (isset($_SESSION['two_factor_pending']['username'])) {
+        $data['user']['username'] = $_SESSION['two_factor_pending']['username'];
+    } else {
+        $data['user']['username'] = (PHP_SAPI === 'cli') ? 'cli' : '-';
+    }
+    $data['user']['ip_address'] = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'cli';
     $data['user']['user_agent'] = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
     $data['user']['referer'] = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
-    $data['user']['request_uri'] = $_SERVER['REQUEST_URI'];
-    $data['user']['request_method'] = $_SERVER['REQUEST_METHOD'];
+    $data['user']['request_uri'] = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : 'bin/kirjuri';
+    $data['user']['request_method'] = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'CLI';
     $data['request_contents'] = $post_data;
     $data = json_encode($data, JSON_PRETTY_PRINT);
     $audit_file_sha256 = hash('sha256', $data);

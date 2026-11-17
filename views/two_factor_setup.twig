@@ -1,0 +1,21 @@
+{#
+  Setting up an authenticator app: the QR code and key of the secret being set up (from kirjuri_two_factor_setup_view())
+  and the field for the code that confirms it. On the sign-in page and on two_factor.php; every id starts with prefix.
+  The QR code is SVG drawn by Kirjuri itself, not user input.
+#}
+<ol class="two-factor-steps">
+  <li>{{ lang.two_factor_step_install }}</li>
+  <li>
+    {{ lang.two_factor_step_scan }}
+    <div class="two-factor-qr" data-stays-light role="img" aria-label="{{ lang.two_factor_qr_label }}">{{ setup.qr|raw }}</div>
+    <details class="two-factor-key-box">
+      <summary>{{ lang.two_factor_cant_scan }}</summary>
+      <p>{{ lang.two_factor_key_hint }}</p>
+      <code class="two-factor-key" id="{{ prefix }}two_factor_key">{{ setup.key }}</code>
+    </details>
+  </li>
+  <li class="field">
+    <label for="{{ prefix }}two_factor_code">{{ lang.two_factor_step_code }} <span class="req">*</span></label>
+    <input type="text" class="form-control two-factor-code-input" id="{{ prefix }}two_factor_code" name="two_factor_code" inputmode="numeric" autocomplete="one-time-code" autocapitalize="none" spellcheck="false" maxlength="7" required>
+  </li>
+</ol>

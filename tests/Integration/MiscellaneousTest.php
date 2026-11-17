@@ -450,6 +450,27 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertStringNotContainsString('Index table condensed', $page);
     }
 
+    public function testTwoFactorRequirementIsAChoiceWithItsHelpAlsoBeforeItIsSaved(): void
+    {
+        // An install that saved its settings before two-factor sign-in has no two_factor_required. Its default fills
+        // the gap, and the page offers the three choices with the label and help line of the other settings, not
+        // the Yes/No buttons that its default of "0" would otherwise get.
+        $admin = $this->admin();
+        $settings = $this->server->dir . '/conf/settings.local';
+        $saved = file_exists($settings) ? file_get_contents($settings) : null;
+        try {
+            file_put_contents($settings, preg_replace('/^two_factor_required = .*\R/m', '', file_get_contents(KIRJURI_ROOT . '/conf/settings.conf')));
+            $page = $admin->get('settings.php')->body;
+        } finally {
+            $saved === null ? @unlink($settings) : file_put_contents($settings, $saved);
+        }
+        $this->assertStringNotContainsString('name="settings[two_factor_required]" value="1"', $page);
+        $this->assertMatchesRegularExpression('/<label for="setting_two_factor_required">Require two-factor sign-in<\/label>\s*<select class="form-control" id="setting_two_factor_required" name="settings\[two_factor_required\]" aria-describedby="setting_two_factor_required_help">/', $page);
+        $this->assertStringContainsString('<option value="everyone">For everyone</option>', $page);
+        $this->assertStringContainsString('<p class="field-hint" id="setting_two_factor_required_help">Users it applies to set it up at their next sign-in.', $page);
+        $this->assertSame(1, substr_count($page, 'id="setting_two_factor_required"'), 'Drawn once.');
+    }
+
     public function testCopyToNewKeepsTheRecipient(): void
     {
         // The compose form looked for the recipient in a URL parameter that nothing sets, and compared it with

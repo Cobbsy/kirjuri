@@ -51,5 +51,6 @@ echo kirjuri_render('settings.twig', array(
         'default_settings' => $default_settings['settings'],
         'diff' => $diff,
         'apikey' => api_key_for(kirjuri_session_user_credentials()),
+        'two_factor' => kirjuri_two_factor_enabled($kirjuri_database, $_SESSION['user']['id']),
         'settings_file' => $settings_file
     ));

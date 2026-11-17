@@ -45,6 +45,8 @@ function kirjuri_template_session() {
     // What templates see as "session": the PHP session minus anything secret.
     $view = $_SESSION;
     unset($view['user']['password'], $view['case_token']);
+    // Two-factor sign-in: pages get what they show from two_factor.php and login.php, never the secrets themselves.
+    unset($view['two_factor_pending'], $view['two_factor_setup'], $view['two_factor_new_codes'], $view['signed_in_at']);
     return $view;
 }
 

@@ -57,12 +57,22 @@
       {% if not editing or user.id != 2 %}
       <label><input type="checkbox" name="flag4" value="I" {% if "I" in user.flags %}checked{% endif %}> {{ lang.flag_inactive }}</label>
       {% endif %}
+      {% if editing and user.two_factor %}
+      <label><input type="checkbox" name="reset_two_factor" value="reset"> {{ lang.two_factor_reset }}</label>
+      {% endif %}
       <input type="hidden" name="delete_user" value="no">
       {% if editing and user.id > 2 %}
       <label class="text-danger"><input type="checkbox" name="delete_user" value="delete"> {{ lang.delete_user }}</label>
       {% endif %}
     </div>
   </fieldset>
+  {% if editing and user.two_factor %}
+  <p class="field field-wide field-hint two-factor-user-status">
+    <i class="fa fa-mobile" aria-hidden="true"></i> {{ lang.two_factor_on_since|format(user.two_factor.enabled_at|date('Y-m-d')) }}
+    {{ lang.two_factor_codes_left|format(user.two_factor.recovery_codes) }}
+    {% if user.two_factor.wrong_codes >= two_factor_max_wrong %}<span class="text-danger">{{ lang.two_factor_blocked_admin|format(user.two_factor.wrong_codes) }}</span>{% elseif user.two_factor.wrong_codes > 0 %}{{ lang.two_factor_wrong_codes_admin|format(user.two_factor.wrong_codes) }}{% endif %}
+  </p>
+  {% endif %}
   <div class="field field-wide">
     <label for="{{ prefix }}current_password">{{ lang.verify_password_for }} <b>{{ session.user.username }}</b></label>
     <input type="password" class="form-control" id="{{ prefix }}current_password" name="current_password" placeholder="{{ lang.your_password }}" autocomplete="current-password">

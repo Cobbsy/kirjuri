@@ -9,7 +9,8 @@ $dateRange = array(
 );
 
 // Passwords are compared and hashed as typed, and never kept in the session's form cache below.
-$password_fields = array('password', 'current_password', 'new_password');
+// Two-factor and recovery codes likewise: kept out of the session, and a used recovery code must not linger there.
+$password_fields = array('password', 'current_password', 'new_password', 'two_factor_code', 'recovery_code');
 
 foreach ($_POST as $key => $value) // Sanitize all POST data
     {
@@ -55,6 +56,12 @@ $actions = array(
     'logout' => 'auth',
     'drop_session' => 'auth',
     'force_logout' => 'auth',
+    'two_factor_code' => 'two_factor',
+    'two_factor_cancel' => 'two_factor',
+    'two_factor_enrol' => 'two_factor',
+    'two_factor_setup' => 'two_factor',
+    'two_factor_new_codes' => 'two_factor',
+    'two_factor_off' => 'two_factor',
     'create_user' => 'users',
     'update_password' => 'users',
     'send_message' => 'messages',

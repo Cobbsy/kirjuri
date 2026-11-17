@@ -19,7 +19,8 @@ function cli_commands() {
         'user:list' => array('cli_user_list', 'List user accounts'),
         'user:create' => array('cli_user_create', 'user:create <username> <name> <access 0-3> [--api]; reads the password from stdin'),
         'user:password' => array('cli_user_password', 'user:password <username>; reads the new password from stdin and unlocks the account'),
-        'user:unlock' => array('cli_user_unlock', 'user:unlock <username> | --ip <address>; clear the failed login counter of an account or an IP address'),
+        'user:unlock' => array('cli_user_unlock', 'user:unlock <username> | --ip <address>; clear the failed login counter of an account or an IP address, and an account\'s wrong two-factor codes'),
+        'user:two-factor-reset' => array('cli_user_two_factor_reset', 'user:two-factor-reset <username>; turn off two-factor sign-in for a lost phone, so the password alone signs in'),
         'cache:clear' => array('cli_cache_clear', 'Delete compiled templates and other caches (sessions are kept)'),
         'errors' => array('cli_errors', 'errors [--id <request id>] [--last <n>]; show logs/error.log'),
         'log' => array('cli_log', 'log [--last <n>] [--case <uid>]; show the event log'),
@@ -36,7 +37,7 @@ function cli_main($argv) {
         cli_out('Usage: php bin/kirjuri <command> [arguments]');
         cli_out();
         foreach ($commands as $name => $definition) {
-            cli_out(sprintf('  %-14s %s', $name, $definition[1]));
+            cli_out(sprintf('  %-21s %s', $name, $definition[1]));
         }
         return ($command === 'help' || $command === '--help') ? 0 : 1;
     }
@@ -162,7 +163,7 @@ function cli_doctor($args) {
     };
 
     $report(version_compare(PHP_VERSION, '8.1.0') >= 0 ? 'ok' : 'fail', 'PHP ' . PHP_VERSION . ' (8.1 or newer required)');
-    foreach (array('pdo_mysql', 'mbstring', 'openssl', 'zlib', 'json', 'session') as $extension) {
+    foreach (array('pdo_mysql', 'mbstring', 'openssl', 'zlib', 'json', 'session', 'iconv') as $extension) {
         $report(extension_loaded($extension) ? 'ok' : 'fail', 'PHP extension ' . $extension);
     }
     $report(file_exists('vendor/autoload.php') ? 'ok' : 'fail', 'Dependencies in vendor/');
@@ -200,6 +201,10 @@ function cli_doctor($args) {
         if (isset($prefs['settings']['enable_ldap_authentication']) && $prefs['settings']['enable_ldap_authentication'] === '1') {
             $report(extension_loaded('ldap') ? 'ok' : 'fail', 'LDAP authentication is enabled; PHP extension ldap');
         }
+        $required = isset($prefs['settings']['two_factor_required']) ? trim((string) $prefs['settings']['two_factor_required']) : '0';
+        if (!in_array(strtolower($required), array('0', 'admins', 'everyone'), true)) {
+            $report('warn', 'two_factor_required is "' . $required . '", which Kirjuri reads as "0" (not required). Use "0", "admins" or "everyone".');
+        }
         $mysqldump = isset($prefs['settings']['mysqldump_location']) ? $prefs['settings']['mysqldump_location'] : '';
         $report(is_executable($mysqldump) ? 'ok' : 'warn', 'mysqldump at "' . $mysqldump . '" for database backups from the settings page');
     }
@@ -216,10 +221,20 @@ function cli_doctor($args) {
             $report(empty($pending) ? 'ok' : 'warn', empty($pending) ? 'Database schema is up to date' : 'Pending migrations: ' . implode(', ', array_keys($pending)) . '. Run "php bin/kirjuri migrate".');
             $admins = (int) $db->query("SELECT COUNT(*) FROM users WHERE access = 0 AND (flags IS NULL OR flags NOT LIKE '%I%')")->fetchColumn();
             $report($admins > 0 ? 'ok' : 'fail', $admins . ' active admin account(s)');
+            if (empty($pending)) {
+                $two_factor = count(kirjuri_two_factor_status($db));
+                if ($two_factor > 0) {
+                    $report(kirjuri_two_factor_key() !== null ? 'ok' : 'fail', 'Two-factor sign-in key ' . TWO_FACTOR_KEY_FILE . ' for the ' . $two_factor
+                        . ' account(s) that use two-factor sign-in. Without it their authenticator apps stop working; back it up with the database.');
+                }
+            }
         } catch (PDOException $e) {
             $report('fail', 'Can not connect to the database: ' . $e->getMessage());
         }
     }
+
+    // Codes from authenticator apps depend on the clock: compare this with the time on a phone.
+    $report('ok', 'Server time ' . gmdate('Y-m-d H:i:s') . ' UTC. Two-factor codes are refused when it is more than 30 seconds off.');
 
     cli_out();
     cli_out($failures === 0 ? 'No problems found.' : $failures . ' problem(s) found.');
@@ -247,6 +262,12 @@ function cli_migrate($args) {
 }
 
 
+/** Whether migration 009 has made the two-factor tables. Unlike a page load, bin/kirjuri does not migrate by itself. */
+function cli_two_factor_ready($db) {
+    return kirjuri_table_exists($db, 'two_factor') && kirjuri_table_exists($db, 'two_factor_recovery_codes');
+}
+
+
 function cli_find_user($db, $username) {
     $query = $db->prepare('SELECT * FROM users WHERE username = :username');
     $query->execute(array(':username' => filter_username($username)));
@@ -261,10 +282,12 @@ function cli_find_user($db, $username) {
 function cli_user_list($args) {
     $db = cli_database();
     $levels = array('0' => 'admin', '1' => 'user', '2' => 'view only', '3' => 'add only');
-    cli_out(sprintf('%-4s %-20s %-28s %-10s %s', 'ID', 'Username', 'Name', 'Access', 'Flags'));
+    $two_factor = cli_two_factor_ready($db) ? kirjuri_two_factor_status($db) : array();
+    cli_out(sprintf('%-4s %-20s %-28s %-10s %-8s %s', 'ID', 'Username', 'Name', 'Access', '2FA', 'Flags'));
     foreach ($db->query('SELECT id, username, name, access, flags FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC) as $user) {
         $level = isset($levels[$user['access']]) ? $levels[$user['access']] : $user['access'];
-        cli_out(sprintf('%-4s %-20s %-28s %-10s %s', $user['id'], $user['username'], $user['name'], $level, $user['flags']));
+        $status = isset($two_factor[$user['id']]) ? ($two_factor[$user['id']]['wrong_codes'] >= TWO_FACTOR_MAX_WRONG ? 'blocked' : 'on') : 'off';
+        cli_out(sprintf('%-4s %-20s %-28s %-10s %-8s %s', $user['id'], $user['username'], $user['name'], $level, $status, $user['flags']));
     }
     return 0;
 }
@@ -339,9 +362,43 @@ function cli_user_unlock($args) {
         cli_err('Usage: php bin/kirjuri user:unlock <username> | --ip <address>');
         return 1;
     }
-    login_throttle_clear(filter_username($positional[0]));
-    event_log_write('0', 'Auth', 'Login throttle cleared from the command line for ' . filter_username($positional[0]));
-    cli_out('Cleared failed logins for "' . filter_username($positional[0]) . '".');
+    $username = filter_username($positional[0]);
+    login_throttle_clear($username);
+    event_log_write('0', 'Auth', 'Login throttle cleared from the command line for ' . $username);
+    cli_out('Cleared failed logins for "' . $username . '".');
+    // Wrong two-factor codes are counted in the database, for accounts that exist.
+    $db = cli_database();
+    $query = $db->prepare('SELECT id, username FROM users WHERE username = :username');
+    $query->execute(array(':username' => $username));
+    $user = $query->fetch(PDO::FETCH_ASSOC);
+    if ($user !== false && cli_two_factor_ready($db) && kirjuri_two_factor_unlock($db, $user['id'])) {
+        kirjuri_two_factor_log('Wrong two-factor codes cleared from the command line for ' . $user['username'] . '.', 'unlocked', $user['username'], array('by' => 'bin/kirjuri'));
+        cli_out('Cleared wrong two-factor codes for "' . $user['username'] . '"; codes from the authenticator app work again.');
+    }
+    return 0;
+}
+
+
+function cli_user_two_factor_reset($args) {
+    $positional = cli_positional($args);
+    if (count($positional) !== 1) {
+        cli_err('Usage: php bin/kirjuri user:two-factor-reset <username>');
+        return 1;
+    }
+    $db = cli_database();
+    $user = cli_find_user($db, $positional[0]);
+    if (!cli_two_factor_ready($db)) {
+        cli_err('The database has no two-factor sign-in yet. Run "php bin/kirjuri migrate" first.');
+        return 1;
+    }
+    if (!kirjuri_two_factor_remove($db, $user['id'])) {
+        cli_out('"' . $user['username'] . '" does not use two-factor sign-in. Nothing to reset.');
+        return 0;
+    }
+    kirjuri_end_user_sessions($user['username']); // As on the web: whoever has the lost phone may have a session.
+    kirjuri_two_factor_log('Two-factor sign-in reset from the command line for ' . $user['username'] . '. Their sessions ended.', 'reset', $user['username'], array('by' => 'bin/kirjuri'));
+    cli_out('Two-factor sign-in is off for "' . $user['username'] . '": the password alone signs in, and their sessions have ended.');
+    cli_out('If two-factor sign-in is required for them (the two_factor_required setting), they set it up again at their next sign-in.');
     return 0;
 }
 
