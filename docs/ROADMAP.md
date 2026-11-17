@@ -76,7 +76,9 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
 
 - **Bug: a case can be closed before its devices are done.** Found in the UI review of 17 November 2026
   (first item there). Fix it next, before the rest of that review: it lets a case be closed early, it is not
-  polish.
+  polish. The second pass of that review found two more that are best fixed with it, in the same pull request:
+  dialogs that do not work from the keyboard (item 11) and a new request's devices tab that points to a button
+  it does not have (item 12).
 
 - **TinyMCE's licence.** TinyMCE 7 no longer gets public security fixes, and TinyMCE 8 adds Tiny's
   own terms beside the GPL. Decide before go-live whether to move to 8 or to another editor; see
@@ -275,7 +277,8 @@ Look and feel:
   can replace.
 - Empty states with a next step ("No requests yet. Add a request") on the front page, messages and
   tools.
-- Keyboard: a shortcut to the search box, and focus moved into dialogs when they open.
+- Keyboard: a shortcut to the search box. (Focus moved into dialogs is now item 11 of the UI review of
+  17 November 2026, as a bug.)
 
 Code health:
 
@@ -293,9 +296,11 @@ Code health:
 
 A review of the rendered pages on a throwaway installation with three cases and three devices: 13 pages at
 390, 768 and 1440 pixels in light mode, the main ones in dark mode too, with a script measuring sideways
-scroll, touch target sizes and controls without a name. Keyboard use and the loading and error states were
-not checked. Nothing was changed; these wait for the finalizing stage, except the first, which is a bug
-(see Open items). Mark each done here when it is merged. Most of them need a browser test.
+scroll, touch target sizes and controls without a name. A second pass the same day (items 11 to 17, below)
+covered keyboard use, the empty and error states and the pages the first left out; loading states and the
+largest text sizes have not been checked. Nothing was changed; these wait for the finalizing stage, except
+items 1, 11 and 12, which are bugs to fix next (see Open items). Mark each done here when it is merged. Most
+of them need a browser test.
 
 Must fix:
 
@@ -354,6 +359,51 @@ Nice to have:
 
 Already good: dark mode on every page checked, the case page's facts and the add request form at both
 widths, and the case log since #36.
+
+Second pass, the same day: keyboard use, empty and error states, and the pages the first pass left out
+(sign-in with a wrong password, the add request form sent empty, the add device dialog, a device's page, a
+year with no requests, a request with no devices, an unknown case and device number, settings, tools,
+messages and the case report), at 390 and 1440 pixels. Must fix:
+
+11. **Dialogs do not work from the keyboard.** All five (request details, add device, add associated media,
+    add tool, add user): when one opens, focus stays on the button behind it, Tab moves around the page under
+    the dialog, and Escape does not close it. Bootstrap 3 moves focus into a dialog, keeps it there and closes
+    it on Escape only when the `.modal` has `tabindex="-1"`, and none of them has it. Fix: add it to each,
+    with a source test that every `.modal` in `views/` has it and a browser test that opens the add device
+    dialog from the keyboard and closes it with Escape.
+12. **A new request's devices tab points to a button it does not have.** Devices can be added only once the
+    request is open with an examiner (`edit_request.twig`, the condition above the add device button), but
+    the empty state always says `no_devices_add_device`, "No devices. Add a device from the button." Fix:
+    until adding is allowed, a new string such as "Assign an examiner to start this request, then add its
+    devices", linking to the assign card on the request tab, in the five language files.
+
+Should fix:
+
+13. **A wrong password also empties the username**, and focus goes to the username field. Fix: fill the
+    username back in and focus the password field.
+14. **An unknown case or device number goes back to the front page without a word** (`edit_request.php`,
+    `device_memo.php`, the case report and the case log). The redirect is intended and tested
+    (`testMissingCasePagesGoToTheFrontPage`). Fix: keep it, and add a message such as "Request 99999 was not
+    found." with `message('info', ...)`, checked in that test.
+15. **No skip link**: a keyboard user tabs through 11 sidebar links before reaching each page's content.
+    Fix: a "Skip to content" link first in `base.twig`, shown only when focused, pointing at `.main`.
+16. **A pre-filled template value counts as filled in.** On the add request form the criminal case number's
+    template ("9999/R/") is flagged as missing, but the telephone's ("555-") passes. Fix: the `data-validate`
+    check in `base.twig` treats every field still holding its template as empty, as it does for the case
+    number.
+
+Outside the interface:
+
+17. **`bin/kirjuri install` changes the database name without saying so.** `lib/install.php` drops every
+    character but letters, digits and hyphens, so `KIRJURI_DB_NAME=kirjuri_ui` installs into `kirjuriui`,
+    and a script that later drops `kirjuri_ui` leaves the real database behind. Fix: refuse a name it
+    would change, saying which characters are allowed (underscores are valid in MariaDB and MySQL names, so
+    allowing them is better still).
+
+Already good in the second pass: visible focus on every link, field and button tabbed to; the add request
+form marks each missing field under its label and moves focus to the first; the sign-in error is clear; the
+phone save bar's icon buttons keep their names for screen readers; the device menus are labelled; removing a
+device asks first; and the device page, settings, messages and tools do not scroll sideways at 390 pixels.
 
 ## Installing without Docker
 
