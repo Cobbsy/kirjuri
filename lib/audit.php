@@ -559,3 +559,56 @@ function kirjuri_audit_check(iterable $rows, ?array $head, array $legacy, string
         'checkpoint' => ($newest === null) ? null : kirjuri_audit_checkpoint_text((int) $newest['entry'], (string) $newest['created'], (string) $newest['fingerprint']),
     );
 }
+
+
+/**
+ * What can be said of one entry file, for the audit viewer and audit:show: "sealed" (in the index, unchanged, in its
+ * place and sealed); "unreadable" (all of that, but sealed with a key that is gone); "mismatch" (it differs from its
+ * record); "not_indexed" (a sealed entry without a row); "old_unchanged" or "old_unrecorded" (an entry from before
+ * the chain, recorded when it started or not). "entry" is its number in the chain. Null while there is no chain, or
+ * when there is no such file.
+ */
+function kirjuri_audit_entry_status(PDO $db, string $file, string $dir = KIRJURI_AUDIT_DIR, ?string $key_string = null): ?array {
+    $head = kirjuri_audit_head($db);
+    $path = kirjuri_audit_entry_path($file, $dir);
+    $contents = ($head !== null && $path !== null && is_file($path)) ? @file_get_contents($path) : false;
+    if ($contents === false) {
+        return null;
+    }
+    $opened = kirjuri_audit_open_entry($contents, $file, $key_string);
+    $query = $db->prepare('SELECT entry, fingerprint, previous FROM audit_chain WHERE file = :file');
+    $query->execute(array(':file' => $file));
+    $row = $query->fetch(PDO::FETCH_ASSOC);
+    if ($row !== false) {
+        $number = (int) $row['entry'];
+        $before = $db->prepare('SELECT fingerprint FROM audit_chain WHERE entry = :entry');
+        $before->execute(array(':entry' => $number - 1));
+        $linked = ($number === 1) || ($before->fetchColumn() === $row['previous']);
+        if (kirjuri_audit_fingerprint($contents) !== $row['fingerprint'] || $opened['format'] !== 'chain' || $opened['number'] !== $number
+                || $opened['previous'] !== $row['previous'] || !$linked) {
+            return array('status' => 'mismatch', 'entry' => $number);
+        }
+        if ($opened['payload'] === null) {
+            $old_key = ($key_string === null) || ($head['key_replaced_at'] !== null && $number < $head['key_replaced_at']);
+            return array('status' => $old_key ? 'unreadable' : 'mismatch', 'entry' => $number);
+        }
+        return array('status' => 'sealed', 'entry' => $number);
+    }
+    if ($opened['format'] === 'chain') {
+        return array('status' => 'not_indexed', 'entry' => $opened['number']);
+    }
+    $query = $db->prepare('SELECT fingerprint FROM audit_legacy WHERE file = :file');
+    $query->execute(array(':file' => $file));
+    $fingerprint = $query->fetchColumn();
+    if ($fingerprint === false) {
+        return array('status' => 'old_unrecorded', 'entry' => null);
+    }
+    return array('status' => ($fingerprint === kirjuri_audit_fingerprint($contents)) ? 'old_unchanged' : 'mismatch', 'entry' => null);
+}
+
+
+/** An entry's status (kirjuri_audit_entry_status()) in words, from the language strings $lang. */
+function kirjuri_audit_status_text(array $status, array $lang): string {
+    $text = (string) ($lang['audit_entry_' . $status['status']] ?? $status['status']);
+    return ($status['entry'] !== null && strpos($text, '%s') !== false) ? sprintf($text, $status['entry']) : $text;
+}

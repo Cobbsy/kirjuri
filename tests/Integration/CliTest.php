@@ -157,6 +157,7 @@ final class CliTest extends IntegrationTestCase
         // The newest entry by its number: the first change writes two entries within a second (the chain's start).
         [$status, $out, $err] = $this->server->cli(array('audit:show', basename($this->newestEntryFile())));
         $this->assertSame(0, $status, $err);
+        $this->assertMatchesRegularExpression('/^Status: Audit log entry \d+: sealed, in sequence and unchanged\.\n/', $out);
         $this->assertStringContainsString('"request_contents"', $out);
         $this->assertStringContainsString($name, $out);
         $this->assertSame(1, $this->server->cli(array('audit:show', '../../conf/mysql_credentials.php'))[0]);

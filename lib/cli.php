@@ -553,6 +553,11 @@ function cli_audit_show($args) {
     $contents = (string) file_get_contents($file);
     $key_string = kirjuri_audit_key_string();
     $opened = kirjuri_audit_open_entry($contents, basename($positional[0]), $key_string);
+    $db = (kirjuri_mysql_config() !== null) ? cli_database() : null;
+    $status = ($db !== null && kirjuri_table_exists($db, 'audit_head')) ? kirjuri_audit_entry_status($db, basename($positional[0]), KIRJURI_AUDIT_DIR, $key_string) : null;
+    if ($status !== null) {
+        cli_out('Status: ' . kirjuri_audit_status_text($status, (array) json_decode((string) file_get_contents('conf/lang_EN.JSON'), true)));
+    }
     if ($opened['payload'] === null) {
         cli_err(($opened['format'] !== 'plain' && $key_string === null)
             ? 'The audit file is encrypted and ' . KIRJURI_AUDIT_KEY_FILE . ' is missing.'

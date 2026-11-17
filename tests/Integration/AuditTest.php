@@ -8,6 +8,10 @@ use PDO;
 final class AuditTest extends IntegrationTestCase
 {
     private const AUDIT_FAILED = 'Not saved: the change could not be recorded in the audit log. Tell an administrator.';
+    private const SEALED = 'Audit log entry %s: sealed, in sequence and unchanged.';
+    private const MISMATCH = 'This entry does not match the audit log\'s record of it: it was changed, replaced or sealed with another key.';
+    private const OLD_UNRECORDED = 'An old entry that was not there when the audit log was chained. It may have been added since.';
+    private const NOT_INDEXED = 'This entry is not in the audit log\'s record. Its change may have failed, or the record was cut.';
 
     private function key(): ?string
     {
@@ -123,6 +127,82 @@ final class AuditTest extends IntegrationTestCase
 
         $admin->post('submit.php?type=case_update&uid=' . $caseId, array('token' => $token, 'ct' => $ct) + $this->requestDetails('Changed name'));
         $this->assertSame('Changed name', $this->row($caseId)['case_name'], 'Saved once the audit log can be written again.');
+    }
+
+    /** $text as a template prints it. */
+    private function assertPageSays(string $text, string $body): void
+    {
+        $this->assertStringContainsString(htmlspecialchars($text, ENT_QUOTES), $body);
+    }
+
+    public function testViewerSaysAnEntryIsSealed(): void
+    {
+        $admin = $this->admin();
+        $this->createCase($admin, $this->uniqueName('Viewed '));
+        $row = $this->newestRows(1)[0];
+
+        $page = $admin->get('auditor.php?view=' . $row['file']);
+
+        $this->assertSame(200, $page->status);
+        $this->assertPageSays(sprintf(self::SEALED, $row['entry']), $page->body);
+        $this->assertStringContainsString('alert-success', $page->body);
+    }
+
+    public function testViewerSaysAChangedEntryDoesNotMatch(): void
+    {
+        $admin = $this->admin();
+        $this->createCase($admin, $this->uniqueName('Changed and viewed '));
+        $row = $this->newestRows(1)[0];
+        $path = kirjuri_audit_entry_path($row['file'], $this->server->dir . '/logs/audit');
+        $contents = file_get_contents($path);
+        $changed = $contents;
+        $changed[strlen($changed) - 3] = ($changed[strlen($changed) - 3] === 'A') ? 'B' : 'A';
+        try {
+            file_put_contents($path, $changed);
+            $page = $admin->get('auditor.php?view=' . $row['file']);
+            $this->assertSame(200, $page->status);
+            $this->assertPageSays(self::MISMATCH, $page->body);
+            $this->assertStringContainsString('alert-danger', $page->body);
+        } finally {
+            file_put_contents($path, $contents);
+        }
+    }
+
+    public function testViewerSaysAnOldEntryWasNotRecorded(): void
+    {
+        $admin = $this->admin();
+        $this->createCase($admin, $this->uniqueName('Before the old entry ')); // So that there is a chain.
+        $path = $this->server->dir . '/logs/audit/170000/1700000000_OLD2.log';
+        @mkdir(dirname($path));
+        try {
+            file_put_contents($path, encrypt(json_encode(array('request_contents' => array('case_name' => 'An old case'))), $this->key()));
+            $page = $admin->get('auditor.php?view=1700000000_OLD2.log');
+            $this->assertSame(200, $page->status);
+            $this->assertPageSays(self::OLD_UNRECORDED, $page->body);
+            $this->assertStringContainsString('An old case', $page->body);
+        } finally {
+            unlink($path);
+            rmdir(dirname($path));
+        }
+    }
+
+    public function testViewerSaysAnEntryIsNotInTheIndex(): void
+    {
+        $admin = $this->admin();
+        $this->createCase($admin, $this->uniqueName('Before the stray entry '));
+        $row = $this->newestRows(1)[0];
+        $file = '1700000001_STRAY.log';
+        $path = $this->server->dir . '/logs/audit/170000/' . $file;
+        @mkdir(dirname($path));
+        try {
+            file_put_contents($path, kirjuri_audit_seal_entry((int) $row['entry'] + 1, $row['fingerprint'], $file, array('entry' => (int) $row['entry'] + 1), $this->key()));
+            $page = $admin->get('auditor.php?view=' . $file);
+            $this->assertSame(200, $page->status);
+            $this->assertPageSays(self::NOT_INDEXED, $page->body);
+        } finally {
+            unlink($path);
+            rmdir(dirname($path));
+        }
     }
 
     public function testRefusedMemoWritesNoEntry(): void

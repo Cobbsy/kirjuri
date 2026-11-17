@@ -67,6 +67,13 @@ final class SourceTest extends TestCase
         $this->assertStringNotContainsString('audit_log_write(', file_get_contents($file), 'Use kirjuri_audited() or kirjuri_audit().');
     }
 
+    /** The audit key file is read as text (kirjuri_audit_key_string()), never run: a changed key file runs no code. */
+    #[DataProvider('phpFiles')]
+    public function testAuditKeyIsNeverRunAsPhp(string $file): void
+    {
+        $this->assertDoesNotMatchRegularExpression('/(include|require)(_once)?\s*\(?\s*[\'"]conf\/audit_credentials\.php/', file_get_contents($file));
+    }
+
     /** SQL lives in lib/, so every query can be found, reviewed and tested in one place. */
     #[DataProvider('filesOutsideDataLayer')]
     public function testNoDatabaseAccessOutsideLib(string $file): void

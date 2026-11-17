@@ -24,6 +24,15 @@ test('on a wide screen the sidebar stays in place while the page scrolls', async
   expect((await sidebar.boundingBox()).y).toBe(0);
 });
 
+test('the audit viewer, opened from the case log, says the entry is sealed and fits a phone', async ({ admin: page }) => {
+  const caseId = await createCase(page, 'Audit viewer test ' + Date.now());
+  await page.goto('timeline.php?case=' + caseId);
+  // The case log's own layout covers its links (a separate problem), so the link's address is opened directly.
+  await page.goto(await page.locator('a[href*="auditor.php?view="]').first().getAttribute('href'));
+  await expect(page.locator('.alert-success')).toContainText('sealed, in sequence and unchanged');
+  await expectNoSidewaysScroll(page);
+});
+
 test('the case tabs switch in the sidebar, and on phones the menu folds away after a choice', async ({ admin: page }) => {
   const caseId = await createCase(page, 'Tabs test ' + Date.now());
   await startCase(page, caseId);
