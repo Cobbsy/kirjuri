@@ -52,7 +52,7 @@ final class AuditCheckTest extends TestCase
     }
 
     /** A sound chain of $count entries after two old entries; $name and $key may vary per entry. */
-    private function build(int $count, ?callable $name = null, ?callable $key = null): void
+    private function build(int $count, ?callable $name = null, ?callable $key = null, ?callable $extra = null): void
     {
         $this->legacy = array();
         foreach (array('1790200001_OLDB.log' => 'old entry B', '1790200000_OLDA.log' => 'old entry A') as $file => $contents) {
@@ -67,8 +67,9 @@ final class AuditCheckTest extends TestCase
         $this->rows = array();
         for ($number = 1; $number <= $count; $number++) {
             $file = $name ? $name($number) : self::entryName($number);
-            $extra = ($number === 1) ? array('old_entries' => array('count' => 2, 'list_sha256' => $previous)) : array();
-            $fingerprint = $this->put($file, $this->seal($number, $previous, $file, $key ? $key($number) : self::KEY, $extra));
+            $more = ($number === 1) ? array('old_entries' => array('count' => 2, 'list_sha256' => $previous)) : array();
+            $more += $extra ? $extra($number) : array();
+            $fingerprint = $this->put($file, $this->seal($number, $previous, $file, $key ? $key($number) : self::KEY, $more));
             $this->rows[] = array('entry' => (string) $number, 'file' => $file, 'fingerprint' => $fingerprint, 'previous' => $previous,
                 'case_id' => null, 'username' => 'tester', 'created' => sprintf('2026-11-17 10:%02d:00', $number));
             $previous = $fingerprint;
@@ -198,13 +199,75 @@ final class AuditCheckTest extends TestCase
 
     public function testEntriesSealedBeforeALostKeyAreOneFinding(): void
     {
-        $this->build(5, null, fn ($number) => ($number <= 3) ? self::KEY : self::OTHER_KEY);
+        $this->build(5, null, fn ($number) => ($number <= 3) ? self::KEY : self::OTHER_KEY,
+            fn ($number) => ($number === 4) ? array('key_replaced' => true) : array());
         $this->head['key_replaced_at'] = 4;
 
         $result = $this->check(null, false, self::OTHER_KEY);
 
         $this->assertSame(array('unreadable_old_key'), $this->kinds($result));
         $this->assertSame('Entries 1 to 3 were sealed before the key was replaced at entry 4 and can not be read with it.', $result['findings'][0]['text']);
+    }
+
+    public function testKeyReplacementIsReadFromTheChainNotTheIndex(): void
+    {
+        // Someone who can change the database could set key_replaced_at to excuse an entry they changed.
+        $this->build(5, null, fn ($number) => ($number === 3) ? self::OTHER_KEY : self::KEY);
+        $this->head['key_replaced_at'] = 999;
+
+        $this->assertSame(array('seal @3', 'key_record'), $this->kinds($this->check()));
+    }
+
+    public function testAKeyChangeWithoutItsSealedRecordIsNotAReplacement(): void
+    {
+        // Only Kirjuri, holding the new key, seals the entry that records a replacement.
+        $this->build(5, null, fn ($number) => ($number <= 3) ? self::KEY : self::OTHER_KEY);
+        $this->head['key_replaced_at'] = 4;
+
+        $this->assertSame(array('seal @1', 'seal @2', 'seal @3', 'key_record'), $this->kinds($this->check(null, false, self::OTHER_KEY)));
+    }
+
+    public function testPartialCheckFoldsEntriesBeforeARecordedKeyReplacement(): void
+    {
+        $this->build(5, null, fn ($number) => ($number <= 3) ? self::KEY : self::OTHER_KEY,
+            fn ($number) => ($number === 4) ? array('key_replaced' => true) : array());
+        $this->head['key_replaced_at'] = 4;
+
+        $this->assertSame(array('unreadable_old_key'), $this->kinds($this->check(null, true, self::OTHER_KEY)));
+    }
+
+    public function testNoChainYetIsNotAProblem(): void
+    {
+        // Upgraded, migrated on a page load, and nothing changed since: the old entries wait for the chain to start.
+        $this->put('1790200000_OLDA.log', 'old entry A');
+        $this->put('1790200001_OLDB.log', 'old entry B');
+
+        $result = kirjuri_audit_check(array(), null, array(), $this->dir, self::KEY);
+
+        $this->assertSame(array(), $result['findings']);
+        $this->assertSame(2, $result['waiting']);
+        $this->assertNull($result['checkpoint']);
+    }
+
+    public function testChainEntriesWithoutAnIndexAreFound(): void
+    {
+        // The index was emptied (or the database restored from before the log): the entries are still there.
+        $this->build(3);
+
+        $result = kirjuri_audit_check(array(), null, array(), $this->dir, self::KEY);
+
+        $this->assertSame(array('earlier_chain'), $this->kinds($result));
+        $this->assertStringContainsString('3 entries', $result['findings'][0]['text']);
+    }
+
+    public function testARestartedChainIsAlwaysReported(): void
+    {
+        $this->build(3, null, null, fn ($number) => ($number === 1) ? array('earlier_chain' => 4) : array());
+
+        $result = $this->check();
+
+        $this->assertSame(array('restarted'), $this->kinds($result));
+        $this->assertStringContainsString('4 entries of an earlier chain', $result['findings'][0]['text']);
     }
 
     public function testOldFilesAreChecked(): void

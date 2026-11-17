@@ -124,29 +124,24 @@ function kirjuri_audit_short_fingerprint(string $fingerprint): string {
 
 
 /**
- * A checkpoint as someone types or pastes it: "48213:9f3c1a2b77de0c415e9a", or a checkpoint line of audit:verify or a
- * report. The entry is the first number; the fingerprint is what follows the last comma (or else the first colon),
- * without spaces, at least 16 hex characters. Null when it can not be read.
+ * A checkpoint as someone types or pastes it: "48213:9f3c1a2b77de0c415e9a", or a line of audit:verify, a backup or a
+ * printed case report in any language. The entry is the first number; the fingerprint is the last run of hex digits
+ * after it, in groups of four or not, at least 16 of them. Null when it can not be read.
  */
 function kirjuri_audit_parse_checkpoint(string $text): ?array {
     $text = strtolower(trim($text));
-    if (!preg_match('/\d+/', $text, $number)) {
+    if (!preg_match('/\d+/', $text, $number, PREG_OFFSET_CAPTURE)) {
         return null;
     }
-    $comma = strrpos($text, ',');
-    $colon = strpos($text, ':', (int) strpos($text, $number[0]));
-    if ($comma !== false) {
-        $fingerprint = substr($text, $comma + 1);
-    } elseif ($colon !== false) {
-        $fingerprint = substr($text, $colon + 1);
-    } else {
+    $after = substr($text, $number[0][1] + strlen($number[0][0]));
+    if (!preg_match_all('/(?<![0-9a-z])[0-9a-f]{4}(?:\s*[0-9a-f]{4})+(?![0-9a-z])/', $after, $runs)) {
         return null;
     }
-    $fingerprint = (string) preg_replace('/\s+/', '', $fingerprint);
+    $fingerprint = (string) preg_replace('/\s+/', '', end($runs[0]));
     if (!preg_match('/^[0-9a-f]{16,64}$/', $fingerprint)) {
         return null;
     }
-    return array('entry' => (int) $number[0], 'prefix' => $fingerprint);
+    return array('entry' => (int) $number[0][0], 'prefix' => $fingerprint);
 }
 
 
@@ -233,7 +228,9 @@ function kirjuri_audit_write(PDO $db, ?int $case_id, string $level, string $desc
             $number = $head['entry'] + 1;
             $text = ($made_key ? 'The audit log key was missing, and a new one was made.' : 'The audit log key was replaced.')
                 . ' Entries 1 to ' . $head['entry'] . ' can no longer be read with it.';
-            $entry = kirjuri_audit_put($db, $number, $head['fingerprint'], null, 'Audit', $text, array(), $user, $dir, $key_string, array(), $written);
+            // The marker is sealed, so only a holder of the key can record a replacement that excuses older seals.
+            $entry = kirjuri_audit_put($db, $number, $head['fingerprint'], null, 'Audit', $text, array(), $user, $dir, $key_string,
+                array('key_replaced' => true), $written);
             $head = array('entry' => $number, 'fingerprint' => $entry['fingerprint'], 'key_replaced_at' => $number, 'key_check' => $check);
             $result['key_replaced'] = $number;
         }
@@ -327,11 +324,15 @@ function kirjuri_audit_start_locked(PDO $db, array &$head, array $user, string $
     $db->exec('DELETE FROM audit_legacy');
     $list = '';
     $rows = array();
+    $earlier_chain = 0; // Sealed entries already in the folder: the index was reset, or restored from before them.
     $files = kirjuri_audit_entry_files($dir);
     foreach ($files as $file => $path) {
         $contents = @file_get_contents($path);
         if ($contents === false) {
             throw new KirjuriAuditException('Can not read the old audit log entry ' . $path . '.');
+        }
+        if (strncmp($contents, KIRJURI_AUDIT_MAGIC . ' ', strlen(KIRJURI_AUDIT_MAGIC) + 1) === 0) {
+            $earlier_chain++;
         }
         $fingerprint = kirjuri_audit_fingerprint($contents);
         $list .= $file . ' ' . $fingerprint . "\n";
@@ -344,9 +345,13 @@ function kirjuri_audit_start_locked(PDO $db, array &$head, array $user, string $
     kirjuri_audit_insert_legacy($db, $rows);
     $count = count($files);
     $list_sha256 = hash('sha256', $list);
-    $text = 'Audit log chain started. ' . $count . ' earlier ' . ($count === 1 ? 'entry' : 'entries') . ' fingerprinted.';
-    $entry = kirjuri_audit_put($db, 1, $list_sha256, null, 'Audit', $text, array(), $user, $dir, $key_string,
-        array('old_entries' => array('count' => $count, 'list_sha256' => $list_sha256)), $written);
+    $text = 'Audit log chain started. ' . $count . ' earlier ' . ($count === 1 ? 'entry' : 'entries') . ' fingerprinted'
+        . ($earlier_chain > 0 ? ', ' . $earlier_chain . ' of them from an earlier chain.' : '.');
+    $extra = array('old_entries' => array('count' => $count, 'list_sha256' => $list_sha256));
+    if ($earlier_chain > 0) {
+        $extra['earlier_chain'] = $earlier_chain; // Sealed: audit:verify reports the restart from now on.
+    }
+    $entry = kirjuri_audit_put($db, 1, $list_sha256, null, 'Audit', $text, array(), $user, $dir, $key_string, $extra, $written);
     $head = array('entry' => 1, 'fingerprint' => $entry['fingerprint'], 'key_replaced_at' => null, 'key_check' => kirjuri_audit_key_check($key_string));
     return $count;
 }
@@ -446,9 +451,9 @@ function kirjuri_audit_check(iterable $rows, ?array $head, array $legacy, string
     $numbers = array(); // Entry number => file name, of every row.
     $newest = null;
     $first_payload = null;
-    $unreadable = array();
+    $seal_failures = array(); // Entry number => file name, of the entries whose seal does not open.
+    $replaced = null; // The newest entry, sealed with the key, that records a key replacement.
     $since_fingerprint = null;
-    $key_replaced_at = $head['key_replaced_at'] ?? null;
     $expected = null; // The number and fingerprint the next row has to follow.
     foreach ($rows as $row) {
         $number = (int) $row['entry'];
@@ -477,25 +482,56 @@ function kirjuri_audit_check(iterable $rows, ?array $head, array $legacy, string
             } elseif ($expected !== null && $expected['fingerprint'] !== null && $row['previous'] !== $expected['fingerprint']) {
                 $find('link', $number, $file, 'It does not follow the entry before it: an entry before it was removed, inserted or replaced.');
             } elseif ($key_string !== null && $opened['payload'] === null) {
-                if ($key_replaced_at !== null && $number < $key_replaced_at) {
-                    $unreadable[] = $number;
-                } else {
-                    $find('seal', $number, $file, 'Its seal does not open with the key: the entry was changed, or sealed with another key.');
+                $seal_failures[$number] = $file;
+            } elseif ($opened['payload'] !== null) {
+                if (!empty($opened['payload']['key_replaced'])) {
+                    $replaced = $number;
                 }
-            } elseif ($number === 1) {
-                $first_payload = $opened['payload'];
+                if ($number === 1) {
+                    $first_payload = $opened['payload'];
+                }
             }
         }
         $expected = array('entry' => $number + 1, 'fingerprint' => (string) $row['fingerprint']);
         $newest = $row;
     }
+    // Entries sealed before a key replacement that the chain itself records can not be opened, and say so once.
+    $unreadable = array();
+    foreach ($seal_failures as $number => $file) {
+        if ($replaced !== null && $number < $replaced) {
+            $unreadable[] = $number;
+        } else {
+            $find('seal', $number, $file, 'Its seal does not open with the key: the entry was changed, or sealed with another key.');
+        }
+    }
     if (!empty($unreadable)) {
         $find('unreadable_old_key', null, null, 'Entries ' . min($unreadable) . ' to ' . max($unreadable) . ' were sealed before the key was replaced at entry '
-            . $key_replaced_at . ' and can not be read with it.');
+            . $replaced . ' and can not be read with it.');
+    }
+    $claimed = $head['key_replaced_at'] ?? null;
+    if (!$partial && $key_string !== null && $claimed !== $replaced) {
+        $find('key_record', null, null, ($replaced === null)
+            ? 'The index says the key was replaced at entry ' . $claimed . ', but no entry of the chain records a replacement: the index has been changed.'
+            : 'The index says the key was replaced at entry ' . ($claimed ?? 'none') . ', but the chain records it at entry ' . $replaced . ': the index has been changed.');
     }
 
     $newest_number = ($newest === null) ? 0 : (int) $newest['entry'];
-    if (!$partial) {
+    $waiting = 0; // Old entries that the chain, once it starts, will fingerprint.
+    if (!$partial && $head === null && $newest === null && empty($legacy)) {
+        // No chain yet: old entries are waiting for it, but sealed entries mean the index was reset.
+        $sealed = 0;
+        foreach (kirjuri_audit_entry_files($dir) as $file => $path) {
+            if (strncmp((string) @file_get_contents($path), KIRJURI_AUDIT_MAGIC . ' ', strlen(KIRJURI_AUDIT_MAGIC) + 1) === 0) {
+                $sealed++;
+            } else {
+                $waiting++;
+            }
+        }
+        if ($sealed > 0) {
+            $find('earlier_chain', null, null, $sealed . ' ' . ($sealed === 1 ? 'entry' : 'entries') . ' of an audit log chain are in the folder, but the index has '
+                . 'no chain: it was reset, or the database was restored from a backup older than the log.');
+        }
+    } elseif (!$partial) {
         // Entry files without a row.
         $past_end = array();
         $indexed = array_flip($numbers);
@@ -540,6 +576,10 @@ function kirjuri_audit_check(iterable $rows, ?array $head, array $legacy, string
         if ($first_payload !== null && ($first_payload['old_entries']['list_sha256'] ?? null) !== hash('sha256', $list)) {
             $find('old_list', null, null, 'The record of the entries from before the chain has changed since the chain started.');
         }
+        if (!empty($first_payload['earlier_chain'])) {
+            $find('restarted', null, null, 'The chain was started again, after ' . $first_payload['earlier_chain'] . ' entries of an earlier chain: the index '
+                . 'was reset, or the database was restored from a backup older than the log. Those entries are kept and checked as old entries.');
+        }
     }
 
     if ($newest_number !== ($head['entry'] ?? 0) || ($newest !== null && $newest['fingerprint'] !== ($head['fingerprint'] ?? null))) {
@@ -552,10 +592,14 @@ function kirjuri_audit_check(iterable $rows, ?array $head, array $legacy, string
             $find('since', null, null, 'Entry ' . $since['entry'] . ' no longer has the checkpoint\'s fingerprint: the log was changed at or before it.');
         }
     }
+    // In entry order, the findings about no one entry after them.
+    usort($findings, fn ($a, $b) => ($a['entry'] === null ? PHP_INT_MAX : $a['entry']) <=> ($b['entry'] === null ? PHP_INT_MAX : $b['entry']));
     return array(
         'findings' => $findings,
         'entries' => count($numbers),
         'old' => $partial ? 0 : count($legacy),
+        'waiting' => $waiting,
+        'newest' => $newest_number,
         'checkpoint' => ($newest === null) ? null : kirjuri_audit_checkpoint_text((int) $newest['entry'], (string) $newest['created'], (string) $newest['fingerprint']),
     );
 }
@@ -589,19 +633,17 @@ function kirjuri_audit_entry_status(PDO $db, string $file, string $dir = KIRJURI
             return array('status' => 'mismatch', 'entry' => $number);
         }
         if ($opened['payload'] === null) {
-            $old_key = ($key_string === null) || ($head['key_replaced_at'] !== null && $number < $head['key_replaced_at']);
+            $replaced = kirjuri_audit_verified_replacement($db, $head, $dir, $key_string);
+            $old_key = ($key_string === null) || ($replaced !== null && $number < $replaced);
             return array('status' => $old_key ? 'unreadable' : 'mismatch', 'entry' => $number);
         }
         return array('status' => 'sealed', 'entry' => $number);
-    }
-    if ($opened['format'] === 'chain') {
-        return array('status' => 'not_indexed', 'entry' => $opened['number']);
     }
     $query = $db->prepare('SELECT fingerprint FROM audit_legacy WHERE file = :file');
     $query->execute(array(':file' => $file));
     $fingerprint = $query->fetchColumn();
     if ($fingerprint === false) {
-        return array('status' => 'old_unrecorded', 'entry' => null);
+        return ($opened['format'] === 'chain') ? array('status' => 'not_indexed', 'entry' => $opened['number']) : array('status' => 'old_unrecorded', 'entry' => null);
     }
     return array('status' => ($fingerprint === kirjuri_audit_fingerprint($contents)) ? 'old_unchanged' : 'mismatch', 'entry' => null);
 }
@@ -612,3 +654,123 @@ function kirjuri_audit_status_text(array $status, array $lang): string {
     $text = (string) ($lang['audit_entry_' . $status['status']] ?? $status['status']);
     return ($status['entry'] !== null && strpos($text, '%s') !== false) ? sprintf($text, $status['entry']) : $text;
 }
+
+
+/**
+ * The entry that recorded the newest key replacement, if the index names one and that entry is in its place, sealed
+ * with the current key and marked as a replacement. Only then are older entries that do not open excused.
+ */
+function kirjuri_audit_verified_replacement(PDO $db, ?array $head, string $dir, ?string $key_string): ?int {
+    $at = $head['key_replaced_at'] ?? null;
+    if ($at === null || $key_string === null) {
+        return null;
+    }
+    $query = $db->prepare('SELECT file, fingerprint FROM audit_chain WHERE entry = :entry');
+    $query->execute(array(':entry' => $at));
+    $row = $query->fetch(PDO::FETCH_ASSOC);
+    $path = ($row === false) ? null : kirjuri_audit_entry_path((string) $row['file'], $dir);
+    $contents = ($path !== null && is_file($path)) ? @file_get_contents($path) : false;
+    if ($contents === false || kirjuri_audit_fingerprint($contents) !== $row['fingerprint']) {
+        return null;
+    }
+    $opened = kirjuri_audit_open_entry($contents, (string) $row['file'], $key_string);
+    return ($opened['number'] === $at && !empty($opened['payload']['key_replaced'])) ? $at : null;
+}
+
+
+/**
+ * bin/kirjuri doctor's checks of the audit log, as (ok, warn or fail, message): the key, a recorded key replacement,
+ * and the newest 50 entries. The head and the rows are read in one snapshot, so a change saved meanwhile is not taken
+ * for a problem.
+ */
+function kirjuri_audit_doctor(PDO $db, string $dir = KIRJURI_AUDIT_DIR, string $key_file = KIRJURI_AUDIT_KEY_FILE): array {
+    $report = array();
+    kirjuri_audit_begin_snapshot($db);
+    try {
+        $head = kirjuri_audit_head($db);
+        $key_string = kirjuri_audit_key_string($key_file);
+        if ($key_string !== null) {
+            $report[] = array('ok', 'Audit log key ' . $key_file);
+        } elseif ($head === null && !file_exists($key_file)) {
+            $report[] = array('warn', 'Audit log key ' . $key_file . ' (created on the first audited change)');
+        } else {
+            $report[] = array('fail', 'Audit log key ' . $key_file . ' is missing or can not be read, and the audit log has entries sealed with it. '
+                . 'Restore it from a backup: the next change would otherwise make a new key, and the entries before it could no longer be read.');
+        }
+        if ($head === null) {
+            $db->commit();
+            return $report;
+        }
+        $replaced = kirjuri_audit_verified_replacement($db, $head, $dir, $key_string);
+        if ($replaced !== null) {
+            $report[] = array('warn', 'The audit log key was replaced at entry ' . $replaced . '; entries before it can not be read with it.');
+        }
+        $result = kirjuri_audit_check(kirjuri_audit_rows($db, 50), $head, array(), $dir, $key_string, null, true);
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
+    }
+    // Entries sealed before a recorded replacement are the warning above, not a failure.
+    $problems = array_values(array_filter($result['findings'], fn ($finding) => $finding['kind'] !== 'unreadable_old_key'));
+    if (empty($problems)) {
+        $report[] = array('ok', 'The newest ' . $result['entries'] . ' audit log entries are sealed and in sequence. Run php bin/kirjuri audit:verify to check them all.');
+    } else {
+        $report[] = array('fail', 'Audit log: ' . ($problems[0]['entry'] !== null ? 'entry ' . $problems[0]['entry'] . ': ' : '') . $problems[0]['text']
+            . ' Run php bin/kirjuri audit:verify for the whole log.');
+    }
+    return $report;
+}
+
+
+/** Begin a read-only transaction whose reads all see the index as it was at its first read. */
+function kirjuri_audit_begin_snapshot(PDO $db): void {
+    $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    $db->beginTransaction();
+}
+
+
+/**
+ * Check the whole chain (bin/kirjuri audit:verify): the head, the index and the old entries read in one snapshot, then
+ * kirjuri_audit_check(), then kirjuri_audit_drop_saved_meanwhile(). The result is kirjuri_audit_check()'s, with the head.
+ */
+function kirjuri_audit_verify(PDO $db, string $dir = KIRJURI_AUDIT_DIR, ?string $key_string = null, ?array $since = null): array {
+    kirjuri_audit_begin_snapshot($db);
+    try {
+        $head = kirjuri_audit_head($db);
+        $result = kirjuri_audit_check(kirjuri_audit_rows($db), $head, kirjuri_audit_legacy_rows($db), $dir, $key_string, $since);
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
+    }
+    return kirjuri_audit_drop_saved_meanwhile($db, $result) + array('head' => $head);
+}
+
+
+/**
+ * Drop the findings about entry files numbered past the newest entry of the check's snapshot that the index has since
+ * gained: changes saved while the check read the files. A change being saved right now is waited for first (the head
+ * lock), so its file is not taken for one without a row.
+ */
+function kirjuri_audit_drop_saved_meanwhile(PDO $db, array $result): array {
+    $later = function ($finding) use ($result) {
+        return in_array($finding['kind'], array('not_indexed', 'past_end'), true) && $finding['entry'] !== null && $finding['entry'] > $result['newest'];
+    };
+    if (empty(array_filter($result['findings'], $later))) {
+        return $result;
+    }
+    $db->beginTransaction();
+    kirjuri_audit_lock_head($db); // Waits for a writer that holds it, then lets go at once.
+    $db->commit();
+    $indexed = $db->prepare('SELECT COUNT(*) FROM audit_chain WHERE file = :file AND entry = :entry');
+    $result['findings'] = array_values(array_filter($result['findings'], function ($finding) use ($later, $indexed) {
+        if (!$later($finding)) {
+            return true;
+        }
+        $indexed->execute(array(':file' => $finding['file'], ':entry' => $finding['entry']));
+        return (int) $indexed->fetchColumn() === 0;
+    }));
+    return $result;
+}
+

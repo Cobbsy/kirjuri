@@ -126,6 +126,7 @@ function kirjuri_audited(PDO $db, callable $change, array $request, ?callable $t
         $event = $change();
         if ($event === null) {
             $db->rollBack();
+            kirjuri_release_transaction_locks($db);
             return null;
         }
         [$case_id, $level, $description] = $event;
@@ -136,8 +137,10 @@ function kirjuri_audited(PDO $db, callable $change, array $request, ?callable $t
         $db->commit();
     } catch (Throwable $e) {
         kirjuri_audit_roll_back($db);
+        kirjuri_release_transaction_locks($db);
         throw $e;
     }
+    kirjuri_release_transaction_locks($db);
     kirjuri_audit_log_events($case_id, (string) $level, (string) $description, $entry);
     return $entry['file'];
 }

@@ -323,3 +323,21 @@ These were not discussed, and any of them can be changed:
    entry.
 6. Database backups start with a checkpoint comment line.
 7. Password fields are removed from every entry.
+
+## Changes made while building (November 2026)
+
+The build plan is `docs/audit-log-plan.md`. These decisions refine the design above; the build's ledger has the rest.
+
+- `audit_head.key_check`, derived from the key but not reversible, shows any change of key, so a key replaced by hand
+  or made by a write that then failed is recorded too, not only a key file found missing.
+- The entry that records a key replacement carries a sealed marker. Older entries whose seal does not open are excused
+  only below such an entry, never because the index says so; an index that claims another replacement is a finding.
+- The viewer has a sixth status: in sequence and unchanged, but sealed with a key that is gone.
+- Entries of an earlier chain found when a chain starts (the index was emptied, or the database restored from before
+  them) are kept and checked as old entries, and the sealed first entry records them, so `audit:verify` reports the
+  restart for good. Before any chain exists, old entries are not findings; entries of a chain are.
+- `audit:verify` and `doctor` read the index in one snapshot, and entries saved while the files are read are not taken
+  for problems. `doctor` warns, and does not fail, about a recorded key replacement.
+- Named locks taken inside a change's transaction (the next case number) are released only after the commit.
+- `--since` reads a checkpoint pasted from a printed report in any language.
+

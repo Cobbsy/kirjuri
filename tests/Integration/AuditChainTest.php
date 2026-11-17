@@ -209,6 +209,36 @@ final class AuditChainTest extends IntegrationTestCase
         $this->assertSame(3, kirjuri_audit_head($db)['key_replaced_at']);
 
         $this->assertNull($this->write($db)['key_replaced'], 'Recorded once.');
+        $this->assertTrue($this->open($rows[2])['payload']['key_replaced'], 'The replacement is sealed into the chain.');
+    }
+
+    /** A chain whose key was lost after entry 2: entry 3 records the new key. */
+    private function chainWithALostKey(): PDO
+    {
+        $db = $this->database();
+        $this->write($db);
+        unlink($this->keyFile);
+        $this->write($db);
+        return $db;
+    }
+
+    public function testDoctorWarnsButDoesNotFailAfterARecordedKeyReplacement(): void
+    {
+        $report = kirjuri_audit_doctor($this->chainWithALostKey(), $this->dir, $this->keyFile);
+
+        $this->assertNotContains('fail', array_column($report, 0), json_encode($report));
+        $this->assertContains(array('warn', 'The audit log key was replaced at entry 3; entries before it can not be read with it.'), $report);
+    }
+
+    public function testViewerTrustsOnlyARecordedKeyReplacement(): void
+    {
+        $db = $this->chainWithALostKey();
+        $second = $this->rows($db)[1]['file'];
+
+        $this->assertSame('unreadable', kirjuri_audit_entry_status($db, $second, $this->dir, kirjuri_audit_key_string($this->keyFile))['status']);
+        $db->exec('UPDATE audit_head SET key_replaced_at = 999');
+        $this->assertSame('mismatch', kirjuri_audit_entry_status($db, $second, $this->dir, kirjuri_audit_key_string($this->keyFile))['status'],
+            'A replacement only the index claims excuses nothing.');
     }
 
     public function testReplacedKeyIsRecorded(): void
@@ -256,6 +286,56 @@ final class AuditChainTest extends IntegrationTestCase
         $this->assertSame(array('99', '100', '101'), array_column($newest, 'entry'));
     }
 
+    public function testResettingTheIndexDoesNotHideEntries(): void
+    {
+        // Someone with file and database access but no key removes entry 3 and empties the index. The next change
+        // starts the chain again; the earlier chain's entries are kept and checked, and the restart is reported.
+        $db = $this->database();
+        foreach (range(1, 4) as $i) {
+            $this->write($db);
+        }
+        unlink(kirjuri_audit_entry_path($this->rows($db)[2]['file'], $this->dir));
+        $db->exec('DELETE FROM audit_chain');
+        $db->exec('DELETE FROM audit_legacy');
+        $db->exec('UPDATE audit_head SET entry = 0, fingerprint = NULL, key_replaced_at = NULL, key_check = NULL');
+        $key = kirjuri_audit_key_string($this->keyFile);
+
+        $before = kirjuri_audit_check(kirjuri_audit_rows($db), kirjuri_audit_head($db), kirjuri_audit_legacy_rows($db), $this->dir, $key);
+        $this->assertSame(array('earlier_chain'), array_column($before['findings'], 'kind'), 'Found before the next change too.');
+
+        $this->write($db);
+
+        $start = $this->open($this->rows($db)[0])['payload'];
+        $this->assertSame(4, $start['earlier_chain'], 'Entries 1, 2, 4 and 5 of the earlier chain.');
+        $this->assertSame('4', $db->query('SELECT COUNT(*) FROM audit_legacy')->fetchColumn());
+        $after = kirjuri_audit_check(kirjuri_audit_rows($db), kirjuri_audit_head($db), kirjuri_audit_legacy_rows($db), $this->dir, $key);
+        $this->assertSame(array('restarted'), array_column($after['findings'], 'kind'));
+    }
+
+    public function testEntriesSavedDuringACheckAreNotProblems(): void
+    {
+        $db = $this->database();
+        $this->write($db);
+        $this->write($db);
+        $rows = $this->rows($db);
+        $head = kirjuri_audit_head($db);
+        $legacy = kirjuri_audit_legacy_rows($db);
+        $key = kirjuri_audit_key_string($this->keyFile);
+
+        $this->write($db); // Saved while a check reads the files, after its snapshot of the index.
+        $result = kirjuri_audit_check($rows, $head, $legacy, $this->dir, $key);
+        $this->assertSame(array('not_indexed'), array_column($result['findings'], 'kind'), 'The snapshot does not have entry 4.');
+        $this->assertSame(array(), kirjuri_audit_drop_saved_meanwhile($db, $result)['findings']);
+
+        // An entry file that is in no index stays a finding.
+        $stray = '1700000009_STRAY.log';
+        @mkdir($this->dir . '/170000');
+        file_put_contents($this->dir . '/170000/' . $stray, kirjuri_audit_seal_entry(9, str_repeat('c', 64), $stray, array('entry' => 9), $key));
+        $result = kirjuri_audit_verify($db, $this->dir, $key);
+        $this->assertSame(array('past_end'), array_column($result['findings'], 'kind'));
+        $this->assertSame(4, $result['entries']);
+    }
+
     public function testChainStartFingerprintsThousandsOfOldFiles(): void
     {
         $db = $this->database();
@@ -281,6 +361,44 @@ final class AuditChainTest extends IntegrationTestCase
         $this->assertNull(kirjuri_audit_start($db, $this->user(), $this->dir, $this->keyFile));
         $this->assertSame(1, kirjuri_audit_head($db)['entry']);
         $this->assertFalse($db->inTransaction());
+    }
+
+    public function testCaseNumberLockIsHeldUntilTheCaseIsCommitted(): void
+    {
+        // kirjuri_create_case() reserves the next case number under a named lock. Released before the commit of the
+        // transaction kirjuri_audited() runs it in, a second request read the same highest number and used it too.
+        require_once KIRJURI_ROOT . '/lib/logging.php';
+        $db = $this->database();
+        $other = new PDO($this->scratchDsn(end($this->scratch)), getenv('KIRJURI_TEST_DB_USER') ?: 'root', getenv('KIRJURI_TEST_DB_PASSWORD') ?: '');
+        $free = fn () => (string) $other->query("SELECT IS_FREE_LOCK('kirjuri_case_number')")->fetchColumn();
+        $base = dirname($this->dir); // kirjuri_audited() writes to logs/audit and conf/ of the working folder.
+        mkdir($base . '/logs');
+        mkdir($base . '/logs/audit');
+        mkdir($base . '/conf');
+        $cwd = getcwd();
+        chdir($base);
+        try {
+            $during = null;
+            kirjuri_audited($db, function () use ($db, $free, &$during) {
+                $case = kirjuri_create_case($db, array('case_name' => 'First'));
+                $during = $free();
+                return array($case['id'], 'Add', 'Added the first case.');
+            }, array());
+            $this->assertSame('0', $during, 'Another request waits for the case number until this case is committed.');
+            $this->assertSame('1', $free(), 'The lock is released after the commit.');
+
+            try {
+                kirjuri_audited($db, function () use ($db) {
+                    kirjuri_create_case($db, array('case_name' => 'Refused'));
+                    throw new \RuntimeException('Refused.');
+                }, array());
+                $this->fail('The change throws.');
+            } catch (\RuntimeException $e) {
+                $this->assertSame('1', $free(), 'The lock is released after a rollback too.');
+            }
+        } finally {
+            chdir($cwd);
+        }
     }
 
     public function testWritingNeedsATransaction(): void

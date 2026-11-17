@@ -143,6 +143,12 @@ final class AuditEntryTest extends TestCase
         $this->assertSame(array('entry' => 48213, 'prefix' => '9f3c1a2b77de0c41'), kirjuri_audit_parse_checkpoint('entry 48213, 17.11.2026 10:22:31, 9F3C 1A2B 77DE 0C41'));
         $this->assertSame(array('entry' => 48213, 'prefix' => '9f3c1a2b77de0c415e9a'),
             kirjuri_audit_parse_checkpoint('Checkpoint: entry 48213, 17.11.2026 10:22:31, 9f3c 1a2b 77de 0c41 5e9a'));
+        // A line pasted from a printed case report, in each language: the fingerprint is not after the last comma.
+        foreach (array('EN', 'DE', 'ES', 'FI', 'PT_BR') as $code) {
+            $lang = json_decode(file_get_contents(KIRJURI_ROOT . '/conf/lang_' . $code . '.JSON'), true);
+            $line = sprintf($lang['audit_report_checkpoint'], 48213, '17.11.2026 10:22', '9f3c 1a2b 77de 0c41 5e9a');
+            $this->assertSame(array('entry' => 48213, 'prefix' => '9f3c1a2b77de0c415e9a'), kirjuri_audit_parse_checkpoint($line), $line);
+        }
         foreach (array('48213:9f3c1a2b', 'abc', '', '48213:9f3c1a2b77de0c41zz') as $text) {
             $this->assertNull(kirjuri_audit_parse_checkpoint($text), $text);
         }

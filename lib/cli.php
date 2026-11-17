@@ -272,30 +272,10 @@ function cli_migrate($args) {
 }
 
 
-/** bin/kirjuri doctor's checks of the audit log: its key, a key replacement, and the newest entries of the chain. */
+/** bin/kirjuri doctor's checks of the audit log (kirjuri_audit_doctor()). */
 function cli_doctor_audit_log(PDO $db, callable $report) {
-    $head = kirjuri_audit_head($db);
-    $key_string = kirjuri_audit_key_string();
-    if ($key_string !== null) {
-        $report('ok', 'Audit log key ' . KIRJURI_AUDIT_KEY_FILE);
-    } elseif ($head === null && !file_exists(KIRJURI_AUDIT_KEY_FILE)) {
-        $report('warn', 'Audit log key ' . KIRJURI_AUDIT_KEY_FILE . ' (created on the first audited change)');
-    } else {
-        $report('fail', 'Audit log key ' . KIRJURI_AUDIT_KEY_FILE . ' is missing or can not be read, and the audit log has entries sealed with it. '
-            . 'Restore it from a backup: the next change would otherwise make a new key, and the entries before it could no longer be read.');
-    }
-    if ($head === null) {
-        return;
-    }
-    if ($head['key_replaced_at'] !== null) {
-        $report('warn', 'The audit log key was replaced at entry ' . $head['key_replaced_at'] . '; entries before it can not be read with it.');
-    }
-    $result = kirjuri_audit_check(kirjuri_audit_rows($db, 50), $head, array(), KIRJURI_AUDIT_DIR, $key_string, null, true);
-    if (empty($result['findings'])) {
-        $report('ok', 'The newest ' . $result['entries'] . ' audit log entries are sealed and in sequence. Run php bin/kirjuri audit:verify to check them all.');
-    } else {
-        $first = $result['findings'][0];
-        $report('fail', 'Audit log: ' . ($first['entry'] !== null ? 'entry ' . $first['entry'] . ': ' : '') . $first['text'] . ' Run php bin/kirjuri audit:verify for the whole log.');
+    foreach (kirjuri_audit_doctor($db) as [$status, $message]) {
+        $report($status, $message);
     }
 }
 
@@ -510,11 +490,13 @@ function cli_audit_verify($args) {
         return 1;
     }
     $db = cli_database();
-    $head = kirjuri_audit_head($db);
     $key_string = kirjuri_audit_key_string();
-    $result = kirjuri_audit_check(kirjuri_audit_rows($db), $head, kirjuri_audit_legacy_rows($db), KIRJURI_AUDIT_DIR, $key_string, $since);
+    // One snapshot of the index, and changes saved while the files are read are not taken for problems.
+    $result = kirjuri_audit_verify($db, KIRJURI_AUDIT_DIR, $key_string, $since);
+    $head = $result['head'];
     if ($head === null && $result['entries'] === 0 && empty($result['findings'])) {
-        cli_out('There is no audit log chain yet. It starts with the first change.');
+        cli_out('There is no audit log chain yet. It starts with the first change, or with php bin/kirjuri migrate, and then fingerprints the '
+            . $result['waiting'] . ' ' . ($result['waiting'] === 1 ? 'entry' : 'entries') . ' from before it.');
         return 0;
     }
     $problems = count($result['findings']);

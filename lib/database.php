@@ -39,3 +39,38 @@ function get_users_with_credentials() {
     global $kirjuri_database;
     return kirjuri_list_users_with_credentials($kirjuri_database);
 }
+
+
+/**
+ * Release the named lock $name (GET_LOCK): now, or, inside a transaction, once the transaction has ended
+ * (kirjuri_release_transaction_locks()). Released before the commit, another request could act on what this one has
+ * not committed yet, such as the highest case number.
+ */
+function kirjuri_release_lock(PDO $db, string $name): void {
+    if ($db->inTransaction()) {
+        kirjuri_transaction_locks($name);
+        return;
+    }
+    $db->prepare('SELECT RELEASE_LOCK(:name)')->execute(array(':name' => $name));
+}
+
+
+/** The named locks waiting for the end of the transaction: adds $name, or, without it, hands them over and forgets them. */
+function kirjuri_transaction_locks(?string $name = null): array {
+    static $names = array();
+    if ($name !== null) {
+        $names[] = $name;
+        return $names;
+    }
+    $taken = $names;
+    $names = array();
+    return $taken;
+}
+
+
+/** Release the named locks taken inside the transaction that has just been committed or rolled back. */
+function kirjuri_release_transaction_locks(PDO $db): void {
+    foreach (kirjuri_transaction_locks() as $name) {
+        $db->prepare('SELECT RELEASE_LOCK(:name)')->execute(array(':name' => $name));
+    }
+}
