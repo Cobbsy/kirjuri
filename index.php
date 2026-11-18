@@ -40,10 +40,8 @@ if (isset($_GET['search']) && (!empty($_GET['search']))) {
         die;
     }
     // Searches cover every year. The year stays in the address, so removing the search returns to it.
-    // One row more than is shown tells whether there were more.
-    $row_cases = kirjuri_search_cases($kirjuri_database, $search_term, $sort_j, $ascending, KIRJURI_SEARCH_LIMIT + 1);
-    $search_limited = count($row_cases) > KIRJURI_SEARCH_LIMIT;
-    $row_cases = array_slice($row_cases, 0, KIRJURI_SEARCH_LIMIT);
+    // Only matches the user may open count towards the limit; the others are left out below anyway.
+    [$row_cases, $search_limited] = kirjuri_search_cases_for($kirjuri_database, $search_term, $sort_j, $ascending, $_SESSION['user']);
 }
 else {
     $row_cases = kirjuri_list_cases($kirjuri_database, $year, $sort_j, $ascending);

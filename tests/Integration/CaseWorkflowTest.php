@@ -455,6 +455,86 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('3', $this->row($caseId)['case_status']);
     }
 
+    public function testATaskRowOfAnOlderKirjuriDoesNotHoldARequestOpen(): void
+    {
+        // Codex's review of #21: the request page counts devices and leaves out the task rows of older Kirjuri versions,
+        // but kirjuri_case_progress() counted them too. An unfinished task kept the close button hidden after the last
+        // device was done, and since the server checks the same function, closing the request was refused.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Old task '));
+        $admin->post('submit.php?type=update_request_status', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'returnid' => (string) $caseId, 'case_status' => '2'));
+        $device = $this->addDevice($admin, $caseId, $this->uniqueName('Device '));
+        $task = $this->addDevice($admin, $caseId, $this->uniqueName('Task '));
+        $this->server->pdo()->prepare('UPDATE exam_requests SET device_type = "task", device_action = "1|Received" WHERE id = :id')
+            ->execute(array(':id' => $task));
+
+        $answer = json_decode($admin->post('submit.php?type=change_device_status&uid=' . $device,
+            array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId), 'device_action' => '9|Done'))->body, true);
+        $this->assertTrue($answer['case']['all_done'], 'The task is not a device, so the request is ready.');
+        $admin->post('submit.php?type=update_request_status', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'returnid' => (string) $caseId, 'case_status' => '3'));
+        $this->assertSame('3', $this->row($caseId)['case_status']);
+    }
+
+    public function testMatchesAUserMayNotOpenDoNotUseUpTheSearchLimit(): void
+    {
+        // Codex's review of #21: the search stopped at its 500 matches before the front page left out the requests the
+        // user may not open, so those used up the limit and a user found fewer of their own matches, or none at all.
+        $word = 'Lim' . bin2hex(random_bytes(5));
+        $admin = $this->admin();
+        $visible = $this->createCase($admin, $word . ' visible');
+        $username = $this->uniqueName('searcher');
+        $this->createUser($username, 'searcher-password', 1);
+        $pdo = $this->server->pdo();
+        $row = $pdo->query('SELECT * FROM exam_requests WHERE id = ' . $visible)->fetch(\PDO::FETCH_ASSOC);
+        unset($row['id']);
+        $columns = array_keys($row);
+        $insert = $pdo->prepare('INSERT INTO exam_requests (`' . implode('`, `', $columns) . '`) VALUES (:' . implode(', :', $columns) . ')');
+        try {
+            // One more than the search shows, each in a request only someone else may open, sorted ahead of the visible one.
+            $pdo->beginTransaction();
+            for ($i = 1; $i <= KIRJURI_SEARCH_LIMIT + 1; $i++) {
+                $values = array('case_name' => $word . ' hidden', 'case_owner' => 'someone_else', 'case_id' => (string) (900000 + $i)) + $row;
+                $insert->execute(array_combine(array_map(fn ($c) => ':' . $c, $columns), array_map(fn ($c) => $values[$c], $columns)));
+            }
+            $pdo->commit();
+            $pdo->prepare('UPDATE exam_requests SET parent_id = id WHERE case_owner = "someone_else" AND case_name = :name')->execute(array(':name' => $word . ' hidden'));
+
+            $page = $this->login($username, 'searcher-password')->get('index.php?search=' . urlencode($word))->body;
+            $this->assertStringContainsString('edit_request.php?case=' . $visible . '"', $page);
+            $this->assertStringNotContainsString($word . ' hidden', $page);
+        } finally {
+            $pdo->prepare('DELETE FROM exam_requests WHERE case_name = :name')->execute(array(':name' => $word . ' hidden'));
+        }
+    }
+
+    public function testTheSearchLooksThroughABoundedNumberOfMatches(): void
+    {
+        // Codex's review of #40: skipping matches the user may not open went on, a batch at a time, until it had enough
+        // the user may open or none were left, so a broad search could read every match on a large installation.
+        $word = 'Cap' . bin2hex(random_bytes(5));
+        $admin = $this->admin();
+        $visible = $this->createCase($admin, $word . ' visible');
+        $pdo = $this->server->pdo();
+        $pdo->prepare('UPDATE exam_requests SET case_id = 1 WHERE id = :id')->execute(array(':id' => $visible)); // Sorted last.
+        $hidden = array();
+        for ($i = 0; $i < 6; $i++) {
+            $hidden[] = $this->createCase($admin, $word . ' hidden ' . $i); // The helper finds a case by its name.
+        }
+        $pdo->exec('UPDATE exam_requests SET case_owner = "someone_else" WHERE id IN (' . implode(',', $hidden) . ')');
+        $user = array('username' => 'searcher', 'access' => '1');
+        try {
+            // Two results at most, looking through four matches at most: the hidden ones use that up, and it says so.
+            $this->assertSame(array(array(), true), kirjuri_search_cases_for($pdo, $word, '', false, $user, 2, 4));
+            [$found, $more] = kirjuri_search_cases_for($pdo, $word, '', false, $user, 2, 100);
+            $this->assertSame(array((string) $visible), array_map('strval', array_column($found, 'id')));
+            $this->assertFalse($more);
+        } finally {
+            $pdo->exec('UPDATE exam_requests SET case_owner = "" WHERE id IN (' . implode(',', $hidden) . ')');
+        }
+    }
+
     public function testWorkOnDevicesKeepsTheCaseFromStalling(): void
     {
         // The stalled mark reads the case's last update, which changing a device's status or location, attaching

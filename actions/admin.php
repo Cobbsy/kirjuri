@@ -57,8 +57,6 @@ case 'save_settings':
     // HTTPS is turned on only from this page opened over HTTPS at that address (lib/https.php); a refused value keeps
     // its current one, and the other settings are saved.
     [$_POST['settings'], $https_problem] = kirjuri_check_https_settings((array) $_POST['settings'], $prefs['settings'], $_SERVER);
-    // The settings are a file, not a database row: the entry is written first, so they are never changed without one.
-    kirjuri_audit($kirjuri_database, null, 'Admin', 'Settings saved.', $_POST);
     $settings_output = "; Saved settings\r\n\r\n[settings]\r\n";
     foreach ($_POST['settings'] as $key => $value) {
         $settings_output = $settings_output . filter_letters_and_numbers($key) . " = \"" . ini_value($value) . "\";\r\n";
@@ -70,8 +68,29 @@ case 'save_settings':
         $unit_key++;
         $settings_output = $settings_output . $unit_key . " = \"" . ini_value(trim($value)) . "\";\r\n";
     }
-    if (file_put_contents('conf/settings.local', $settings_output) === false) {
+    // The settings are a file, not a database row, so their entry is written before they change: the new file is
+    // written beside the old one first, which is where writing fails (a full disk, a folder the web server may not
+    // write to), and nothing is recorded or changed then. After the entry, renaming it into place does not half-happen.
+    $settings_new = 'conf/.settings.local.new';
+    if (@file_put_contents($settings_new, $settings_output) === false) {
         event_log_write('0', 'Error', 'Settings could not be written to conf/settings.local.');
+        message('error', $_SESSION['lang']['settings_not_saved']);
+        header('Location: settings.php');
+        die;
+    }
+    try {
+        kirjuri_audit($kirjuri_database, null, 'Admin', 'Settings saved.', $_POST);
+    } catch (Throwable $e) {
+        @unlink($settings_new);
+        throw $e;
+    }
+    if (!@rename($settings_new, 'conf/settings.local')) {
+        @unlink($settings_new);
+        event_log_write('0', 'Error', 'Settings could not be written to conf/settings.local.');
+        kirjuri_audit($kirjuri_database, null, 'Error', 'Settings could not be written to conf/settings.local: the entry before this one did not take effect.', array());
+        message('error', $_SESSION['lang']['settings_not_saved']);
+        header('Location: settings.php');
+        die;
     }
     if ($https_problem !== null) {
         message('error', $_SESSION['lang'][$https_problem]);

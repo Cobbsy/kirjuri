@@ -230,11 +230,12 @@ function kirjuri_device_progress($action, $steps) {
 
 /**
  * How far the examination of a case's devices has come, as the case page shows it: the devices that need work
- * (step 1 and up) count, removed ones do not. percent is 0 until one has started; all_done is true when every
- * counted device has reached $steps, which lets the case be closed.
+ * (step 1 and up) count, removed ones and the task rows of older versions do not, as kirjuri_case_devices(..., 'devices')
+ * leaves them out of the page. percent is 0 until one has started; all_done is true when every counted device has
+ * reached $steps, which lets the case be closed.
  */
 function kirjuri_case_progress(PDO $db, $case_id, $steps) {
-    $query = $db->prepare('SELECT device_action FROM exam_requests WHERE parent_id = :case AND id != parent_id AND is_removed != "1"');
+    $query = $db->prepare('SELECT device_action FROM exam_requests WHERE parent_id = :case AND id != parent_id AND is_removed != "1" AND device_type != "task"');
     $query->execute(array(':case' => $case_id));
     $steps = max(1, (int) $steps);
     $total = 0;

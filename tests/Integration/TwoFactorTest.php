@@ -415,6 +415,30 @@ final class TwoFactorTest extends IntegrationTestCase
         $this->assertStringNotContainsString('name="reset_two_factor"', $admin->get('users.php?populate=' . $this->userId($username))->body);
     }
 
+    public function testAUserEditIsNotSavedWhenItsTwoFactorResetCanNotBeRecorded(): void
+    {
+        // Codex's review of #39: the rest of the form (a new name, a new password and the sign-out it causes) was saved
+        // before the reset's audit log entry, so when that entry could not be written the page said "Not saved" while
+        // the edit had already taken effect.
+        $this->expectLoggedError('the audit log could not be written');
+        [$username, , , $client] = $this->userWithTwoFactor();
+        $name = function () use ($username) {
+            $query = $this->server->pdo()->prepare('SELECT name FROM users WHERE username = :username');
+            $query->execute(array(':username' => $username));
+            return $query->fetchColumn();
+        };
+        $before = $name();
+        $admin = $this->admin();
+        $token = $this->token($admin);
+        $this->withoutAuditFolder(function () use ($admin, $username, $token) {
+            $admin->post('submit.php?type=create_user', array('name' => 'Renamed Person', 'password' => 'a-new-password-1', 'reset_two_factor' => 'reset')
+                + $this->userForm($username, KirjuriServer::ADMIN_PASSWORD, $token));
+        });
+        $this->assertNotNull($this->twoFactorRow($username), 'Not reset.');
+        $this->assertSame($before, $name(), 'Not renamed either.');
+        $this->assertNotSame('login.php', $client->get('index.php')->location(), 'Still signed in: the password did not change.');
+    }
+
     public function testDeletingAUserDeletesTheirTwoFactorSignIn(): void
     {
         [$username] = $this->userWithTwoFactor();

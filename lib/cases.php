@@ -480,24 +480,57 @@ function kirjuri_fulltext_query($search, $word_beginnings = false) {
 /** How many rows the front page search shows at most. It covers every year, and a short word finds many. */
 const KIRJURI_SEARCH_LIMIT = 500;
 
+/** How many matches the front page search looks through at most, skipping those the user may not open. */
+const KIRJURI_SEARCH_SCAN = 5000;
+
 
 /**
  * Full text search over the cases and devices of every year, for the front page: a word also finds words
  * that start with it (see kirjuri_fulltext_query()). Devices of a removed case are left out with it: removing
- * a case marks the case row only. Access groups are not checked here; the caller leaves out what the user may
- * not open. At most $limit rows, in the list's order.
+ * a case marks the case row only. Access groups are not checked here: kirjuri_search_cases_for() does that. At most
+ * $limit rows from $offset on, in the list's order.
  */
-function kirjuri_search_cases(PDO $db, $term, $sort, $ascending, $limit = KIRJURI_SEARCH_LIMIT) {
+function kirjuri_search_cases(PDO $db, $term, $sort, $ascending, $limit = KIRJURI_SEARCH_LIMIT, $offset = 0) {
     $query = $db->prepare('SELECT * FROM exam_requests WHERE is_removed = "0"
         AND parent_id IN (SELECT id FROM exam_requests WHERE id = parent_id AND is_removed = "0")
         AND (' . kirjuri_fulltext_match('cases', ':cases') . ' OR ' . kirjuri_fulltext_match('devices', ':devices') . ')
-        ORDER BY ' . kirjuri_case_list_order($sort, $ascending) . ', id LIMIT ' . max(1, (int) $limit));
+        ORDER BY ' . kirjuri_case_list_order($sort, $ascending) . ', id LIMIT ' . max(1, (int) $limit) . ' OFFSET ' . max(0, (int) $offset));
     $term = kirjuri_fulltext_query($term, true);
     if ($term === '') {
         return array(); // Only operators or punctuation: nothing to look for, and MATCH would match nothing anyway.
     }
     $query->execute(array(':cases' => $term, ':devices' => $term));
     return $query->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+/**
+ * The front page search as $user sees it: at most $limit matches they may open, each marked can_access, and whether
+ * there were more. Matches in requests they may not open are left out a batch at a time, before the limit, so they
+ * do not use it up. It looks through at most $scan matches, so a broad search stays quick however many there are;
+ * past that it says there were more, and the page asks for a narrower search.
+ */
+function kirjuri_search_cases_for(PDO $db, $term, $sort, $ascending, array $user, $limit = KIRJURI_SEARCH_LIMIT, $scan = KIRJURI_SEARCH_SCAN) {
+    $found = array();
+    $owners = array();
+    $offset = 0;
+    do {
+        $size = min($limit + 1, $scan - $offset);
+        $batch = kirjuri_search_cases($db, $term, $sort, $ascending, $size, $offset);
+        foreach ($batch as $row) {
+            if (!array_key_exists($row['parent_id'], $owners)) { // A device takes the access group of its case.
+                $owners[$row['parent_id']] = ((string) $row['id'] === (string) $row['parent_id']) ? $row['case_owner'] : kirjuri_case_owner_of($db, $row['id']);
+            }
+            if (kirjuri_user_can_access_case($user, $owners[$row['parent_id']])) {
+                $row['can_access'] = true;
+                $found[] = $row;
+            }
+        }
+        $offset += count($batch);
+        $full = count($batch) === $size; // A short batch means no matches are left.
+    } while ($full && count($found) <= $limit && $offset < $scan);
+    // More than the limit found, or the scan ended on a full batch with matches perhaps left.
+    return array(array_slice($found, 0, $limit), count($found) > $limit || ($full && $offset >= $scan));
 }
 
 
