@@ -73,7 +73,9 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   sign-in and the audit log among them) in one diff, and ask once there. The audit log matters most: a flaw in
   its sealing or chaining could let a changed entry pass as untouched.
   Done (18 November 2026): #39 is that pull request (`codex-review-28` at #27's merge to `master`, #28 to #38),
-  and Codex reviewed both it and #21. It found four problems, all rated P2 and none about security: task rows of
+  and Codex reviewed both it and #21. On #21 it found the close button that showed before a request's devices were
+  done (already fixed in #37), and that such a request could not be reopened (fixed after #40). It found four more,
+  all rated P2 and none about security: task rows of
   older versions counted in a request's progress, the search limit applied before access filtering, settings
   reported and recorded as saved when the file could not be written, and a user edit saved before its two-factor
   reset's entry. All four are fixed with tests. Then close #21 and #39 and delete `codex-review-base` and

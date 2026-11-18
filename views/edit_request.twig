@@ -185,7 +185,8 @@ $(function() {
           </div>
           <div class="case-actions-primary">
             {# All devices done (or none that need work) lets an open case be closed. The close button of an open case is
-               always there, hidden until then, so that it shows as soon as the last device is marked done. #}
+               always there, hidden until then, so that it shows as soon as the last device is marked done. A closed case
+               can always be reopened, also one closed before its devices were done: its device menus are locked. #}
             {% set all_done = progress_total == progress_done %}
             {% if not mediarow %}
             <input type="hidden" value="1" name="case_status">
@@ -193,7 +194,7 @@ $(function() {
             {% elseif entry.case_status == "2" %}
             <input type="hidden" value="3" name="case_status">
             <button type="submit" class="btn btn-success" data-close-request{% if not all_done %} hidden{% endif %}><i class="fa fa-check"></i> {{ lang.close_ready_request }}</button>
-            {% elseif entry.case_status == "3" and all_done %}
+            {% elseif entry.case_status == "3" %}
             <input type="hidden" value="2" name="case_status">
             <button type="submit" class="btn btn-default"><i class="fa fa-undo"></i> {{ lang.reopen_closed_request }}</button>
             {% elseif entry.case_status == "1" and not all_done %}
