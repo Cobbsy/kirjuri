@@ -39,6 +39,7 @@ require_once __DIR__.'/lib/auth.php';
 require_once __DIR__.'/lib/session.php';
 require_once __DIR__.'/lib/licenses.php';
 require_once __DIR__.'/lib/output.php';
+require_once __DIR__.'/lib/https.php';
 $loader = new \Twig\Loader\FilesystemLoader('views/');
 $twig = new \Twig\Environment($loader, array(
         'cache' => 'cache',
@@ -50,15 +51,36 @@ $pur_config->set('Cache.SerializerPath', './cache');
 $purifier = new HTMLPurifier($pur_config);
 kirjuri_add_twig_filters($twig);
 
+// The settings come before the session: a page opened over plain HTTP may have to move to HTTPS (lib/https.php),
+// and that has to happen before a session cookie is sent over plain HTTP.
+$settings_file = kirjuri_settings_file();
+if ($settings_file === null) {
+    echo "Missing settings file at conf/settings.conf. Can not continue.";
+    die;
+}
+$prefs = kirjuri_load_settings($settings_file);
+$https_redirect = kirjuri_https_redirect($prefs['settings'], $_SERVER);
+if ($https_redirect !== null) {
+    // Temporary, so that a browser does not keep moving if the setting is taken out. A form keeps its method (307).
+    $request_method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    header('Location: ' . $https_redirect, true, in_array($request_method, array('GET', 'HEAD'), true) ? 302 : 307);
+    die;
+}
+
 kirjuri_send_security_headers();
+$hsts = kirjuri_hsts_header($prefs['settings'], $_SERVER);
+if ($hsts !== null) {
+    header('Strict-Transport-Security: ' . $hsts);
+}
 
 session_name('KirjuriSessionID');
 session_set_cookie_params(array(
         'httponly' => true,
         'samesite' => 'Lax',
-        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'secure' => kirjuri_request_is_https($_SERVER),
     ));
 session_start(); // Start a PHP session
+kirjuri_secure_session_cookie($_SERVER, $_COOKIE);
 kirjuri_keep_request_data_out_of_session();
 
 foreach ($_GET as $key => $value) { // Lightly sanitize GET variables
@@ -90,12 +112,6 @@ if ($mysql_config === null) {
     die;
 }
 
-$settings_file = kirjuri_settings_file();
-if ($settings_file === null) {
-    echo "Missing settings file at conf/settings.conf. Can not continue.";
-    die;
-}
-$prefs = kirjuri_load_settings($settings_file);
 $prefs['settings']['self'] = $_SERVER['PHP_SELF'];
 $_SESSION['lang'] = kirjuri_load_language($prefs);
 

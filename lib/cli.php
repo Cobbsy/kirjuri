@@ -206,6 +206,22 @@ function cli_doctor($args) {
         if (!in_array(strtolower($required), array('0', 'admins', 'everyone'), true)) {
             $report('warn', 'two_factor_required is "' . $required . '", which Kirjuri reads as "0" (not required). Use "0", "admins" or "everyone".');
         }
+        $address = trim((string) ($prefs['settings']['https_address'] ?? ''));
+        if ($address === '') {
+            $report('warn', 'Pages opened over plain HTTP stay on HTTP: https_address is empty. Set it from the settings page once Kirjuri has a certificate, unless a web server or proxy in front of Kirjuri already moves HTTP to HTTPS.');
+        } elseif (kirjuri_valid_https_address($address) === null) {
+            $report('warn', 'https_address "' . $address . '" is not an address like https://kirjuri.example.org, so pages opened over plain HTTP stay on HTTP.');
+        } else {
+            $report('ok', 'Pages opened over plain HTTP move to ' . kirjuri_valid_https_address($address));
+        }
+        $hsts = trim((string) ($prefs['settings']['hsts_max_age'] ?? '0'));
+        if (!ctype_digit($hsts)) {
+            $report('warn', 'hsts_max_age "' . $hsts . '" is not a number of seconds, so browsers are not told to keep to HTTPS.');
+        } elseif ((int) $hsts > 0) {
+            $report('ok', 'Browsers are told to use only HTTPS for Kirjuri for ' . (int) $hsts . ' seconds (HSTS). They will not open it while HTTPS is broken.');
+        } elseif (kirjuri_valid_https_address($address) !== null) {
+            $report('warn', 'Browsers still send the first request of a visit over plain HTTP, with what it carries, before Kirjuri moves it to HTTPS. Turn on "Remember HTTPS (HSTS)" (hsts_max_age) once HTTPS works: then they do not.');
+        }
         $mysqldump = isset($prefs['settings']['mysqldump_location']) ? $prefs['settings']['mysqldump_location'] : '';
         $report(is_executable($mysqldump) ? 'ok' : 'warn', 'mysqldump at "' . $mysqldump . '" for database backups from the settings page');
     }

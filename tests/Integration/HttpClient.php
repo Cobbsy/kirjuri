@@ -19,10 +19,36 @@ final class HttpClient
             ));
     }
 
+    /** @var array<string, string> */
+    private array $headers = array();
+
     /** Send this Referer header with the following requests. */
     public function setReferer(string $url): void
     {
         curl_setopt($this->curl, CURLOPT_REFERER, $url);
+    }
+
+    /** Send this header with the following requests, such as the X-Forwarded-Proto of a proxy; null stops it. */
+    public function setHeader(string $name, ?string $value): void
+    {
+        if ($value === null) {
+            unset($this->headers[$name]);
+        } else {
+            $this->headers[$name] = $value;
+        }
+        curl_setopt($this->curl, CURLOPT_HTTPHEADER, array_map(fn ($n) => $n . ': ' . $this->headers[$n], array_keys($this->headers)));
+    }
+
+    /** The value of a cookie this client holds, or '' when it has none. */
+    public function cookie(string $name): string
+    {
+        foreach ((array) curl_getinfo($this->curl, CURLINFO_COOKIELIST) as $line) {
+            $fields = explode("\t", $line); // Netscape format: domain, subdomains, path, secure, expiry, name, value.
+            if (count($fields) >= 7 && $fields[5] === $name) {
+                return $fields[6];
+            }
+        }
+        return '';
     }
 
     public function get(string $path): Response

@@ -106,6 +106,23 @@ function kirjuri_translation_review_groups(string $root): array
     }
     $groups[] = $audit;
 
+    // HTTPS: the choices and messages of the two HTTPS settings, whose names and help lines are in the settings group.
+    $https_context = array(
+        'https_hsts_off' => 'One of the choices for the setting "Remember HTTPS (HSTS)": browsers are not told anything.',
+        'https_hsts_5_minutes' => 'One of the choices for the setting "Remember HTTPS (HSTS)", for trying it out before choosing a year.',
+        'https_hsts_1_year' => 'One of the choices for the setting "Remember HTTPS (HSTS)".',
+        'https_address_invalid' => 'Error after saving the settings, when the HTTPS address is not written like an address. The other settings were saved.',
+        'https_address_other_host' => 'Error after saving the settings, when the HTTPS address is not the one the settings page is open at. The other settings were saved.',
+        'https_needs_https' => 'Error after saving the settings over plain HTTP: the two HTTPS settings can only be turned on from the page opened over HTTPS. The other settings were saved.',
+    );
+    $https = array('id' => 'https', 'title' => 'HTTPS', 'blurb' => 'The choices and messages of the two HTTPS settings on the settings page, for administrators. HTTPS, HTTP and HSTS are names; keep them as they are.', 'strings' => array());
+    foreach (array_keys($english) as $key) {
+        if (strpos($key, 'https_') === 0) {
+            $https['strings'][$key] = array('Settings page', $https_context[$key] ?? '');
+        }
+    }
+    $groups[] = $https;
+
     $groups[] = array('id' => 'statuses', 'title' => 'Device statuses', 'blurb' => 'Choices in the status menu of every device, used all day. These look wrong in your language; confirm the suggestion in the note or write a better one.', 'strings' => array(
         'device_actions.device_action12' => array('Device status menu', 'For a device that does not work. The current word means "interrupted". Suggested: "defekt", the word the help page already uses.', array('DE')),
         'device_actions.device_action7' => array('Device status menu', 'For a device whose examination is finished, before the report. The current word means "re-analyse". Suggested: "Análisis terminado".', array('ES')),
