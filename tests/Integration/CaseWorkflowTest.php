@@ -455,6 +455,23 @@ final class CaseWorkflowTest extends IntegrationTestCase
         $this->assertSame('3', $this->row($caseId)['case_status']);
     }
 
+    public function testARequestClosedTooEarlyCanBeReopened(): void
+    {
+        // Codex's review of #21: the reopen button showed only once every device was done, so a request closed while a
+        // device was still being examined, as the close button allowed until it was hidden properly (#37), had no way back:
+        // a closed request's device menus are locked, so its devices could not be finished either.
+        $admin = $this->admin();
+        $caseId = $this->createCase($admin, $this->uniqueName('Closed early '));
+        $this->addDevice($admin, $caseId, $this->uniqueName('Unfinished '));
+        $this->server->pdo()->prepare('UPDATE exam_requests SET case_status = "3" WHERE parent_id = :id')->execute(array(':id' => $caseId));
+
+        $page = $admin->get('edit_request.php?case=' . $caseId)->body;
+        $this->assertMatchesRegularExpression('/<input type="hidden" value="2" name="case_status">\s*<button type="submit" class="btn btn-default"><i class="fa fa-undo"><\/i> Reopen closed request<\/button>/', $page);
+        $admin->post('submit.php?type=update_request_status', array('token' => $this->token($admin), 'ct' => $this->caseToken($admin, $caseId),
+            'returnid' => (string) $caseId, 'case_status' => '2'));
+        $this->assertSame('2', $this->row($caseId)['case_status']);
+    }
+
     public function testATaskRowOfAnOlderKirjuriDoesNotHoldARequestOpen(): void
     {
         // Codex's review of #21: the request page counts devices and leaves out the task rows of older Kirjuri versions,
