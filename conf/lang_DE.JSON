@@ -475,6 +475,7 @@
     "setting_two_factor_required": "Zwei-Faktor-Anmeldung vorschreiben",
     "setting_two_factor_required_help": "Betroffene Benutzer richten sie bei ihrer n\u00e4chsten Anmeldung ein. Die anonyme Anmeldung und API-Schl\u00fcssel sind nicht betroffen.",
     "settings": "Einstellungen",
+    "settings_not_saved": "Nicht gespeichert: Die Einstellungen konnten nicht in conf\/settings.local geschrieben werden. Pr\u00fcfen Sie, ob der Webserver in den Ordner conf schreiben darf.",
     "show_examination_notes_in_report": "Ermittlernotizen im Bericht anzeigen",
     "showing_a_total_of": "Anzeige als Summe von",
     "showing_closed": "geschlossene anzeigen",

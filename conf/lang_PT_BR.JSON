@@ -474,6 +474,7 @@
     "setting_two_factor_required": "Exigir login em duas etapas",
     "setting_two_factor_required_help": "Os usuários afetados o configuram no próximo login. O login anônimo e as chaves de API não são afetados.",
     "settings": "Configurações",
+    "settings_not_saved": "Não salvo: as configurações não puderam ser gravadas em conf\/settings.local. Verifique se o servidor web pode gravar na pasta conf.",
     "show_examination_notes_in_report": "Mostrar notas do exame no relatório",
     "showing_a_total_of": "Mostrando um total de",
     "showing_closed": "Mostrando fechados",

@@ -474,6 +474,7 @@
     "setting_two_factor_required": "Exigir el inicio de sesi\u00f3n en dos pasos",
     "setting_two_factor_required_help": "Los usuarios afectados lo configuran en su pr\u00f3ximo inicio de sesi\u00f3n. No afecta al acceso an\u00f3nimo ni a las claves de API.",
     "settings": "Ajustes",
+    "settings_not_saved": "No guardado: los ajustes no se pudieron escribir en conf\/settings.local. Compruebe que el servidor web puede escribir en la carpeta conf.",
     "show_examination_notes_in_report": "Mostrar las notas del an\u00e1lisis en el informe",
     "showing_a_total_of": "Mostrando un total de",
     "showing_closed": "Mostrando cerrados",

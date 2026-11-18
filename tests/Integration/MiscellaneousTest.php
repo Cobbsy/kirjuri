@@ -563,6 +563,42 @@ final class MiscellaneousTest extends IntegrationTestCase
         $this->assertFileDoesNotExist($this->server->dir . '/conf/settings.local');
     }
 
+    public function testSettingsThatWereNotWrittenAreNotReportedSaved(): void
+    {
+        // Codex's review of #39: when conf/settings.local could not be written, the page still said "Changes saved." and
+        // the audit log recorded "Settings saved." for a change that never took effect. Here settings.local is a link to
+        // a folder that does not exist, which no write can follow.
+        $this->expectLoggedError('could not be written');
+        $admin = $this->admin();
+        $defaults = parse_ini_file(KIRJURI_ROOT . '/conf/settings.conf', true);
+        $save = function (string $title) use ($admin, $defaults) {
+            $admin->post('submit.php?type=save_settings', array('token' => $this->token($admin),
+                'settings' => array('title_text' => $title) + $defaults['settings'], 'inv_units' => implode(', ', $defaults['inv_units'])));
+            return $admin->get('settings.php')->body;
+        };
+        $file = $this->server->dir . '/conf/settings.local';
+        $temporary = $this->server->dir . '/conf/.settings.local.new';
+        try {
+            symlink('/nonexistent-kirjuri-folder/settings.local', $file);
+            $this->assertStringContainsString('Changes saved.', $save('Through a broken link'));
+            $this->assertFalse(is_link($file), 'The new settings replace the broken link.');
+            $this->assertSame('Through a broken link', @parse_ini_file($file, true)['settings']['title_text'] ?? null, 'Saved means written.');
+            @unlink($file);
+
+            // When the new settings can not be written at all, nothing is saved or recorded, and the page says so.
+            mkdir($temporary);
+            $entries = (int) $this->server->pdo()->query('SELECT COUNT(*) FROM audit_chain')->fetchColumn();
+            $page = $save('Not writable');
+            $this->assertStringContainsString('Not saved: the settings could not be written to conf/settings.local.', $page);
+            $this->assertStringNotContainsString('Changes saved.', $page);
+            $this->assertFileDoesNotExist($file);
+            $this->assertSame($entries, (int) $this->server->pdo()->query('SELECT COUNT(*) FROM audit_chain')->fetchColumn(), 'No entry for a change that was not made.');
+        } finally {
+            @rmdir($temporary);
+            @unlink($file);
+        }
+    }
+
     public function testHelpPageIsAUserGuideWithTheLicencesOnTheirOwnPage(): void
     {
         $admin = $this->admin();

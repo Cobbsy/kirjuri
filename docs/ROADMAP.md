@@ -57,7 +57,7 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   page in their own group, each with what it means. `close_request_devices_not_done`, the message when a
   request is closed before its devices are done (November 2026), is in the "Search, requests and tools"
   group. The two HTTPS settings (November 2026) have their names and help lines in the settings group, and their
-  choices and messages (`https_*`) in an "HTTPS" group. In all, 172 strings wait for translators, and the page
+  choices and messages (`https_*`) in an "HTTPS" group. `settings_not_saved` (November 2026) is in the "Search, requests and tools" group. In all, 173 strings wait for translators, and the page
   is not shared with any yet: share it from its Share menu, with Contributor access for each translator.
 - **Outside code review.** Codex was at its usage limit for every PR from #6 to #15 and left nothing
   on #16 to #20, so none of them has had a second reviewer. #21 is a review-only pull request (never
@@ -72,6 +72,12 @@ Pull requests #6 to #14 were merged with merge commits after green CI; #15 was o
   pull request like #21, from master into a branch at #27's merge (`188be27`), so Codex sees #28 to #36 (two-factor
   sign-in and the audit log among them) in one diff, and ask once there. The audit log matters most: a flaw in
   its sealing or chaining could let a changed entry pass as untouched.
+  Done (18 November 2026): #39 is that pull request (`codex-review-28` at #27's merge to `master`, #28 to #38),
+  and Codex reviewed both it and #21. It found four problems, all rated P2 and none about security: task rows of
+  older versions counted in a request's progress, the search limit applied before access filtering, settings
+  reported and recorded as saved when the file could not be written, and a user edit saved before its two-factor
+  reset's entry. All four are fixed with tests. Then close #21 and #39 and delete `codex-review-base` and
+  `codex-review-28`.
 - **Findings of our own review (November 2026)** of the same diff, with code-review at high effort.
   Done (November 2026): search no longer lists cases, or their devices, that the user may not open,
   and the counts leave them out (a match told an outsider what a case's notes or suspect held, prefix

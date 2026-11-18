@@ -55,6 +55,22 @@ case 'create_user':
             if ($user['username'] === $username_input) {
                 $oldname = $user['name'];
                 $returnid = $user['id'];
+                // A two-factor reset comes first, with its audit log entry: when the entry can not be written, the
+                // request ends as not saved before anything else in the form has changed.
+                $reset = function () use ($kirjuri_database, $user) {
+                    return kirjuri_two_factor_remove($kirjuri_database, $user['id']);
+                };
+                if (isset($_POST['reset_two_factor']) && $_POST['reset_two_factor'] === 'reset' && kirjuri_two_factor_audited($kirjuri_database, $reset,
+                        'Two-factor sign-in reset for ' . $user['username'] . ' by ' . $_SESSION['user']['username'] . '. Their sessions ended.',
+                        'reset', $user['username'], array('by' => $_SESSION['user']['username']))) {
+                    // A lost phone: the account signs in with its password alone until it sets two-factor sign-in up again,
+                    // at its next sign-in if it is required. Its sessions end, as whoever has the phone may have one.
+                    if ((string) $user['id'] === (string) $_SESSION['user']['id']) {
+                        kirjuri_end_other_sessions();
+                    } else {
+                        kirjuri_end_user_sessions($user['username']);
+                    }
+                }
                 if (!empty($_POST['password'])) {
                     $user_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
                     event_log_write('0', 'Update', 'Password changed for user ' . $user['username'] . '.');
@@ -74,20 +90,6 @@ case 'create_user':
                 if (!empty($_POST['password'])) {
                     // After the new hash is stored, so a login with the old password can not slip in between.
                     kirjuri_end_user_sessions($user['username']); // Whoever knew the old password is logged out.
-                }
-                $reset = function () use ($kirjuri_database, $user) {
-                    return kirjuri_two_factor_remove($kirjuri_database, $user['id']);
-                };
-                if (isset($_POST['reset_two_factor']) && $_POST['reset_two_factor'] === 'reset' && kirjuri_two_factor_audited($kirjuri_database, $reset,
-                        'Two-factor sign-in reset for ' . $user['username'] . ' by ' . $_SESSION['user']['username'] . '. Their sessions ended.',
-                        'reset', $user['username'], array('by' => $_SESSION['user']['username']))) {
-                    // A lost phone: the account signs in with its password alone until it sets two-factor sign-in up again,
-                    // at its next sign-in if it is required. Its sessions end, as whoever has the phone may have one.
-                    if ((string) $user['id'] === (string) $_SESSION['user']['id']) {
-                        kirjuri_end_other_sessions();
-                    } else {
-                        kirjuri_end_user_sessions($user['username']);
-                    }
                 }
                 kirjuri_rename_examiner($kirjuri_database, $oldname, $new_name);
                 event_log_write('0', 'Update', 'User modified: ' . $username_input . ', access level ' . substr($_POST['access'], 0, 1));

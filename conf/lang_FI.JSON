@@ -474,6 +474,7 @@
     "setting_two_factor_required": "Edellyt\u00e4 kaksivaiheista kirjautumista",
     "setting_two_factor_required_help": "Asetuksen piiriin kuuluvat k\u00e4ytt\u00e4j\u00e4t ottavat sen k\u00e4ytt\u00f6\u00f6n seuraavalla kirjautumisellaan. Anonyymi kirjautuminen ja API-avaimet eiv\u00e4t muutu.",
     "settings": "Asetukset",
+    "settings_not_saved": "Ei tallennettu: asetuksia ei voitu kirjoittaa tiedostoon conf\/settings.local. Tarkista, ett\u00e4 verkkopalvelimella on kirjoitusoikeus conf-kansioon.",
     "show_examination_notes_in_report": "N\u00e4yt\u00e4 muistio raportissa",
     "showing_a_total_of": "N\u00e4ytet\u00e4\u00e4n yhteens\u00e4",
     "showing_closed": "N\u00e4ytet\u00e4\u00e4n vain valmiit",

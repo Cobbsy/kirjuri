@@ -44,6 +44,7 @@ function kirjuri_translation_review_groups(string $root): array
             'search_limited' => array('Front page', 'Warning above the search results when there are too many to show. %d becomes the number shown (500). Keep %d exactly as it is.'),
             'assign_examiner_hint' => array('Request page', 'Hint under the examiner choice on a new request, above the Start investigation button.'),
             'not_saved' => array('Request and device pages', 'Appears next to a device\'s status after it is changed, when the change could not be saved.'),
+            'settings_not_saved' => array('Settings page', 'Error after saving the settings, when the settings file could not be written. conf/settings.local is a file name and conf a folder name; keep them as they are.'),
             'close_request_devices_not_done' => array('Request page', 'Error message when someone tries to close a request while some of its devices are not done yet. The request stays open.'),
             'reservation_in_past' => array('Tools', 'Error message when someone books a tool for dates that have already passed.'),
         )),
