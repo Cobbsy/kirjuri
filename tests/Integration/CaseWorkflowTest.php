@@ -509,6 +509,32 @@ final class CaseWorkflowTest extends IntegrationTestCase
         }
     }
 
+    public function testTheSearchLooksThroughABoundedNumberOfMatches(): void
+    {
+        // Codex's review of #40: skipping matches the user may not open went on, a batch at a time, until it had enough
+        // the user may open or none were left, so a broad search could read every match on a large installation.
+        $word = 'Cap' . bin2hex(random_bytes(5));
+        $admin = $this->admin();
+        $visible = $this->createCase($admin, $word . ' visible');
+        $pdo = $this->server->pdo();
+        $pdo->prepare('UPDATE exam_requests SET case_id = 1 WHERE id = :id')->execute(array(':id' => $visible)); // Sorted last.
+        $hidden = array();
+        for ($i = 0; $i < 6; $i++) {
+            $hidden[] = $this->createCase($admin, $word . ' hidden ' . $i); // The helper finds a case by its name.
+        }
+        $pdo->exec('UPDATE exam_requests SET case_owner = "someone_else" WHERE id IN (' . implode(',', $hidden) . ')');
+        $user = array('username' => 'searcher', 'access' => '1');
+        try {
+            // Two results at most, looking through four matches at most: the hidden ones use that up, and it says so.
+            $this->assertSame(array(array(), true), kirjuri_search_cases_for($pdo, $word, '', false, $user, 2, 4));
+            [$found, $more] = kirjuri_search_cases_for($pdo, $word, '', false, $user, 2, 100);
+            $this->assertSame(array((string) $visible), array_map('strval', array_column($found, 'id')));
+            $this->assertFalse($more);
+        } finally {
+            $pdo->exec('UPDATE exam_requests SET case_owner = "" WHERE id IN (' . implode(',', $hidden) . ')');
+        }
+    }
+
     public function testWorkOnDevicesKeepsTheCaseFromStalling(): void
     {
         // The stalled mark reads the case's last update, which changing a device's status or location, attaching
